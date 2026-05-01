@@ -61,8 +61,16 @@ website/.vitepress/cache/
 # Playwright MCP screenshots
 .playwright-mcp/
 
-# Internal docs (research, handoffs, internal roadmap) — not for public repo
-docs/
+# Internal docs (research, handoffs, internal roadmap) — not for public repo.
+# Note: exclude *contents* (docs/*) not the directory itself, so negations
+# below can re-include specific children. Excluding `docs/` blocks Git from
+# descending and silently disables the !docs/... patterns.
+docs/*
+# But ADRs are governance artifacts and MUST be tracked
+!docs/adr/
+!docs/adr/**
+# Skill-loader rationale is referenced by code reviews
+!docs/skill-loader.md
 
 # Internal marketing drafts — not for public repo
 promo-copy/
