@@ -73,3 +73,12 @@ website/public/demos/_speedup/
 # Agent worktrees / transcripts
 .claude/projects/
 .codex-temp/
+
+# OMC runtime state (per-session, not source). Plans/specs/handoff stay tracked.
+.omc/state/
+.omc/logs/
+.omc/notepad.md
+.omc/project-memory.json
+
+# Per-session memory buffer (not source)
+.remember/

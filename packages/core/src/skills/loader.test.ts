@@ -55,15 +55,26 @@ Full skill body here.
 // ---------------------------------------------------------------------------
 
 describe('loadSkillsFromDir()', () => {
-  it('loads 4 builtin skills from the real builtin directory', async () => {
+  it('loads 12 builtin skills from the real builtin directory (atv-design fork)', async () => {
     const builtinDir = fileURLToPath(new URL('./builtin', import.meta.url));
     const skills = await loadSkillsFromDir(builtinDir, 'builtin');
-    expect(skills.length).toBe(4);
+    expect(skills.length).toBe(12);
     const ids = skills.map((s) => s.id).sort();
+    // 5 upstream skills retained from open-codesign
     expect(ids).toContain('frontend-design-anti-slop');
     expect(ids).toContain('pitch-deck');
     expect(ids).toContain('data-viz-recharts');
     expect(ids).toContain('mobile-mock');
+    // Paraphrased emil-design-eng port (atv-design fork addition)
+    expect(ids).toContain('emil-design-eng-inspired');
+    // 7 uipromax-* ports (atv-design fork additions, MIT-licensed)
+    expect(ids).toContain('uipromax-core');
+    expect(ids).toContain('uipromax-design');
+    expect(ids).toContain('uipromax-design-system');
+    expect(ids).toContain('uipromax-brand');
+    expect(ids).toContain('uipromax-ui-styling');
+    expect(ids).toContain('uipromax-slides');
+    expect(ids).toContain('uipromax-banner-design');
   });
 
   it('returns empty array when directory does not exist', async () => {
