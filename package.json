@@ -1,0 +1,52 @@
+{
+  "name": "atv-design",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hard fork of OpenCoworkAI/open-codesign with official GitHub Copilot SDK OAuth as a first-class provider, plus the ui-ux-pro-max skill bundle and an emil-design-eng-inspired animation skill. BYOK end-to-end. See ATTRIBUTION.md for upstream credits.",
+  "license": "MIT",
+  "homepage": "https://github.com/<your-org>/atv-design",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/<your-org>/atv-design.git"
+  },
+  "bugs": {
+    "url": "https://github.com/<your-org>/atv-design/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "prepare": "husky",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "format": "biome format --write .",
+    "docs:dev": "pnpm --filter open-codesign-website dev",
+    "docs:build": "pnpm --filter open-codesign-website build",
+    "docs:preview": "pnpm --filter open-codesign-website preview",
+    "smoke": "tsx scripts/smoke-models.ts",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish"
+  },
+  "pnpm": {
+    "neverBuiltDependencies": ["better-sqlite3"]
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.11",
+    "@iarna/toml": "^2.2.5",
+    "@open-codesign/core": "workspace:*",
+    "@open-codesign/shared": "workspace:*",
+    "@types/node": "^22.10.2",
+    "acorn": "^8.14.0",
+    "husky": "^9.1.7",
+    "tsx": "^4.19.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}

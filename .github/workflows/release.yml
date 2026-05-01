@@ -1,0 +1,499 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.1.0). Must start with "v"'
+        required: true
+        type: string
+      draft:
+        description: 'Create as draft release'
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  # ------------------------------------------------------------------
+  # Gate: lint / typecheck / test on ubuntu only (fast, cheap).
+  # Full matrix is already covered by ci.yml on PRs; we just need a
+  # quick sanity pass before we spend runner-minutes on packaging.
+  # ------------------------------------------------------------------
+  gate:
+    name: Gate (lint · typecheck · test)
+    runs-on: ubuntu-latest
+    if: github.repository == 'OpenCoworkAI/open-codesign'
+    env:
+      RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  # ------------------------------------------------------------------
+  # Changelog: build release notes from conventional commits.
+  # Runs in parallel with the gate; the build matrix waits for both.
+  # ------------------------------------------------------------------
+  changelog:
+    name: Build changelog
+    runs-on: ubuntu-latest
+    if: github.repository == 'OpenCoworkAI/open-codesign'
+    env:
+      RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+    outputs:
+      changelog: ${{ steps.build.outputs.changelog }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Build changelog
+        id: build
+        uses: mikepenz/release-changelog-builder-action@c9dc8369bccbc41e0ac887f8fd674f5925d315f7 # v5
+        with:
+          configurationJson: |
+            {
+              "categories": [
+                {
+                  "title": "### Features",
+                  "labels": ["feat"],
+                  "rules": [{ "pattern": "^feat", "on_property": "title" }]
+                },
+                {
+                  "title": "### Bug Fixes",
+                  "labels": ["fix"],
+                  "rules": [{ "pattern": "^fix", "on_property": "title" }]
+                },
+                {
+                  "title": "### Documentation",
+                  "labels": ["docs"],
+                  "rules": [{ "pattern": "^docs", "on_property": "title" }]
+                },
+                {
+                  "title": "### Other Changes",
+                  "rules": [{ "pattern": "^(chore|refactor|perf|test|ci)", "on_property": "title" }]
+                }
+              ],
+              "ignore_labels": ["skip-changelog"],
+              "sort": { "order": "DESC", "on_property": "mergedAt" },
+              "template": "#{{CHANGELOG}}\n\n**Full Changelog**: #{{RELEASE_DIFF}}"
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Build: native packaging per platform.
+  # electron-builder reads publish config from electron-builder.yml.
+  # We do NOT sign in v0.1 — notarization deferred to Stage 2.
+  # ------------------------------------------------------------------
+  build:
+    name: Build (${{ matrix.label }})
+    needs: [gate, changelog]
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS is split into two native-arch runners. Cross-building both
+        # DMGs on a single arm64 host (what we used to do) shipped the host
+        # arch's native module inside the x64 DMG because electron-builder
+        # does not re-stage our per-arch better-sqlite3 prebuilds per target
+        # arch — see #176 (dlopen fails on Intel Macs). Using a native-arch
+        # runner per DMG guarantees `pnpm install` stages the right
+        # better_sqlite3.node* files for each target and keeps the legacy
+        # alias (better_sqlite3.node-electron.node) matching the DMG arch.
+        include:
+          - os: macos-latest # arm64 Apple Silicon runner
+            label: macos-arm64
+            mac_arch: arm64
+            artifact_name: installer-macos-arm64
+            artifact_glob: 'apps/desktop/release/*.dmg'
+          - os: macos-13 # Intel x64 runner (macos-latest is arm64)
+            label: macos-x64
+            mac_arch: x64
+            artifact_name: installer-macos-x64
+            artifact_glob: 'apps/desktop/release/*.dmg'
+          - os: windows-latest
+            label: windows-latest
+            artifact_name: installer-windows-latest
+            artifact_glob: 'apps/desktop/release/*.exe'
+          - os: ubuntu-latest
+            label: ubuntu-latest
+            artifact_name: installer-ubuntu-latest
+            artifact_glob: |
+              apps/desktop/release/*.AppImage
+              apps/desktop/release/*.deb
+              apps/desktop/release/*.rpm
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # electron-builder's rpm target shells out to `rpmbuild`, which is not
+      # present on ubuntu-latest by default. Install it on Linux runners only.
+      - name: Install Linux packaging deps
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+
+      # Build all workspace packages (turborepo respects dep graph)
+      - name: Build workspace
+        run: pnpm --filter '!@open-codesign/desktop' -r build
+
+      # Package the Electron app.
+      # CSC_IDENTITY_AUTO_DISCOVERY=false: skip ad-hoc Mac signing prompt.
+      # WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD: intentionally unset (no cert in v0.1).
+      # On macOS we force-pin the target arch to the runner's host arch
+      # (--arm64 on macos-latest, --x64 on macos-13) so each DMG is packaged
+      # natively instead of cross-built (see matrix comment + #176).
+      - name: Package desktop (non-mac)
+        if: runner.os != 'macOS'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm --filter @open-codesign/desktop release
+
+      - name: Package desktop (mac, per-arch)
+        if: runner.os == 'macOS'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pnpm --filter @open-codesign/desktop exec electron-vite build
+          pnpm --filter @open-codesign/desktop exec electron-builder --mac --${{ matrix.mac_arch }} --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_glob }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Snap: best-effort build of a .snap on ubuntu using snapcraft.
+  # Isolated into its own job because snapcraft is heavyweight and
+  # occasionally flakes on hosted runners; failure here should NOT
+  # block the release (publish job does not `needs:` this one).
+  # ------------------------------------------------------------------
+  build-snap:
+    name: Build Linux Snap (best-effort)
+    needs: [gate]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    env:
+      RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Install snapcraft + LXD
+        # snapcraft itself handles most simple electron-builder builds via
+        # `snap pack`, but recent electron-builder (post core22/core24) will
+        # fall back to invoking snapcraft which needs LXD for its build
+        # environment. Setting both up here keeps the step resilient.
+        run: |
+          sudo snap install snapcraft --classic
+          sudo snap install lxd
+          sudo lxd waitready --timeout=60
+          sudo lxd init --auto
+
+      - name: Build workspace
+        run: pnpm --filter '!@open-codesign/desktop' -r build
+
+      - name: Package snap
+        working-directory: apps/desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: pnpm exec electron-vite build && pnpm exec electron-builder --linux snap --publish never
+
+      - name: Upload snap artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-snap
+          path: apps/desktop/release/*.snap
+          if-no-files-found: warn
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Supply-chain: checksums + CycloneDX SBOM for the whole workspace.
+  # Runs on one runner after all platform artifacts are uploaded.
+  # ------------------------------------------------------------------
+  provenance:
+    name: Checksums + SBOM
+    needs: [build, build-snap]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Generate CycloneDX SBOM (workspace)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: dist/open-codesign-${{ github.event_name == 'push' && github.ref_name || inputs.tag }}-sbom.cdx.json
+
+      - name: Generate SHA256SUMS.txt
+        working-directory: dist
+        run: |
+          shopt -s nullglob
+          : > SHA256SUMS.txt
+          for f in *; do
+            [ -f "$f" ] && [ "$f" != "SHA256SUMS.txt" ] || continue
+            sha256sum "$f" >> SHA256SUMS.txt
+          done
+          cat SHA256SUMS.txt
+
+      - name: Upload provenance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: provenance
+          path: |
+            dist/SHA256SUMS.txt
+            dist/open-codesign-*-sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 7
+
+  # ------------------------------------------------------------------
+  # Publish: create (or update draft) GitHub Release and attach files.
+  # ------------------------------------------------------------------
+  publish:
+    name: Publish GitHub Release
+    needs: [build, build-snap, changelog, provenance]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_REF }}
+          fetch-depth: 0
+
+      - name: Validate tag input on dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [[ ! "${{ inputs.tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag must be semver-like (e.g. v1.2.3 or v1.2.3-rc.1)"
+            exit 1
+          fi
+          # Verify the tag exists on the remote before proceeding
+          if ! git ls-remote --tags origin "refs/tags/${{ inputs.tag }}" | grep -q "${{ inputs.tag }}"; then
+            echo "::error::tag '${{ inputs.tag }}' does not exist on origin"
+            exit 1
+          fi
+
+      - name: Download all installers
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          name: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+          body: ${{ needs.changelog.outputs.changelog }}
+          draft: ${{ github.event_name == 'push' && false || inputs.draft }}
+          prerelease: ${{ contains(github.event_name == 'push' && github.ref_name || inputs.tag, '-') }}
+          files: dist/**
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ------------------------------------------------------------------
+  # Sync in-repo distribution manifests (cask / scoop / winget / flatpak)
+  # to the freshly-published release. Pulls SHA256SUMS.txt from the
+  # release, rewrites version strings + checksums + URLs across all four
+  # channels, and commits the diff back to main so the packaging/ tree
+  # stays in sync without a manual step.
+  # ------------------------------------------------------------------
+  bump-manifests:
+    name: Sync packaging manifests to release
+    needs: [publish]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && !contains(github.ref_name, '-')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Check out the default branch (not the tag) so the commit lands
+          # on main. We pass the version explicitly to the script.
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive version from tag
+        id: ver
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Run update-shas.sh
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: ./packaging/update-shas.sh "${{ steps.ver.outputs.version }}"
+
+      - name: Commit + push
+        run: |
+          if git diff --quiet packaging/; then
+            echo "::notice::packaging/ already up to date — no commit"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packaging/
+          msg="$(printf 'chore(release): sync manifests to %s\n\nAuto-generated by .github/workflows/release.yml after publishing\n%s. Pulls SHA256SUMS.txt from the release and rewrites\ncask / scoop / winget / flatpak manifests to match.\n\n[skip ci]' "$GITHUB_REF_NAME" "$GITHUB_REF_NAME")"
+          git commit -m "$msg"
+          # Rebase in case main advanced while the release job ran.
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+  # ------------------------------------------------------------------
+  # Homebrew Cask bump — opens a PR against OpenCoworkAI/homebrew-tap
+  # with the new version + sha256 of the mac DMGs.
+  # Skipped until HOMEBREW_TAP_TOKEN is set (see packaging/homebrew/README.md).
+  # ------------------------------------------------------------------
+  homebrew:
+    name: Bump Homebrew Cask
+    needs: [publish]
+    runs-on: macos-latest
+    if: github.event_name == 'push' && !contains(github.ref_name, '-')
+    steps:
+      - name: Guard on secret
+        id: guard
+        run: |
+          if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::HOMEBREW_TAP_TOKEN not set — skipping Homebrew bump. See packaging/homebrew/README.md."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump cask
+        if: steps.guard.outputs.skip == 'false'
+        # TODO: pin to commit SHA when flipping HOMEBREW_TAP_TOKEN on (Scorecard).
+        uses: macauley/action-homebrew-bump-cask@v1
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          tap: OpenCoworkAI/homebrew-tap
+          cask: open-codesign
+          tag: ${{ github.ref_name }}
+          force: false
+
+  # ------------------------------------------------------------------
+  # winget manifest PR — submits to microsoft/winget-pkgs.
+  # Skipped until WINGET_PAT is set (see packaging/winget/).
+  # Requires initial manual submission of the manifest first.
+  # ------------------------------------------------------------------
+  winget:
+    name: Submit winget manifest
+    needs: [publish]
+    runs-on: windows-latest
+    if: github.event_name == 'push' && !contains(github.ref_name, '-')
+    steps:
+      - name: Guard on secret
+        id: guard
+        shell: bash
+        run: |
+          if [ -z "${{ secrets.WINGET_PAT }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::WINGET_PAT not set — skipping winget submission. See packaging/winget/."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release winget package
+        if: steps.guard.outputs.skip == 'false'
+        # TODO: pin to commit SHA when flipping WINGET_PAT on (Scorecard).
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: OpenCoworkAI.OpenCoDesign
+          installers-regex: '-x64-setup\.exe$|-arm64-setup\.exe$'
+          token: ${{ secrets.WINGET_PAT }}

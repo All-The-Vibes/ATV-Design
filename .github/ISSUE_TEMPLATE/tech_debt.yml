@@ -1,0 +1,63 @@
+name: Tech debt / refactor
+description: Track refactoring, cleanup, dependency upgrades, or suppressed lint rules
+title: "[Tech debt]: "
+labels: ["tech-debt", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for work that keeps the codebase healthy but is not a user-facing feature or bug:
+        - Refactors (e.g. reducing cyclomatic complexity)
+        - Dependency upgrades blocked by transitive constraints
+        - Re-enabling lint rules that were demoted
+        - Schema migrations with no user-visible change
+
+        For user-visible bugs or features, use the other templates instead.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What's the debt
+      description: What's the current state that needs cleanup? Link to code, lint suppressions, or version constraints.
+      placeholder: |
+        `packages/core/src/loader.ts` has two `biome-ignore lint/complexity/noExcessiveCognitiveComplexity`
+        suppressions that should be removed by splitting the loader into smaller units.
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it matters
+      description: What future work does this block or make harder? What's the risk of leaving it?
+      placeholder: |
+        Keeps the complexity budget from creeping; PasteKey.tsx is already over the limit without a suppression.
+    validations:
+      required: true
+
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach
+      description: Rough sketch of how to fix it. OK to leave "TBD" if you want a discussion first.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Refactor
+        - Dependency upgrade
+        - Lint / type rule
+        - Schema migration
+        - Build / toolchain
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: blocked_by
+    attributes:
+      label: Blocked by (optional)
+      description: Linked issue, PR, or upstream bug that this depends on.
+      placeholder: "#106, better-sqlite3 ABI"

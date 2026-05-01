@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # Cross-platform builds happen on tag releases via release.yml.
+    # PR/main CI runs on ubuntu only to control Actions cost (macOS 10x / Win 2x multiplier).
+    name: Lint, typecheck, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      # Build smoke — bundle the Electron main + renderer so broken imports,
+      # missing assets, or bad vite config fail here instead of only during a
+      # tag release. Skip electron-builder packaging (that's release.yml's job).
+      - name: Build smoke (electron-vite bundle)
+        run: pnpm --filter @open-codesign/desktop exec electron-vite build
+
+  # Linux packaging smoke lives in .github/workflows/packaging-smoke.yml —
+  # it was pulled out of this workflow because workflow-level
+  # `cancel-in-progress: true` kept killing it whenever another PR merged
+  # to main during its ~13 min runtime. The smoke workflow has its own
+  # per-SHA concurrency group so each packaging-touching commit gets an
+  # independent smoke that always runs to completion.

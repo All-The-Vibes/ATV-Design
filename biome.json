@@ -1,0 +1,103 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignore": [
+      "**/dist/**",
+      "**/dist-electron/**",
+      "**/.next/**",
+      "**/node_modules/**",
+      "**/coverage/**",
+      "**/.turbo/**",
+      "**/vendor/**",
+      "packaging/**"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "trailingCommas": "all",
+      "semicolons": "always",
+      "arrowParentheses": "always"
+    }
+  },
+  "json": {
+    "formatter": {
+      "trailingCommas": "none"
+    }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noExplicitAny": "error",
+        "noArrayIndexKey": "off",
+        "noAssignInExpressions": "off",
+        "noPrototypeBuiltins": "off",
+        "noDuplicateObjectKeys": "warn"
+      },
+      "style": {
+        "noNonNullAssertion": "warn",
+        "useImportType": "error",
+        "useLiteralEnumMembers": "off",
+        "noCommaOperator": "off"
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "off",
+        "useLiteralKeys": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "warn"
+      },
+      "a11y": {
+        "useButtonType": "off",
+        "useFocusableInteractive": "off",
+        "useSemanticElements": "off",
+        "noSvgWithoutTitle": "off",
+        "useKeyWithClickEvents": "off",
+        "useValidAnchor": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "include": [
+        "apps/desktop/src/main/**",
+        "packages/core/src/**",
+        "packages/providers/src/**",
+        "packages/exporters/src/**",
+        "packages/shared/src/**"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "error"
+          }
+        }
+      }
+    },
+    {
+      "include": ["**/*.test.ts", "**/*.test.tsx", "packages/core/src/prompts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
+}

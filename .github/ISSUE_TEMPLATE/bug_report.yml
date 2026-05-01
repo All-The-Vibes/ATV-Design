@@ -1,0 +1,117 @@
+name: Bug report
+description: Report something that does not work as expected
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing:** search [existing issues](https://github.com/OpenCoworkAI/open-codesign/issues) to avoid duplicates.
+
+        **Tip:** go to **Settings → Storage → Export diagnostics** to generate a redacted diagnostics bundle (API keys and prompts are automatically stripped). Attach the download link below — it dramatically speeds up triage.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Briefly describe what went wrong.
+      placeholder: "e.g. Clicking Export PDF crashes the app with an unhandled exception."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the exact steps needed to reliably trigger the issue.
+      placeholder: |
+        1. Open the app and navigate to a design
+        2. Click the Export button → PDF
+        3. …
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+      placeholder: "A PDF file should be saved to disk."
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened instead?
+      placeholder: "The app freezes and shows a blank error dialog."
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: open-codesign version
+      description: Find it in **Settings → About**.
+      placeholder: "0.1.3 or commit sha"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: platform_version
+    attributes:
+      label: OS version
+      description: e.g. macOS 15.3.2, Windows 11 24H2, Ubuntu 24.04
+      placeholder: "macOS 15.3.2"
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Model provider (if relevant)
+      options:
+        - Anthropic
+        - OpenAI
+        - Google
+        - OpenRouter
+        - Groq
+        - Other
+        - "N/A"
+
+  - type: input
+    id: error_code
+    attributes:
+      label: Error code
+      description: >
+        If the app shows a `CodesignError` code (e.g. `PROVIDER_HTTP_4XX`), paste it here.
+      placeholder: "PROVIDER_HTTP_4XX"
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics bundle
+      description: >
+        Paste the link from **Settings → Storage → Export diagnostics**.
+        The zip is automatically redacted — API keys and prompt text are stripped before export.
+      placeholder: "https://… (GitHub Gist, file.io, or similar)"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >
+        Paste relevant renderer or main-process log excerpts here.
+        Wrap in triple backticks. Remove any sensitive tokens first.
+      render: shell

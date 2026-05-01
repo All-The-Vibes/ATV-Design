@@ -1,0 +1,59 @@
+{
+  "name": "@open-codesign/desktop",
+  "version": "0.1.4",
+  "private": true,
+  "type": "module",
+  "main": "./out/main/index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OpenCoworkAI/open-codesign.git"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install-sqlite-bindings.cjs",
+    "dev": "node scripts/dev.cjs",
+    "build": "electron-vite build && electron-builder",
+    "build:dir": "electron-vite build && electron-builder --dir",
+    "release": "electron-vite build && electron-builder --publish never",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@open-codesign/artifacts": "workspace:*",
+    "@open-codesign/core": "workspace:*",
+    "@open-codesign/exporters": "workspace:*",
+    "@open-codesign/i18n": "workspace:*",
+    "@open-codesign/providers": "workspace:*",
+    "@open-codesign/runtime": "workspace:*",
+    "@open-codesign/shared": "workspace:*",
+    "@open-codesign/templates": "workspace:*",
+    "@open-codesign/ui": "workspace:*",
+    "better-sqlite3": "^12.9.0",
+    "electron-log": "^5",
+    "electron-updater": "^6.3.9",
+    "lucide-react": "^1.11.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "smol-toml": "^1.6.1",
+    "zip-lib": "^1.0.4",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^39.8.9",
+    "electron-builder": "^26.8.1",
+    "electron-builder-squirrel-windows": "26.8.1",
+    "electron-vite": "^2.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5",
+    "vitest": "^2.1.8"
+  }
+}

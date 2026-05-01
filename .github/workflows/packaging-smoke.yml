@@ -1,0 +1,90 @@
+name: Packaging smoke
+
+# Isolated from CI so the slow (~13 min) electron-builder run can complete
+# even when main gets additional pushes: workflow-level
+# `cancel-in-progress: true` cancels the ENTIRE workflow run, not just one
+# job. Keeping smoke in `ci.yml` meant every subsequent merge to main
+# killed smoke mid-flight and silently dropped the signal. A separate
+# workflow with its own per-SHA concurrency group is the only way to keep
+# the fast-feedback `check` job cancellable while still letting smoke run
+# to completion on every packaging-touching commit.
+#
+# Triggered only by files that can break packaging. Everyone else pays
+# zero extra CI cost.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/desktop/electron-builder.yml'
+      - 'apps/desktop/package.json'
+      - 'apps/desktop/resources/**'
+      - 'apps/desktop/scripts/**'
+      - '.github/workflows/packaging-smoke.yml'
+      - '.github/workflows/release.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/desktop/electron-builder.yml'
+      - 'apps/desktop/package.json'
+      - 'apps/desktop/resources/**'
+      - 'apps/desktop/scripts/**'
+      - '.github/workflows/packaging-smoke.yml'
+      - '.github/workflows/release.yml'
+
+# Per-SHA group, no cancellation. Each commit gets an independent smoke
+# that always runs to completion (or fails loudly). Skipping the
+# cancel-in-progress saves us from the ci.yml bug where an unrelated
+# later push on main would kill an already-running smoke.
+concurrency:
+  group: packaging-smoke-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: Linux packaging smoke
+    runs-on: ubuntu-latest
+    # 30 min because electron-builder takes ~12 min just for the AppImage
+    # (node-module walk is the bottleneck), plus ~2 min each for deb and
+    # rpm, plus setup. The first attempt at 15 min hit the timeout mid-rpm
+    # and got killed with no useful diagnostic.
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # electron-builder's rpm target shells out to `rpmbuild`, which is not
+      # present on ubuntu-latest by default.
+      - name: Install rpmbuild
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Build workspace
+        run: pnpm --filter '!@open-codesign/desktop' -r build
+
+      - name: Package Linux (AppImage + deb + rpm)
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: pnpm --filter @open-codesign/desktop release
+
+      - name: Assert artifacts
+        run: |
+          cd apps/desktop/release
+          ls -la
+          for ext in AppImage deb rpm; do
+            if ! ls *."$ext" >/dev/null 2>&1; then
+              echo "::error::no .$ext produced by electron-builder"
+              exit 1
+            fi
+          done
+          echo "All three Linux artifacts present."

@@ -1,0 +1,28 @@
+# Design workflow
+
+Seven steps, in order:
+
+1. **Understand** — Silently parse intent; expand single-noun prompts into a plausible context (data, audience, tone). Never ask before producing.
+2. **Classify** — Run pre-flight. Sparse output is the failure mode this prevents.
+3. **Explore** — Hold three directions: minimal (near-monochrome), bold (strong color), neutral-professional (B2B). Minimal still hits the density floor.
+4. **Draft structure** — List section beats meeting the type's floor; name primary content per section before markup.
+5. **Implement** — One pass. No partial code, no placeholders.
+6. **Self-check** — Verify:
+   - Section count ≥ artifact-type floor.
+   - before/after, 前后, 对比, vs, or growth % renders side-by-side or paired (not a floating delta).
+   - Featured numbers are big-number blocks with labels.
+   - Type ladder uses four steps (display · h1 · body · caption); no jumps.
+   - Dark themes have ≥3 surface tones plus a gradient or glow.
+   - Every `:root` custom property is used.
+   - No lorem ipsum, "John Doe" / "Acme Corp", or placeholder.com / via.placeholder / unsplash hotlinks.
+   - Logo placeholders are constructed monograms, wordmarks, or hatched rectangles.
+   - Colors meet WCAG AA.
+7. **Deliver** — Output the artifact tag, then ≤2 sentences. No narration.
+
+## Revision workflow (mode: revise)
+
+Re-read the current artifact. Make the minimum coherent change. Preserve voice, palette, and structure unless asked.
+
+## Done
+
+Passes step 6 and contains exactly one artifact tag.

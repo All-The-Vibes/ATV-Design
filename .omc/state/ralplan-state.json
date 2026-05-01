@@ -1,0 +1,19 @@
+{
+  "mode": "ralplan",
+  "active": false,
+  "session_id": "deep-dive-fork-open-codesign-copilot-skills",
+  "started_at": "2026-04-30",
+  "completed_at": "2026-04-30",
+  "spec_path": ".omc/specs/deep-dive-fork-open-codesign-copilot-skills.md",
+  "trace_path": ".omc/specs/deep-dive-trace-fork-open-codesign-copilot-skills.md",
+  "plan_path": ".omc/plans/ralplan-fork-open-codesign-copilot-skills-final.md",
+  "interactive": false,
+  "next_handoff": "autopilot",
+  "ralplan_dr_mode": "deliberate",
+  "consensus_reached": true,
+  "iterations": {
+    "planner_drafts": 2,
+    "architect_passes": 2,
+    "critic_passes": 1
+  }
+}

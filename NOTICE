@@ -1,0 +1,128 @@
+NOTICE
+======
+
+This product, atv-design, is a fork of OpenCoworkAI/open-codesign and ports
+content from nextlevelbuilder/ui-ux-pro-max-skill. Both upstreams are licensed
+under the MIT License, reproduced verbatim below as required by the MIT
+notice-preservation clause. Original copyright lines are preserved.
+
+The atv-design fork itself is also distributed under the MIT License.
+
+================================================================================
+1. atv-design (this fork)
+================================================================================
+
+MIT License
+
+Copyright (c) 2026 atv-design contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+2. OpenCoworkAI/open-codesign (upstream — direct fork base)
+   Source: https://github.com/OpenCoworkAI/open-codesign
+================================================================================
+
+MIT License
+
+Copyright (c) 2026 OpenCoworkAI Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+3. nextlevelbuilder/ui-ux-pro-max-skill (ported to skills/ui-ux-pro-max/)
+   Source: https://github.com/nextlevelbuilder/ui-ux-pro-max-skill
+================================================================================
+
+MIT License
+
+Copyright (c) 2024 Next Level Builder
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+4. emilkowalski/skill — INSPIRED-BY ONLY
+   Source: https://github.com/emilkowalski/skill
+================================================================================
+
+At the time of forking (2026-04-30), the upstream repository emilkowalski/skill
+contained no LICENSE file. Default GitHub copyright applies, which means no
+permission is granted to redistribute the upstream prose.
+
+The atv-design skill at skills/emil-design-eng-inspired/SKILL.md was authored
+fresh by atv-design contributors. It captures the same animation *principles*
+as the upstream skill in original prose, with zero verbatim text copied from
+the upstream SKILL.md. The original repository is credited as inspiration in
+the body of skills/emil-design-eng-inspired/SKILL.md and in the per-bundle
+README.
+
+If the upstream emilkowalski/skill repository adds a permissive license in the
+future, this fork may consider switching from paraphrase to direct attribution
+plus verbatim port. Until then, the inspired-by approach is the legally
+defensible posture.
+
+================================================================================
+5. Inherited third-party software (from upstream open-codesign)
+================================================================================
+
+This product also includes software developed by third parties that the
+upstream open-codesign already depends on. Listing copied verbatim from the
+upstream NOTICE file:
+
+- The pi-ai project (https://github.com/badlogic/pi-mono) — MIT License
+- The Electron project (https://www.electronjs.org/) — MIT License
+- The pptxgenjs project (https://github.com/gitbrent/PptxGenJS) — MIT License
+- The dom-to-pptx project (https://github.com/atharva9167j/dom-to-pptx) — MIT License
+- The esbuild project (https://github.com/evanw/esbuild) — MIT License
+
+Full third-party license texts are bundled in the application under
+`resources/THIRD_PARTY_LICENSES.txt` at build time (inherited from upstream
+build pipeline; see `apps/desktop/` and `packaging/`).

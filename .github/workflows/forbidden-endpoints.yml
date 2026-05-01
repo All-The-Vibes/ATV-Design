@@ -1,0 +1,97 @@
+name: forbidden-endpoints
+
+# Enforces atv-design Spec Principle 2 ("Sanctioned auth only") and Risk R11
+# from .omc/plans/ralplan-fork-open-codesign-copilot-skills-final.md.
+#
+# Fails the build if any source, doc, or config file references the
+# undocumented Copilot internal endpoints, or if a hard-coded GitHub OAuth
+# client secret slips into the tree.
+#
+# Companion review checklist: docs/security-checklist.md
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  forbidden-endpoints:
+    name: Grep for forbidden patterns
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Forbid undocumented Copilot internal endpoint
+        shell: bash
+        run: |
+          # Search the working tree, excluding the security checklist itself,
+          # the CI workflow itself (which legitimately names the pattern in
+          # comments), and any vendored / generated paths.
+          set -e
+          MATCHES=$(git grep -nI \
+            --untracked \
+            -e 'copilot_internal' \
+            -- ':!docs/security-checklist.md' \
+               ':!.github/workflows/forbidden-endpoints.yml' \
+               ':!node_modules' \
+               ':!**/node_modules' \
+               ':!dist' \
+               ':!build' \
+               ':!.omc' \
+            || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Forbidden endpoint 'copilot_internal' detected. atv-design must use the documented Copilot SDK OAuth flow only — see docs/security-checklist.md."
+            echo "$MATCHES"
+            exit 1
+          fi
+
+      - name: Forbid hard-coded OAuth client secrets
+        shell: bash
+        run: |
+          set -e
+          # Heuristic: any literal that looks like a GitHub OAuth client secret
+          # (40 hex chars) appearing on the same line as 'client_secret', or
+          # any 'client_secret' assignment to a non-empty literal outside test
+          # fixtures explicitly marked as such.
+          MATCHES=$(git grep -nIE \
+            --untracked \
+            'client_secret\s*[:=]\s*["'\''][^"'\'' ]{8,}["'\'']' \
+            -- ':!docs/security-checklist.md' \
+               ':!docs/adr' \
+               ':!.github/workflows/forbidden-endpoints.yml' \
+               ':!node_modules' \
+               ':!**/node_modules' \
+               ':!**/__fixtures__/**' \
+               ':!**/test-fixtures/**' \
+               ':!.omc' \
+            || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Hard-coded OAuth client_secret detected. atv-design uses public client ID + PKCE only — see docs/adr/0001-byok-oauth-posture.md."
+            echo "$MATCHES"
+            exit 1
+          fi
+
+      - name: Forbid token logging patterns (heuristic)
+        shell: bash
+        run: |
+          set -e
+          # Heuristic: console.log or logger calls that include 'Bearer' string
+          # interpolation. Will produce false positives in test files; restrict
+          # to source paths.
+          MATCHES=$(git grep -nIE \
+            --untracked \
+            '(console\.(log|info|debug|warn|error)|logger\.[a-z]+)\s*\([^)]*Bearer\s*\$\{' \
+            -- 'src/**' 'apps/**/src/**' 'packages/**/src/**' \
+            || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Possible token leak in log statement (Bearer \${token} pattern). Redact tokens before logging — see docs/security-checklist.md observability O1."
+            echo "$MATCHES"
+            exit 1
+          fi
+
+      - name: Summary
+        if: success()
+        run: echo "✅ No forbidden endpoints, hard-coded secrets, or obvious token-leak patterns detected."

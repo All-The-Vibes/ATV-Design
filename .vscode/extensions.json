@@ -1,0 +1,10 @@
+{
+  "recommendations": [
+    "biomejs.biome",
+    "editorconfig.editorconfig",
+    "tamasfe.even-better-toml",
+    "ms-vscode.vscode-typescript-next",
+    "bradlc.vscode-tailwindcss",
+    "vitest.explorer"
+  ]
+}

@@ -1,0 +1,1242 @@
+import { createHash } from 'node:crypto';
+import {
+  BUILTIN_PROVIDERS,
+  CHATGPT_CODEX_PROVIDER_ID,
+  CodesignError,
+  ERROR_CODES,
+  type ProviderCapabilities,
+  type ProviderEntry,
+  type SupportedOnboardingProvider,
+  type WireApi,
+  canonicalBaseUrl,
+  ensureVersionedBase,
+  isSupportedOnboardingProvider,
+  resolveProviderCapabilities,
+  stripInferenceEndpointSuffix,
+} from '@open-codesign/shared';
+import { buildAuthHeaders, buildAuthHeadersForWire } from './auth-headers';
+import { getCodexTokenStore } from './codex-oauth-ipc';
+import { ipcMain } from './electron-runtime';
+import { getApiKeyForProvider, getCachedConfig } from './onboarding-ipc';
+import { isKeylessProviderAllowed, resolveProviderConfig } from './provider-settings';
+import { resolveApiKeyWithKeylessFallback } from './resolve-api-key';
+
+// Re-export so existing importers (tests, other main-process modules) keep
+// working after the helpers moved to `./auth-headers` to break a circular
+// import between connection-ipc and onboarding-ipc.
+export { buildAuthHeaders, buildAuthHeadersForWire } from './auth-headers';
+
+// ---------------------------------------------------------------------------
+// Payload schemas (plain validation, no zod in main to keep bundle lean)
+// ---------------------------------------------------------------------------
+
+interface ConnectionTestPayloadV1 {
+  provider: SupportedOnboardingProvider;
+  apiKey: string;
+  baseUrl: string;
+}
+
+interface ModelsListPayloadV1 {
+  provider: SupportedOnboardingProvider;
+  apiKey: string;
+  baseUrl: string;
+}
+
+export interface ConnectionTestResult {
+  ok: true;
+  /**
+   * `models` when the standard GET /models probe succeeded.
+   * `chat_completion_degraded` when /models 404'd but POST /chat/completions
+   * proved the openai-chat wire is alive (e.g. Zhipu GLM — no public /models).
+   * `responses_degraded` when /models 404'd but POST /responses proved the
+   * openai-responses wire is alive. We probe the wire's real inference
+   * endpoint so a gateway that only implements /chat/completions can't
+   * false-positive for a user whose provider is on the Responses API.
+   */
+  probeMethod?: 'models' | 'chat_completion_degraded' | 'responses_degraded';
+  diagnostics?: ConnectionTestDiagnostics;
+}
+
+export interface ConnectionTestError {
+  ok: false;
+  code: 'IPC_BAD_INPUT' | '401' | '404' | 'ECONNREFUSED' | 'NETWORK' | 'PARSE';
+  message: string;
+  hint: string;
+  diagnostics?: ConnectionTestDiagnostics;
+}
+
+export type ConnectionTestResponse = ConnectionTestResult | ConnectionTestError;
+
+export interface ConnectionTestCapabilitySummary {
+  supportsModelsEndpoint: boolean;
+  supportsChatCompletions: boolean;
+  supportsResponsesApi: boolean;
+  supportsReasoning: boolean;
+  supportsToolCalling: boolean;
+}
+
+export interface ConnectionTestDiagnostics {
+  wire: WireApi;
+  strategy: 'oauth' | 'models' | 'models_then_inference' | 'inference_only';
+  capabilitySummary?: ConnectionTestCapabilitySummary;
+  attemptedEndpoints: string[];
+  skippedEndpoints: string[];
+}
+
+export type ModelsListResponse =
+  | { ok: true; models: string[] }
+  | {
+      ok: false;
+      code: 'IPC_BAD_INPUT' | 'NETWORK' | 'HTTP' | 'PARSE';
+      message: string;
+      hint: string;
+    };
+
+function resolveDiscoveryHintModels(entry: ProviderEntry): string[] {
+  if (entry.modelsHint !== undefined && entry.modelsHint.length > 0) {
+    return entry.modelsHint;
+  }
+  return entry.defaultModel.trim().length > 0 ? [entry.defaultModel] : [];
+}
+
+function parseConnectionTestPayload(raw: unknown): ConnectionTestPayloadV1 {
+  if (typeof raw !== 'object' || raw === null) {
+    throw new CodesignError(
+      'connection:v1:test expects an object payload',
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  const r = raw as Record<string, unknown>;
+  if (typeof r['provider'] !== 'string' || !isSupportedOnboardingProvider(r['provider'])) {
+    throw new CodesignError(
+      `Unsupported provider: ${String(r['provider'])}`,
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  if (typeof r['apiKey'] !== 'string') {
+    throw new CodesignError('apiKey must be a string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  // Keyless builtins (Ollama) legitimately send an empty apiKey from the
+  // onboarding form. Non-keyless providers still require a non-empty key.
+  const provider = r['provider'] as SupportedOnboardingProvider;
+  const apiKey = r['apiKey'].trim();
+  if (apiKey.length === 0 && BUILTIN_PROVIDERS[provider].requiresApiKey !== false) {
+    throw new CodesignError('apiKey must be a non-empty string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  if (typeof r['baseUrl'] !== 'string' || r['baseUrl'].trim().length === 0) {
+    throw new CodesignError('baseUrl must be a non-empty string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  return {
+    provider,
+    apiKey,
+    baseUrl: r['baseUrl'].trim(),
+  };
+}
+
+function parseModelsListPayload(raw: unknown): ModelsListPayloadV1 {
+  if (typeof raw !== 'object' || raw === null) {
+    throw new CodesignError('models:v1:list expects an object payload', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  const r = raw as Record<string, unknown>;
+  if (typeof r['provider'] !== 'string' || !isSupportedOnboardingProvider(r['provider'])) {
+    throw new CodesignError(
+      `Unsupported provider: ${String(r['provider'])}`,
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  if (typeof r['apiKey'] !== 'string') {
+    throw new CodesignError('apiKey must be a string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  const provider = r['provider'] as SupportedOnboardingProvider;
+  const apiKey = r['apiKey'].trim();
+  if (apiKey.length === 0 && BUILTIN_PROVIDERS[provider].requiresApiKey !== false) {
+    throw new CodesignError('apiKey must be a non-empty string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  if (typeof r['baseUrl'] !== 'string' || r['baseUrl'].trim().length === 0) {
+    throw new CodesignError('baseUrl must be a non-empty string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  return {
+    provider,
+    apiKey,
+    baseUrl: r['baseUrl'].trim(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Models endpoint construction
+// ---------------------------------------------------------------------------
+
+interface ProviderEndpoint {
+  url: string;
+  headers: Record<string, string>;
+}
+
+/**
+ * Normalize a user-supplied baseUrl to the root form each provider expects,
+ * so downstream path concatenation never produces duplicate segments.
+ *
+ * - anthropic: strip trailing /v1 — we append /v1/models internally
+ * - openai / openrouter: ensure a version segment exists — the API lives at
+ *   <root>/<version>/models (usually /v1, but Zhipu uses /v4, Volcengine
+ *   uses /v3, Google AI Studio uses /v1beta/openai). If the user already
+ *   encoded a version we trust it; otherwise we default to /v1.
+ * - google: strip trailing /v1 or /v1beta — we append the full path internally
+ */
+export function normalizeBaseUrl(
+  baseUrl: string,
+  provider: 'openai' | 'anthropic' | 'google' | 'openrouter',
+): string {
+  const cleaned = stripInferenceEndpointSuffix(baseUrl);
+  if (provider === 'openai' || provider === 'openrouter') {
+    return ensureVersionedBase(cleaned);
+  }
+  if (provider === 'anthropic') {
+    return cleaned.replace(/\/v1$/, '');
+  }
+  if (provider === 'google') {
+    return cleaned.replace(/\/v1(beta)?$/, '');
+  }
+  return cleaned;
+}
+
+/**
+ * Wire-level test endpoint — used by the custom-provider Add form AND by
+ * the existing builtin `connection:v1:test`. Unlike `buildModelsEndpoint`,
+ * this signature takes the wire directly and adds any static headers a
+ * gateway requires.
+ */
+function buildEndpointForWire(
+  wire: WireApi,
+  baseUrl: string,
+): { url: string; normalizedBaseUrl: string } {
+  const normalizedBaseUrl = canonicalBaseUrl(baseUrl, wire);
+  const url =
+    wire === 'anthropic' ? `${normalizedBaseUrl}/v1/models` : `${normalizedBaseUrl}/models`;
+  return { url, normalizedBaseUrl };
+}
+
+function buildModelsEndpoint(
+  provider: SupportedOnboardingProvider,
+  baseUrl: string,
+): ProviderEndpoint {
+  const wire: WireApi = provider === 'anthropic' ? 'anthropic' : 'openai-chat';
+  const { url } = buildEndpointForWire(wire, baseUrl);
+  return { url, headers: {} };
+}
+
+export function classifyHttpError(status: number): {
+  code: ConnectionTestError['code'];
+  hint: string;
+} {
+  if (status === 401 || status === 403) {
+    return { code: '401', hint: 'API key 错误或权限不足' };
+  }
+  if (status === 404) {
+    return {
+      code: '404',
+      hint: 'baseUrl 路径错误。OpenAI 兼容代理通常需要 /v1 后缀（试试 https://your-host/v1）',
+    };
+  }
+  return { code: 'NETWORK', hint: `服务器返回 HTTP ${status}` };
+}
+
+function classifyNetworkError(err: unknown): { code: ConnectionTestError['code']; hint: string } {
+  const message = err instanceof Error ? err.message : String(err);
+  if (err instanceof Error && err.name === 'AbortError') {
+    return {
+      code: 'NETWORK',
+      hint: `请求超时（>${CONNECTION_FETCH_TIMEOUT_MS / 1000}s），检查 baseUrl 与网络可达性`,
+    };
+  }
+  if (message.includes('ECONNREFUSED') || message.includes('ENOTFOUND')) {
+    return {
+      code: 'ECONNREFUSED',
+      hint: '无法连接到 baseUrl，检查域名 / 端口 / 网络',
+    };
+  }
+  if (message.includes('CORS') || message.includes('cross-origin')) {
+    return {
+      code: 'NETWORK',
+      hint: '跨域错误（理论上 main 端 fetch 不该有，看日志）',
+    };
+  }
+  return {
+    code: 'NETWORK',
+    hint: `网络错误：${message}。查看日志：~/Library/Logs/open-codesign/main.log`,
+  };
+}
+
+// Provider /models endpoints normally return in <1s. Anything past 10s means the
+// host is unreachable or stuck — better to surface a clear NETWORK error than to
+// pin the renderer's "Test connection" spinner forever.
+export const CONNECTION_FETCH_TIMEOUT_MS = 10_000;
+
+export async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = CONNECTION_FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function extractIds(items: unknown[]): string[] | null {
+  const ids: string[] = [];
+  for (const item of items) {
+    if (item && typeof item === 'object') {
+      const rec = item as { id?: unknown; name?: unknown };
+      // OpenAI/Anthropic/OpenRouter all return a canonical `id` string; we
+      // prefer it unconditionally. The `name` fallback exists solely for
+      // Ollama's /api/tags shape (`{models: [{ name: "llama3.2:latest" }]}`)
+      // which has no `id` field. No known API-key provider returns objects
+      // with `name` but no `id`, so this fallback never silently misroutes
+      // for existing providers — but a future provider that ships display
+      // names without ids would also land here.
+      if (typeof rec.id === 'string') {
+        ids.push(rec.id);
+        continue;
+      }
+      if (typeof rec.name === 'string') {
+        ids.push(rec.name);
+        continue;
+      }
+    }
+    return null;
+  }
+  return ids;
+}
+
+export function extractModelIds(body: unknown): string[] | null {
+  if (body === null || typeof body !== 'object') return null;
+
+  // OpenAI / OpenAI-compat: { data: [{ id: string }, ...] }
+  const data = (body as { data?: unknown }).data;
+  if (Array.isArray(data)) return extractIds(data);
+
+  // Anthropic: { models: [{ id: string }, ...] }
+  const models = (body as { models?: unknown }).models;
+  if (Array.isArray(models)) return extractIds(models);
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Models cache (5-minute TTL keyed by provider+baseUrl)
+// ---------------------------------------------------------------------------
+
+interface CacheEntry {
+  models: string[];
+  expiresAt: number;
+}
+
+const modelsCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+export function getCacheKey(provider: string, baseUrl: string, apiKey: string): string {
+  // SHA-256 here is a cache-key discriminator, not a password hash — the
+  // Map lives in-process with a 5-minute TTL, never persists, and never
+  // leaves the main process. Using bcrypt/scrypt (as CodeQL's default
+  // rule suggests) would make every cache lookup take hundreds of ms
+  // and defeat the purpose of caching. Hashing apiKey (rather than
+  // embedding it verbatim in the Map key) is defense-in-depth so plaintext
+  // keys don't end up in memory-dump strings a third-party crash reporter
+  // might pick up.
+  // codeql[js/insufficient-password-hash]
+  const keyHash = createHash('sha256').update(apiKey).digest('hex').slice(0, 16);
+  return `${provider}::${baseUrl}::${keyHash}`;
+}
+
+function getCachedModels(provider: string, baseUrl: string, apiKey: string): string[] | null {
+  const key = getCacheKey(provider, baseUrl, apiKey);
+  const entry = modelsCache.get(key);
+  if (entry === undefined) return null;
+  if (Date.now() > entry.expiresAt) {
+    modelsCache.delete(key);
+    return null;
+  }
+  return entry.models;
+}
+
+function setCachedModels(
+  provider: string,
+  baseUrl: string,
+  apiKey: string,
+  models: string[],
+): void {
+  const key = getCacheKey(provider, baseUrl, apiKey);
+  modelsCache.set(key, { models, expiresAt: Date.now() + CACHE_TTL_MS });
+}
+
+// Exposed for testing only.
+export function _clearModelsCache(): void {
+  modelsCache.clear();
+}
+
+export function _getModelsCache(): Map<string, CacheEntry> {
+  return modelsCache;
+}
+
+// ---------------------------------------------------------------------------
+// IPC registration
+// ---------------------------------------------------------------------------
+
+export interface ActiveProviderCredentials {
+  provider: string;
+  wire: WireApi;
+  apiKey: string;
+  baseUrl: string;
+  httpHeaders?: Record<string, string>;
+  capabilities?: Required<ProviderCapabilities>;
+}
+
+export function resolveCredentialsForProvider(
+  providerId: string,
+): Promise<ActiveProviderCredentials | ConnectionTestError> {
+  const cfg = getCachedConfig();
+  if (cfg === null || providerId.length === 0) {
+    return Promise.resolve({
+      ok: false,
+      code: 'IPC_BAD_INPUT',
+      message: 'No active provider configured',
+      hint: 'Complete onboarding first',
+    });
+  }
+  let resolved: ReturnType<typeof resolveProviderConfig>;
+  try {
+    resolved = resolveProviderConfig(cfg, providerId);
+  } catch (err) {
+    return Promise.resolve(mapCredentialResolutionError(providerId, err));
+  }
+  return resolveApiKeyWithKeylessFallback(providerId, resolved.allowKeyless, {
+    getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
+    getApiKeyForProvider,
+  })
+    .then((apiKey) => ({
+      provider: providerId,
+      wire: resolved.wire,
+      apiKey,
+      baseUrl: resolved.baseUrl,
+      ...(resolved.httpHeaders !== undefined ? { httpHeaders: resolved.httpHeaders } : {}),
+      capabilities: resolved.capabilities,
+    }))
+    .catch((err: unknown) => mapCredentialResolutionError(providerId, err));
+}
+
+export function resolveActiveCredentials(): Promise<
+  ActiveProviderCredentials | ConnectionTestError
+> {
+  const cfg = getCachedConfig();
+  const active = cfg?.activeProvider;
+  if (active === undefined || active.length === 0) {
+    return Promise.resolve({
+      ok: false,
+      code: 'IPC_BAD_INPUT',
+      message: 'No active provider configured',
+      hint: 'Complete onboarding first',
+    });
+  }
+  return resolveCredentialsForProvider(active);
+}
+
+function mapCredentialResolutionError(providerId: string, err: unknown): ConnectionTestError {
+  if (err instanceof CodesignError) {
+    if (
+      providerId === CHATGPT_CODEX_PROVIDER_ID &&
+      err.code === ERROR_CODES.PROVIDER_AUTH_MISSING
+    ) {
+      return {
+        ok: false,
+        code: '401',
+        message: err.message,
+        hint: 'ChatGPT subscription sign-in expired. Re-login from Settings.',
+      };
+    }
+    if (
+      err.code === ERROR_CODES.PROVIDER_NOT_SUPPORTED ||
+      err.code === ERROR_CODES.PROVIDER_KEY_MISSING ||
+      err.code === ERROR_CODES.PROVIDER_AUTH_MISSING
+    ) {
+      return {
+        ok: false,
+        code: 'IPC_BAD_INPUT',
+        message: err.message,
+        hint: 'Open Settings and import Codex again, or add an API key for this provider',
+      };
+    }
+  }
+  return {
+    ok: false,
+    code: 'IPC_BAD_INPUT',
+    message: err instanceof Error ? err.message : `Failed to resolve provider "${providerId}"`,
+    hint: 'Open Settings and import Codex again, or add an API key for this provider',
+  };
+}
+
+function isInferenceProbeWire(
+  wire: WireApi,
+): wire is Extract<WireApi, 'openai-chat' | 'openai-responses'> {
+  return wire === 'openai-chat' || wire === 'openai-responses';
+}
+
+function getInferenceProbeUrl(
+  wire: Extract<WireApi, 'openai-chat' | 'openai-responses'>,
+  normalizedBaseUrl: string,
+): string {
+  return wire === 'openai-responses'
+    ? `${normalizedBaseUrl}/responses`
+    : `${normalizedBaseUrl}/chat/completions`;
+}
+
+function summarizeCapabilities(
+  capabilities: Required<ProviderCapabilities> | undefined,
+): ConnectionTestCapabilitySummary | undefined {
+  if (capabilities === undefined) return undefined;
+  return {
+    supportsModelsEndpoint: capabilities.supportsModelsEndpoint ?? false,
+    supportsChatCompletions: capabilities.supportsChatCompletions ?? false,
+    supportsResponsesApi: capabilities.supportsResponsesApi ?? false,
+    supportsReasoning: capabilities.supportsReasoning ?? false,
+    supportsToolCalling: capabilities.supportsToolCalling ?? false,
+  };
+}
+
+function makeConnectionDiagnostics(
+  creds: Pick<ActiveProviderCredentials, 'wire' | 'capabilities'>,
+  strategy: ConnectionTestDiagnostics['strategy'],
+  attemptedEndpoints: string[],
+  skippedEndpoints: string[],
+): ConnectionTestDiagnostics {
+  const capabilitySummary = summarizeCapabilities(creds.capabilities);
+  return {
+    wire: creds.wire,
+    strategy,
+    attemptedEndpoints,
+    skippedEndpoints,
+    ...(capabilitySummary !== undefined ? { capabilitySummary } : {}),
+  };
+}
+
+export async function runProviderTest(
+  creds: ActiveProviderCredentials,
+): Promise<ConnectionTestResponse> {
+  // ChatGPT subscription has no generic /models probe path that matches the
+  // runtime SDK route. Once the OAuth bearer resolves via the same credential
+  // helper runtime uses, treat the connection test as passed.
+  if (creds.wire === 'openai-codex-responses') {
+    return { ok: true };
+  }
+
+  const { url, normalizedBaseUrl } = buildEndpointForWire(creds.wire, creds.baseUrl);
+  const headers = buildAuthHeadersForWire(
+    creds.wire,
+    creds.apiKey,
+    creds.httpHeaders,
+    creds.baseUrl,
+  );
+
+  const supportsModels = creds.capabilities?.supportsModelsEndpoint ?? true;
+  const inferenceUrl = isInferenceProbeWire(creds.wire)
+    ? getInferenceProbeUrl(creds.wire, normalizedBaseUrl)
+    : null;
+
+  if (supportsModels) {
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(url, { method: 'GET', headers });
+    } catch (err) {
+      const { code, hint } = classifyNetworkError(err);
+      return {
+        ok: false,
+        code,
+        message: err instanceof Error ? err.message : 'Network request failed',
+        hint,
+        diagnostics: makeConnectionDiagnostics(
+          creds,
+          'models',
+          [url],
+          inferenceUrl === null ? [] : [inferenceUrl],
+        ),
+      };
+    }
+    if (res.ok) {
+      return {
+        ok: true,
+        probeMethod: 'models',
+        diagnostics: makeConnectionDiagnostics(
+          creds,
+          'models',
+          [url],
+          inferenceUrl === null ? [] : [inferenceUrl],
+        ),
+      };
+    }
+    let attemptedInferenceProbe = false;
+    if (res.status === 404 && (creds.wire === 'openai-chat' || creds.wire === 'openai-responses')) {
+      attemptedInferenceProbe = true;
+      const degradeUrl = getInferenceProbeUrl(creds.wire, normalizedBaseUrl);
+      const probe = await probeInferenceEndpoint(
+        creds.wire,
+        normalizedBaseUrl,
+        headers,
+        creds.capabilities,
+      );
+      if (probe.kind === 'pass') {
+        return {
+          ok: true,
+          probeMethod:
+            creds.wire === 'openai-responses' ? 'responses_degraded' : 'chat_completion_degraded',
+          diagnostics: makeConnectionDiagnostics(
+            creds,
+            'models_then_inference',
+            [url, degradeUrl],
+            [],
+          ),
+        };
+      }
+      if (probe.kind === 'unsupported') {
+        return {
+          ok: false,
+          code: 'NETWORK',
+          message: probe.message,
+          hint: 'Provider capability profile says this endpoint is not supported. Check wire selection.',
+          diagnostics: makeConnectionDiagnostics(
+            creds,
+            'models_then_inference',
+            [url],
+            [degradeUrl],
+          ),
+        };
+      }
+      if (probe.kind === 'http' && probe.status !== 404) {
+        const { code, hint } = classifyHttpError(probe.status);
+        return {
+          ok: false,
+          code,
+          message: `HTTP ${probe.status}`,
+          hint,
+          diagnostics: makeConnectionDiagnostics(
+            creds,
+            'models_then_inference',
+            [url, degradeUrl],
+            [],
+          ),
+        };
+      }
+      // Inference endpoint also 404'd (or the network dropped) — fall through
+      // and report the original /models 404.
+    }
+    const { code, hint } = classifyHttpError(res.status);
+    return {
+      ok: false,
+      code,
+      message: `HTTP ${res.status}`,
+      hint,
+      diagnostics: makeConnectionDiagnostics(
+        creds,
+        attemptedInferenceProbe ? 'models_then_inference' : 'models',
+        attemptedInferenceProbe && inferenceUrl !== null ? [url, inferenceUrl] : [url],
+        attemptedInferenceProbe || inferenceUrl === null ? [] : [inferenceUrl],
+      ),
+    };
+  }
+
+  if (!isInferenceProbeWire(creds.wire) || inferenceUrl === null) {
+    return {
+      ok: false,
+      code: 'NETWORK',
+      message: 'Provider capability profile disables /models, but this wire has no fallback probe',
+      hint: 'Re-enable supportsModelsEndpoint or switch to an OpenAI-compatible wire.',
+      diagnostics: makeConnectionDiagnostics(creds, 'inference_only', [], [url]),
+    };
+  }
+  const probe = await probeInferenceEndpoint(
+    creds.wire,
+    normalizedBaseUrl,
+    headers,
+    creds.capabilities,
+  );
+  if (probe.kind === 'pass') {
+    return {
+      ok: true,
+      probeMethod:
+        creds.wire === 'openai-responses' ? 'responses_degraded' : 'chat_completion_degraded',
+      diagnostics: makeConnectionDiagnostics(creds, 'inference_only', [inferenceUrl], [url]),
+    };
+  }
+  if (probe.kind === 'unsupported') {
+    return {
+      ok: false,
+      code: 'NETWORK',
+      message: probe.message,
+      hint: 'Provider capability profile says this endpoint is not supported. Check wire selection.',
+      diagnostics: makeConnectionDiagnostics(creds, 'inference_only', [], [url, inferenceUrl]),
+    };
+  }
+  if (probe.kind === 'http') {
+    const { code, hint } = classifyHttpError(probe.status);
+    return {
+      ok: false,
+      code,
+      message: `HTTP ${probe.status}`,
+      hint,
+      diagnostics: makeConnectionDiagnostics(creds, 'inference_only', [inferenceUrl], [url]),
+    };
+  }
+  return {
+    ok: false,
+    code: 'NETWORK',
+    message: probe.message,
+    hint: 'Cannot reach provider inference endpoint',
+    diagnostics: makeConnectionDiagnostics(creds, 'inference_only', [inferenceUrl], [url]),
+  };
+}
+
+type ProbeResult =
+  | { kind: 'pass' }
+  | { kind: 'http'; status: number }
+  | { kind: 'network'; message: string }
+  | { kind: 'unsupported'; message: string };
+
+/**
+ * POST a minimal inference request to verify the endpoint is alive when GET
+ * /models returned 404. We dispatch by wire so that providers on the
+ * Responses API (which may not implement /chat/completions at all) can't
+ * false-positive via a gateway that only speaks the other shape. A 2xx
+ * response or any API-originated 4xx (400 model_unknown, 402 insufficient
+ * credits, 422, 429 — and 401/403 too, which we surface as auth) counts as
+ * "endpoint reachable". Only 404 and 5xx count as a real failure. The
+ * request body is intentionally minimal; if the gateway rejects the payload
+ * shape with a 4xx we still know the route exists.
+ */
+async function probeInferenceEndpoint(
+  wire: 'openai-chat' | 'openai-responses',
+  normalizedBaseUrl: string,
+  headers: Record<string, string>,
+  capabilities?: Required<ProviderCapabilities>,
+): Promise<ProbeResult> {
+  if (wire === 'openai-responses' && capabilities?.supportsResponsesApi === false) {
+    return { kind: 'unsupported', message: 'Provider does not support Responses API' };
+  }
+  if (wire === 'openai-chat' && capabilities?.supportsChatCompletions === false) {
+    return { kind: 'unsupported', message: 'Provider does not support Chat Completions API' };
+  }
+  const url =
+    wire === 'openai-responses'
+      ? `${normalizedBaseUrl}/responses`
+      : `${normalizedBaseUrl}/chat/completions`;
+  const body =
+    wire === 'openai-responses'
+      ? JSON.stringify({
+          model: 'probe',
+          input: [{ role: 'user', content: [{ type: 'input_text', text: 'ping' }] }],
+          max_output_tokens: 1,
+          stream: false,
+        })
+      : JSON.stringify({
+          model: 'probe',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 1,
+          stream: false,
+        });
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: { ...headers, 'content-type': 'application/json' },
+      body,
+    });
+  } catch (err) {
+    return { kind: 'network', message: err instanceof Error ? err.message : String(err) };
+  }
+  if (res.ok) return { kind: 'pass' };
+  if (res.status === 404 || res.status >= 500) return { kind: 'http', status: res.status };
+  // 401/403 — endpoint alive but auth rejected; surface as auth error so the
+  // diagnostics panel shows the key-invalid hint instead of the 404 one.
+  if (res.status === 401 || res.status === 403) return { kind: 'http', status: res.status };
+  // 400/402/422/429 etc. — endpoint alive, request-level rejection.
+  return { kind: 'pass' };
+}
+
+export function registerConnectionIpc(): void {
+  ipcMain.handle(
+    'connection:v1:test',
+    async (_e, raw: unknown): Promise<ConnectionTestResponse> => {
+      let payload: ConnectionTestPayloadV1;
+      try {
+        payload = parseConnectionTestPayload(raw);
+      } catch (err) {
+        return {
+          ok: false,
+          code: 'IPC_BAD_INPUT',
+          message: err instanceof Error ? err.message : String(err),
+          hint: 'Invalid connection test payload',
+        };
+      }
+
+      const { provider, apiKey, baseUrl } = payload;
+      const ep = buildModelsEndpoint(provider, baseUrl);
+      const authHeaders = buildAuthHeaders(provider, apiKey, baseUrl);
+
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(ep.url, {
+          method: 'GET',
+          headers: { ...ep.headers, ...authHeaders },
+        });
+      } catch (err) {
+        const { code, hint } = classifyNetworkError(err);
+        return {
+          ok: false,
+          code,
+          message: err instanceof Error ? err.message : 'Network request failed',
+          hint,
+        };
+      }
+
+      if (!res.ok) {
+        const { code, hint } = classifyHttpError(res.status);
+        return {
+          ok: false,
+          code,
+          message: `HTTP ${res.status}`,
+          hint,
+        };
+      }
+
+      return { ok: true };
+    },
+  );
+
+  ipcMain.handle('models:v1:list', async (_e, raw: unknown): Promise<ModelsListResponse> => {
+    let payload: ModelsListPayloadV1;
+    try {
+      payload = parseModelsListPayload(raw);
+    } catch (err) {
+      return {
+        ok: false,
+        code: 'IPC_BAD_INPUT',
+        message: err instanceof Error ? err.message : String(err),
+        hint: 'Invalid models:v1:list payload',
+      };
+    }
+
+    const { provider, apiKey, baseUrl } = payload;
+
+    const cached = getCachedModels(provider, baseUrl, apiKey);
+    if (cached !== null) return { ok: true, models: cached };
+
+    const ep = buildModelsEndpoint(provider, baseUrl);
+    const authHeaders = buildAuthHeaders(provider, apiKey, baseUrl);
+
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(ep.url, {
+        method: 'GET',
+        headers: { ...ep.headers, ...authHeaders },
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        code: 'NETWORK',
+        message: err instanceof Error ? err.message : String(err),
+        hint: 'Cannot reach provider /models endpoint',
+      };
+    }
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        code: 'HTTP',
+        message: `HTTP ${res.status}`,
+        hint: 'Model list request failed',
+      };
+    }
+
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      return {
+        ok: false,
+        code: 'PARSE',
+        message: 'Invalid JSON in response',
+        hint: 'Provider returned non-JSON',
+      };
+    }
+
+    const ids = extractModelIds(body);
+    if (ids === null) {
+      return {
+        ok: false,
+        code: 'PARSE',
+        message: 'Provider returned unexpected models response shape',
+        hint: 'Unexpected response shape — check provider /models endpoint compatibility',
+      };
+    }
+    setCachedModels(provider, baseUrl, apiKey, ids);
+    return { ok: true, models: ids };
+  });
+
+  // Tests the currently active provider using the stored (encrypted) key — no key passed from renderer.
+  ipcMain.handle('connection:v1:test-active', async (): Promise<ConnectionTestResponse> => {
+    const creds = await resolveActiveCredentials();
+    if (!('provider' in creds)) return creds;
+    return runProviderTest(creds);
+  });
+
+  // Tests a specific provider by id — used by the per-row "Test connection"
+  // button in Settings. Same probe as test-active but routed by id.
+  ipcMain.handle(
+    'connection:v1:test-provider',
+    async (_e, raw: unknown): Promise<ConnectionTestResponse> => {
+      if (typeof raw !== 'string' || raw.length === 0) {
+        return {
+          ok: false,
+          code: 'IPC_BAD_INPUT',
+          message: 'test-provider expects a provider id string',
+          hint: 'Internal error — missing provider id',
+        };
+      }
+      const creds = await resolveCredentialsForProvider(raw);
+      if (!('provider' in creds)) return creds;
+      return runProviderTest(creds);
+    },
+  );
+
+  // Fetch available models for a stored provider by ID — credentials resolved
+  // from the encrypted config so the renderer never touches plaintext keys.
+  ipcMain.handle(
+    'models:v1:list-for-provider',
+    async (_e, raw: unknown): Promise<ModelsListResponse> => {
+      if (typeof raw !== 'string' || raw.length === 0) {
+        return {
+          ok: false,
+          code: 'IPC_BAD_INPUT',
+          message: 'list-for-provider expects a provider id string',
+          hint: 'Internal error — missing provider id',
+        };
+      }
+
+      const cfg = getCachedConfig();
+      if (cfg === null) {
+        return {
+          ok: false,
+          code: 'IPC_BAD_INPUT',
+          message: 'No configuration loaded',
+          hint: 'Complete onboarding first',
+        };
+      }
+      const entry =
+        cfg.providers[raw] ??
+        (isSupportedOnboardingProvider(raw) ? BUILTIN_PROVIDERS[raw] : undefined);
+      if (entry === undefined) {
+        return {
+          ok: false,
+          code: 'IPC_BAD_INPUT',
+          message: `Provider "${raw}" not found in config`,
+          hint: 'Re-add the provider from Settings',
+        };
+      }
+
+      // Providers that expose a static hint (e.g. chatgpt-codex, whose /models
+      // endpoint requires OAuth bearer + ChatGPT-Account-Id headers that this
+      // keyless discovery path cannot supply) short-circuit with modelsHint.
+      if (entry.modelsHint !== undefined && entry.modelsHint.length > 0) {
+        return { ok: true, models: entry.modelsHint };
+      }
+
+      const capabilities = resolveProviderCapabilities(raw, entry);
+      if (capabilities.modelDiscoveryMode === 'static-hint') {
+        return { ok: true, models: resolveDiscoveryHintModels(entry) };
+      }
+      if (capabilities.supportsModelsEndpoint === false) {
+        return {
+          ok: false,
+          code: 'HTTP',
+          message: 'Provider does not expose a /models endpoint',
+          hint:
+            capabilities.modelDiscoveryMode === 'manual'
+              ? 'This provider uses manual model entry. Use the configured default model or type a model id manually.'
+              : 'Provider capability profile disables model discovery via /models.',
+        };
+      }
+
+      let apiKey: string;
+      try {
+        apiKey = getApiKeyForProvider(raw);
+      } catch (err) {
+        if (!isKeylessProviderAllowed(raw, entry)) {
+          return {
+            ok: false,
+            code: 'IPC_BAD_INPUT',
+            message: err instanceof Error ? err.message : `No API key stored for provider "${raw}"`,
+            hint: 'Open Settings and import Codex again, or add an API key for this provider',
+          };
+        }
+        apiKey = '';
+      }
+
+      const cached = getCachedModels(raw, entry.baseUrl, apiKey);
+      if (cached !== null) return { ok: true, models: cached };
+
+      const { url } = buildEndpointForWire(entry.wire, entry.baseUrl);
+      const headers = buildAuthHeadersForWire(entry.wire, apiKey, entry.httpHeaders, entry.baseUrl);
+
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(url, { method: 'GET', headers });
+      } catch (err) {
+        return {
+          ok: false,
+          code: 'NETWORK',
+          message: err instanceof Error ? err.message : String(err),
+          hint: 'Cannot reach provider /models endpoint',
+        };
+      }
+
+      if (!res.ok) {
+        return {
+          ok: false,
+          code: 'HTTP',
+          message: `HTTP ${res.status}`,
+          hint: 'Model list request failed',
+        };
+      }
+
+      let body: unknown;
+      try {
+        body = await res.json();
+      } catch {
+        return {
+          ok: false,
+          code: 'PARSE',
+          message: 'Invalid JSON in response',
+          hint: 'Provider returned non-JSON',
+        };
+      }
+
+      const ids = extractModelIds(body);
+      if (ids === null) {
+        return {
+          ok: false,
+          code: 'PARSE',
+          message: 'Unexpected models response shape',
+          hint: 'Check provider /models endpoint compatibility',
+        };
+      }
+      setCachedModels(raw, entry.baseUrl, apiKey, ids);
+      return { ok: true, models: ids };
+    },
+  );
+
+  // ── Wire-agnostic test endpoint (v3 custom providers) ────────────────────
+  ipcMain.handle(
+    'config:v1:test-endpoint',
+    async (_e, raw: unknown): Promise<TestEndpointResponse> => {
+      let payload: TestEndpointPayload;
+      try {
+        payload = parseTestEndpointPayload(raw);
+      } catch (err) {
+        return {
+          ok: false,
+          error: 'bad-input',
+          message: err instanceof Error ? err.message : String(err),
+        };
+      }
+
+      const { url } = buildEndpointForWire(payload.wire, payload.baseUrl);
+      const headers = buildAuthHeadersForWire(
+        payload.wire,
+        payload.apiKey,
+        payload.httpHeaders,
+        payload.baseUrl,
+      );
+
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(url, { method: 'GET', headers });
+      } catch (err) {
+        return {
+          ok: false,
+          error: 'network',
+          message: err instanceof Error ? err.message : 'Network request failed',
+        };
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, error: 'auth', message: `HTTP ${res.status}` };
+      }
+      if (res.status === 404) {
+        return { ok: false, error: 'not-a-model-endpoint', message: 'HTTP 404' };
+      }
+      if (!res.ok) {
+        return { ok: false, error: `http-${res.status}`, message: `HTTP ${res.status}` };
+      }
+      let body: unknown;
+      try {
+        body = await res.json();
+      } catch {
+        return { ok: false, error: 'parse', message: 'Provider returned non-JSON' };
+      }
+      const ids = extractModelIds(body);
+      return { ok: true, modelCount: ids?.length ?? 0, models: ids ?? [] };
+    },
+  );
+
+  // ── Ollama probe — used by onboarding to show "detected/not running" ─────
+  // We intentionally don't reuse the /v1/models endpoint because /api/tags is
+  // Ollama's canonical liveness probe, returns faster, and survives users who
+  // disabled the OpenAI-compat server. Short 2s timeout because the user is
+  // staring at a spinner in the onboarding flow.
+  ipcMain.handle('ollama:v1:probe', async (_e, raw: unknown): Promise<OllamaProbeResponse> => {
+    let baseUrl: string;
+    try {
+      baseUrl = parseOllamaProbePayload(raw);
+    } catch (err) {
+      // Surface invalid URL / unsupported scheme as an explicit IPC error
+      // instead of silently coercing back to localhost — the renderer needs
+      // to see the mistake to let the user fix their typed baseUrl.
+      return {
+        ok: false,
+        code: 'IPC_BAD_INPUT',
+        message: err instanceof Error ? err.message : String(err),
+      };
+    }
+    const url = `${baseUrl.replace(/\/+$/, '')}/api/tags`;
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(url, { method: 'GET' }, 2000);
+    } catch (err) {
+      const { code } = classifyNetworkError(err);
+      return { ok: false, code, message: err instanceof Error ? err.message : String(err) };
+    }
+    if (!res.ok) {
+      return { ok: false, code: 'HTTP', message: `HTTP ${res.status}` };
+    }
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      return { ok: false, code: 'PARSE', message: 'Non-JSON response' };
+    }
+    const models = extractModelIds(body);
+    if (models === null) {
+      // Don't silently pretend Ollama is up with zero models — that would
+      // push the UI into an "available but empty" state that's actually a
+      // parser bug. Surface PARSE so the renderer can flag the probe as
+      // broken rather than rendering an empty model picker.
+      return { ok: false, code: 'PARSE', message: 'Unexpected /api/tags shape' };
+    }
+    return { ok: true, models };
+  });
+}
+
+export type OllamaProbeResponse =
+  | { ok: true; models: string[] }
+  | { ok: false; code: string; message: string };
+
+function parseOllamaProbePayload(raw: unknown): string {
+  return normalizeOllamaBaseUrl(typeof raw === 'string' ? raw : '');
+}
+
+/**
+ * Exported for unit tests. Turns whatever string the renderer sent into the
+ * base URL for the /api/tags probe. Returns the default `http://localhost:11434`
+ * ONLY when the input is empty — any other garbage (malformed URL,
+ * `file://`, `javascript:` etc.) throws a `CodesignError` so the IPC handler
+ * can surface the mistake instead of silently probing localhost.
+ */
+export function normalizeOllamaBaseUrl(raw: string): string {
+  const DEFAULT_BASE_URL = 'http://localhost:11434';
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return DEFAULT_BASE_URL;
+
+  // Treat the input as "already has a scheme" only if it starts with a
+  // recognizable `scheme://` prefix. That lets us reject `file://` /
+  // `ftp://` without also misclassifying `localhost:11434` (which the
+  // plain `URL()` constructor parses as scheme="localhost:" because of
+  // the host:port shape). `javascript:alert(1)` and similar scheme-only
+  // tricks fail the `://` gate and instead get `http://` prepended, which
+  // then fails URL parsing in the second pass and is rejected below.
+  const hasScheme = /^[a-z][a-z0-9+.\-]*:\/\//i.test(trimmed);
+  const withScheme = hasScheme ? trimmed : `http://${trimmed}`;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    throw new CodesignError(
+      `Ollama baseUrl "${trimmed}" is not a valid URL`,
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new CodesignError(
+      `Ollama baseUrl must use http(s), got "${parsed.protocol}"`,
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  if (parsed.hostname.length === 0) {
+    throw new CodesignError(
+      `Ollama baseUrl "${trimmed}" is not a valid URL`,
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  // We deliberately do NOT restrict to loopback because some users run
+  // Ollama on a LAN box; the threat model matches config:v1:test-endpoint
+  // (renderer is trusted, main-process fetch is the intended egress path).
+  // Strip any /v1 suffix — /api/tags lives at the root.
+  return withScheme.replace(/\/+$/, '').replace(/\/v1$/, '');
+}
+
+interface TestEndpointPayload {
+  wire: WireApi;
+  baseUrl: string;
+  apiKey: string;
+  httpHeaders?: Record<string, string>;
+}
+
+export type TestEndpointResponse =
+  | { ok: true; modelCount: number; models: string[] }
+  | { ok: false; error: string; message: string };
+
+function parseTestEndpointPayload(raw: unknown): TestEndpointPayload {
+  if (typeof raw !== 'object' || raw === null) {
+    throw new CodesignError('config:v1:test-endpoint expects an object', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  const r = raw as Record<string, unknown>;
+  const wire = r['wire'];
+  const baseUrl = r['baseUrl'];
+  const apiKey = r['apiKey'];
+  if (wire !== 'openai-chat' && wire !== 'openai-responses' && wire !== 'anthropic') {
+    throw new CodesignError(`Unsupported wire: ${String(wire)}`, ERROR_CODES.IPC_BAD_INPUT);
+  }
+  if (typeof baseUrl !== 'string' || baseUrl.trim().length === 0) {
+    throw new CodesignError('baseUrl must be a non-empty string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  if (typeof apiKey !== 'string') {
+    throw new CodesignError('apiKey must be a string', ERROR_CODES.IPC_BAD_INPUT);
+  }
+  const out: TestEndpointPayload = {
+    wire,
+    baseUrl: baseUrl.trim(),
+    apiKey: apiKey.trim(),
+  };
+  const headers = r['httpHeaders'];
+  if (headers !== undefined && headers !== null) {
+    if (typeof headers !== 'object') {
+      throw new CodesignError('httpHeaders must be an object', ERROR_CODES.IPC_BAD_INPUT);
+    }
+    const map: Record<string, string> = {};
+    for (const [k, v] of Object.entries(headers as Record<string, unknown>)) {
+      if (typeof v === 'string') map[k] = v;
+    }
+    out.httpHeaders = map;
+  }
+  return out;
+}

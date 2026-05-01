@@ -1,0 +1,4 @@
+# Default reviewers for any change in the repository.
+# Members of @OpenCoworkAI/maintainers are auto-requested on every PR.
+
+* @OpenCoworkAI/maintainers

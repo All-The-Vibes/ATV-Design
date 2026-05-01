@@ -1,0 +1,268 @@
+/**
+ * Design tokens for open-codesign.
+ * Anthropic Claude Design aesthetic: warm cream surfaces, serif display type,
+ * terracotta accent, editorial warmth meets technical precision.
+ * All values are CSS custom properties — never hardcode.
+ */
+
+:root {
+  /* Surface — warm cream (Anthropic signature) */
+  --color-background: oklch(0.98 0.012 80); /* #FAF7F3 cream */
+  --color-background-secondary: oklch(0.96 0.015 75);
+  --color-surface: oklch(0.99 0.008 80);
+  --color-surface-hover: oklch(0.96 0.015 75);
+  --color-surface-active: oklch(0.94 0.018 72);
+  --color-surface-muted: oklch(0.96 0.015 75);
+  /* alias used by some components */
+  --color-surface-elevated: oklch(0.99 0.008 80);
+  /* Artifact iframe background — user-generated content defaults to white in
+     both themes; artifacts ship their own styles and should not inherit app theme. */
+  --color-artifact-bg: #ffffff;
+
+  /* Border */
+  --color-border: oklch(0.88 0.012 70);
+  --color-border-muted: oklch(0.91 0.01 72);
+  --color-border-subtle: oklch(0.94 0.008 74);
+  --color-border-strong: oklch(0.78 0.015 65);
+
+  /* Accent — warm Anthropic terracotta */
+  --color-accent: oklch(0.62 0.16 35); /* ~ #C76D54 */
+  --color-accent-hover: oklch(0.56 0.18 35);
+  --color-accent-muted: oklch(0.91 0.04 40);
+  --color-accent-soft: oklch(0.95 0.02 40 / 0.5);
+  --color-accent-tint: color-mix(in srgb, var(--color-accent) 4%, var(--color-surface));
+  --color-focus-ring: oklch(0.62 0.16 35 / 0.3);
+  --color-on-accent: oklch(0.99 0 0);
+
+  /* Text */
+  --color-text-primary: oklch(0.22 0.025 50); /* warm dark brown */
+  --color-text-secondary: oklch(0.5 0.02 55);
+  --color-text-muted: oklch(0.65 0.015 58);
+
+  /* Semantic */
+  --color-success: #4f7a52;
+  --color-warning: #b8862a;
+  --color-error: #b04030;
+  --color-mcp: #4a6b8a;
+
+  /* Feedback */
+  --color-toast-success: #4f7a52;
+  --color-toast-error: #b04030;
+  --color-overlay: oklch(0.22 0.025 50 / 0.45);
+
+  /* Shadow — warm-tinted, three discrete levels */
+  --shadow-soft: 0 1px 2px oklch(0.3 0.02 45 / 0.04);
+  --shadow-card: 0 1px 2px oklch(0.3 0.02 45 / 0.04), 0 4px 16px oklch(0.3 0.02 45 / 0.06);
+  --shadow-elevated: 0 2px 4px oklch(0.3 0.02 45 / 0.05), 0 12px 32px oklch(0.3 0.02 45 / 0.1);
+  --shadow-inset-soft: inset 0 0 0 1px var(--color-border-subtle);
+
+  /* Typography — Anthropic-inspired stack */
+  --font-display: "Fraunces Variable", "Times New Roman", serif;
+  --font-sans: "Geist Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* Extended type scale */
+  --font-size-display-2xl: 48px;
+  --font-size-display-xl: 36px;
+  --font-size-display-lg: 28px;
+  --font-size-body-lg: 17px;
+  --font-size-body: 15px;
+  --font-size-body-sm: 13px;
+  --font-size-body-xs: 11px;
+  --font-size-mono: 13px;
+
+  /* Type scale — strict 8 sizes (kept for back-compat) */
+  --text-2xs: 10px;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-md: 17px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+  --text-2xl: 36px;
+
+  /* Line height */
+  --leading-heading: 1.2;
+  --leading-ui: 1.4;
+  --leading-body: 1.6;
+  --leading-snug: 1.5;
+
+  /* Letter spacing */
+  --tracking-heading: -0.01em;
+  --tracking-tight: -0.005em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-label: 0.08em;
+
+  /* Control sizes */
+  --size-control-xs: 30px;
+  --size-control-sm: 32px;
+  --size-control-md: 40px;
+  --size-control-lg: 48px;
+  --size-accent-stripe: 3px;
+
+  /* Spacing — strict 4-px scale */
+  --space-0_5: 2px;
+  --space-1: 4px;
+  --space-1_5: 6px;
+  --space-2: 8px;
+  --space-2_5: 10px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-content: 24px;
+
+  /* Icon sizes */
+  --size-icon-xs: 12px;
+  --size-icon-sm: 14px;
+  --size-icon-md: 16px;
+  --size-input-height: 40px;
+
+  /* Titlebar (Electron frameless window) */
+  --size-titlebar-height: 96px;
+  --size-titlebar-pad-left: 72px; /* clears macOS traffic-light buttons */
+
+  /* Chip / file-token max width */
+  --size-chip-max: 180px;
+
+  /* Minimum width for menus, popovers, and stage panels */
+  --size-stage-min: 200px;
+
+  /* Compact menu width (zoom dropdown, narrow option pickers) */
+  --size-menu-compact: 6rem;
+
+  /* Hub sidebar (Designs hub left rail) */
+  --size-hub-sidebar: 360px;
+
+  /* Modal widths */
+  --size-modal-md: 560px;
+
+  /* Grid card minimum (project / artifact cards) */
+  --size-card-min: 240px;
+
+  /* Reading-width caps for prose / descriptions */
+  --size-prose-narrow: 60ch;
+
+  /* Card hover lift offset */
+  --lift-card-hover: 1px;
+
+  /* Press feedback scale */
+  --scale-hover-up: 1.04;
+  --scale-press-down: 0.96;
+
+  /* Radius — slightly larger, friendlier */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-full: 9999px;
+  --radius-phone: 44px;
+
+  /* Border width */
+  --border-width-strong: 8px;
+  --border-width-phone-bezel: 3px;
+
+  /* Phone body — deep space gray, intentionally distinct from app cream bg
+     so the device reads as a physical object, not melting into the canvas. */
+  --color-phone-body: oklch(0.22 0.005 280);
+  --color-phone-island: oklch(0.08 0 0);
+
+  /* Preview viewport sizes */
+  --size-preview-mobile-width: 375px;
+  --size-preview-mobile-height: 812px;
+  --size-preview-mobile-island-width: 95px;
+  --size-preview-mobile-island-height: 28px;
+  --size-preview-mobile-home-indicator-width: 134px;
+  --size-preview-mobile-home-indicator-height: 5px;
+  --size-preview-tablet-width: 768px;
+  --size-preview-tablet-height: 1024px;
+  --size-preview-desktop-width: 1440px;
+  --size-preview-desktop-height: 900px;
+
+  /* Motion — subtle, editorial */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 120ms;
+  --duration-faster: 150ms;
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --transition-base: all var(--duration-base) var(--ease-out);
+  --transition-fast: all var(--duration-fast) var(--ease-out);
+}
+
+/* Display headings use Fraunces */
+h1,
+h2,
+h3,
+.display {
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+/* Monospaced numbers and code */
+code,
+kbd,
+pre,
+.mono,
+.num {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum";
+}
+
+.dark {
+  /* Warm dark — not blue-black */
+  --color-background: oklch(0.18 0.015 50);
+  --color-background-secondary: oklch(0.22 0.015 50);
+  --color-surface: oklch(0.22 0.015 50);
+  --color-surface-hover: oklch(0.26 0.018 50);
+  --color-surface-active: oklch(0.29 0.018 50);
+  --color-surface-muted: oklch(0.22 0.015 50);
+  --color-surface-elevated: oklch(0.26 0.018 50);
+  --color-artifact-bg: #ffffff;
+
+  --color-border: oklch(0.3 0.012 50);
+  --color-border-muted: oklch(0.27 0.01 50);
+  --color-border-subtle: oklch(0.24 0.01 50);
+  --color-border-strong: oklch(0.4 0.015 55);
+
+  --color-accent: oklch(0.68 0.16 35);
+  --color-accent-hover: oklch(0.74 0.16 35);
+  --color-accent-muted: oklch(0.28 0.06 35);
+  --color-accent-soft: oklch(0.68 0.16 35 / 0.12);
+  --color-accent-tint: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
+  --color-focus-ring: oklch(0.68 0.16 35 / 0.35);
+  --color-on-accent: oklch(0.18 0.015 50);
+
+  --color-text-primary: oklch(0.95 0.01 70); /* warm off-white */
+  --color-text-secondary: oklch(0.7 0.015 60);
+  --color-text-muted: oklch(0.55 0.012 58);
+
+  --color-success: #6b9c6e;
+  --color-warning: #d4a04a;
+  --color-error: #d96050;
+  --color-mcp: #6a8aab;
+
+  --color-toast-success: #6b9c6e;
+  --color-toast-error: #d96050;
+  --color-overlay: oklch(0 0 0 / 0.6);
+
+  /* Phone body — slightly lighter than dark bg so the device still reads as an object. */
+  --color-phone-body: oklch(0.32 0.005 280);
+  --color-phone-island: oklch(0.05 0 0);
+
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.25), 0 4px 16px oklch(0 0 0 / 0.35);
+  --shadow-elevated: 0 2px 4px oklch(0 0 0 / 0.3), 0 12px 32px oklch(0 0 0 / 0.5);
+  --shadow-inset-soft: inset 0 0 0 1px var(--color-border-subtle);
+}
+
+/* Global focus-visible style — every interactive element inherits unless overridden. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}

@@ -1,0 +1,73 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 5
+    labels:
+      - chore
+      - area:build
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      typescript:
+        patterns:
+          - typescript
+          - "@types/*"
+      vitest:
+        patterns:
+          - vitest
+          - "@vitest/*"
+      playwright:
+        patterns:
+          - "@playwright/*"
+          - playwright
+      biome:
+        patterns:
+          - "@biomejs/biome"
+      electron:
+        patterns:
+          - electron
+          - electron-builder
+          - "@electron/*"
+      react:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+      radix:
+        patterns:
+          - "@radix-ui/*"
+      tailwind:
+        patterns:
+          - tailwindcss
+          - "@tailwindcss/*"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Shanghai
+    open-pull-requests-limit: 3
+    labels:
+      - chore
+      - area:build
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major

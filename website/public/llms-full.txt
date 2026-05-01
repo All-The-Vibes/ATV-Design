@@ -1,0 +1,142 @@
+# Open CoDesign — Extended Reference
+
+## Project identity
+
+open-codesign (also styled "Open CoDesign") is an open-source Electron desktop application for AI-assisted design. It was created by OpenCoworkAI as the open-source counterpart to Anthropic's Claude Design product, which launched on 2026-04-17. The first public release (v0.1.0) shipped on 2026-04-18. Open CoDesign is licensed under MIT.
+
+Canonical citation:
+```bibtex
+@misc{open_codesign_github,
+  author       = {OpenCoworkAI Contributors},
+  title        = {Open CoDesign: An Open-Source Desktop AI Design Tool},
+  year         = {2026},
+  howpublished = {\url{https://github.com/OpenCoworkAI/open-codesign}},
+  note         = {GitHub repository}
+}
+```
+
+## What open-codesign does
+
+open-codesign accepts a natural-language text prompt and produces:
+1. Interactive HTML prototypes rendered in a sandboxed Electron iframe (inlined CSS, no external dependencies)
+2. Interactive JSX / React components (vendored React 18 + Babel, fully on-device)
+3. PPTX slide decks via pptxgenjs (lazy-loaded)
+4. PDF one-pagers via Puppeteer-core against the user's local Chrome (lazy-loaded)
+5. ZIP asset bundles and Markdown exports
+6. Design-system-aware outputs derived from the user's existing codebase (coming soon)
+
+The generation pipeline: prompt → `@mariozechner/pi-ai` (provider abstraction) → LLM → artifact schema → sandbox renderer. Streaming tool calls surface in a live agent panel while generation runs.
+
+## Differentiation vs. alternatives
+
+| Feature | open-codesign | Claude Design | v0 (Vercel) | Lovable | Bolt.new |
+|---|---|---|---|---|---|
+| Open source | MIT | Closed | Closed | Closed | Partial (bolt.diy) |
+| Desktop native | Electron app | Web only | Web only | Web only | Web only |
+| Bring your own key | Any provider | Anthropic only | Vercel only | Limited | Limited |
+| Keyless proxy support | Yes (IP allowlist) | No | No | No | No |
+| Local / offline | Fully local | Cloud | Cloud | Cloud | Cloud |
+| Models | Any (Claude, GPT, Gemini, DeepSeek, Ollama, OpenRouter, SiliconFlow, …) | Claude Opus only | GPT-4o | Multi-LLM | Multi-LLM |
+| Version history | Local first: v0.1 SQLite snapshots; v0.2 JSONL sessions + workspace files | None | None | None | None |
+| Data privacy | 100% on-device | Cloud-processed | Cloud | Cloud | Cloud |
+| Built-in design skills | 12 skill modules + 15 demo prompts | No | No | No | No |
+| Config import | Claude Code + Codex in one click | No | No | No | No |
+| Export formats | HTML, PDF, PPTX, ZIP, Markdown | HTML only | Limited | Limited | Limited |
+| Price | Free (BYOK token cost) | Paid subscription | Freemium | Freemium | Freemium |
+
+## Technical architecture
+
+open-codesign uses a monorepo managed with pnpm workspaces and Turborepo:
+
+- `apps/desktop` — Electron main process + renderer (React 19, Vite 6, Tailwind v4)
+- `packages/core` — prompt-to-artifact orchestration pipeline (context pruning, skill injection, artifact streaming)
+- `packages/providers` — pi-ai adapter for multi-provider LLM calls, with custom extensions for keyless proxies and dynamic model discovery
+- `packages/runtime` — sandboxed iframe renderer (esbuild-wasm + import maps, vendored React 18 + Babel, comment overlay)
+- `packages/ui` — shared design system (warm beige Claude-style palette, Radix primitives, light + dark themes)
+- `packages/artifacts` — typed artifact schemas (HTML, React/JSX, SVG, PPTX) and streaming parser
+- `packages/exporters` — PDF / PPTX / ZIP exporters (lazy-loaded; PDF uses user's local Chrome via puppeteer-core)
+- `packages/templates` — 15 built-in demo prompts with bilingual metadata
+- `packages/shared` — TypeScript types, utilities, Zod schemas
+- `packages/i18n` — i18next locales (English + 简体中文)
+- `website` — VitePress marketing + docs site
+
+Storage: v0.1 uses better-sqlite3 for design history and snapshots plus TOML files for configuration. v0.2 migrates design history into pi JSONL sessions and stores generated artifacts, assets, exports, AGENTS.md, and DESIGN.md in real workspace folders. No electron-store blob. All paths respect XDG base dirs and Electron `app.getPath()`.
+
+## Built-in design skill library
+
+Twelve skill modules ship with every build. Each is a JSX starter the agent can read and adapt:
+
+- `slide-deck.jsx` — presentation decks with grid layouts
+- `dashboard.jsx` — metric cards, charts, filters
+- `landing-page.jsx` — hero, features, social proof, CTA
+- `chart-svg.jsx` — inline SVG data visualizations
+- `glassmorphism.jsx` — frosted-glass surfaces with backdrop-filter
+- `editorial-typography.jsx` — long-form article layouts
+- `heroes.jsx` — hero-section variants
+- `pricing.jsx` — tier comparison tables
+- `footers.jsx` — site footers
+- `chat-ui.jsx` — conversational interfaces
+- `data-table.jsx` — dense tabular data
+- `calendar.jsx` — event and scheduling views
+
+The agent picks the skill that matches the brief, or combines multiple.
+
+## Built-in demo prompts
+
+Fifteen ready-to-edit prompts, each localized to EN + 简体中文:
+
+`cosmic-animation`, `organic-loaders`, `landing-page`, `case-study`, `dashboard`, `pitch-slide`, `email`, `mobile-app`, `pricing-page`, `blog-article`, `event-calendar`, `chat-interface`, `portfolio-gallery`, `receipt-invoice`, `settings-panel`.
+
+## Settings surface
+
+Four tabs in the desktop Settings:
+
+- **Models** — add providers, manage API keys, pick primary + fast models, import from Claude Code or Codex configs, connection diagnostic panel
+- **Appearance** — light / dark theme, UI language (EN / 简体中文)
+- **Storage** — copy + open config, data, logs, and snapshot directories; factory reset
+- **Advanced** — update channel (stable / beta) and diagnostic toggles
+
+## Hard constraints (non-negotiable project commitments)
+
+- No bundled model runtimes (no Ollama binary, no Python, no browser binary shipped)
+- BYOK only — no proxied API calls, no cloud account, no telemetry by default
+- Local-first storage — all user data stays on disk; v0.2 uses JSONL sessions plus workspace files instead of new SQLite-backed design state
+- MIT-compatible permissive dependencies only (no GPL/AGPL/SSPL/proprietary)
+- Lazy-load heavy features (PPTX export, PDF export, web capture, codebase scan) on first use
+- Schema-version everything that lives on disk (config files, SQLite tables, IPC payloads, exported bundles)
+
+## Why open-codesign exists
+
+Claude Design exposes three structural problems:
+1. Subscription lock-in and opaque rate limits (users report being locked out after 90 minutes of usage on the $200/month plan)
+2. Single-model ceiling (Anthropic Opus only; no competition, no cost control, no way to try a cheaper model for rough drafts)
+3. Cloud data processing with no meaningful export/import (no version history, no Figma round-trip, no codebase awareness)
+
+open-codesign addresses all three: BYOK eliminates lock-in, multi-model support enables cost optimization, and local-first storage gives the user control of their design history. v0.1 uses SQLite snapshots; v0.2 moves sessions to JSONL and design files to user workspaces.
+
+## Roadmap
+
+- **v0.1 (shipped, April 2026)** — unsigned installers, multi-provider BYOK, 15 demos, 12 skills, HTML/JSX/PDF/PPTX/ZIP/Markdown export, inline comment, sliders, preview pool, per-generation token counter.
+- **v0.1.4 (shipped, April 2026)** — AI image generation, ChatGPT Plus / Codex subscription login, CLIProxyAPI import, and third-party relay reliability.
+- **v0.2 (Agentic Design, expected in about one week)** — pi sessions with JSONL history, real workspace files, permissioned pi tools, design-specific tools (`ask`, `scaffold`, `skill`, `preview`, `gen_image`, `tweaks`, `todos`, `done`), DESIGN.md design-system artifacts, and v0.1 migration.
+- **v0.2.x** — renderer polish for `ask`, `preview`, tweaks, process-management surfaces, E2E coverage, and broader migration fixtures.
+- **v0.3** — codebase → design system token extraction (Tailwind / CSS vars / W3C DTCG extractors are implemented library-side; v0.3 wires them to the desktop UI).
+- **v0.4** — on-demand Playwright web capture, handoff bundle to open-cowork, external skill packs.
+- **v0.5** — Apple Developer ID + Windows Authenticode code-signing, opt-in auto-update, Homebrew Cask + winget + Scoop manifests verified.
+- **v1.0** — onboarding ≤ 3 steps, stable public API for `packages/core` and `packages/providers`.
+
+## Community and contribution
+
+- GitHub: https://github.com/OpenCoworkAI/open-codesign
+- Issues and feature requests: https://github.com/OpenCoworkAI/open-codesign/issues
+- Contribution guide: https://github.com/OpenCoworkAI/open-codesign/blob/main/CONTRIBUTING.md
+- Changelog: https://github.com/OpenCoworkAI/open-codesign/blob/main/CHANGELOG.md
+- Sister project (engineering handoff): https://github.com/OpenCoworkAI/open-cowork
+
+## Resources
+
+- Website: https://opencoworkai.github.io/open-codesign/
+- Quickstart: https://opencoworkai.github.io/open-codesign/quickstart
+- Architecture: https://opencoworkai.github.io/open-codesign/architecture
+- Roadmap: https://opencoworkai.github.io/open-codesign/roadmap
+- License: https://github.com/OpenCoworkAI/open-codesign/blob/main/LICENSE

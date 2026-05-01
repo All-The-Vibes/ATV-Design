@@ -1,0 +1,65 @@
+name: Feature request
+description: Propose a new capability or improvement
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before filing:** search [existing issues](https://github.com/OpenCoworkAI/open-codesign/issues) and skim
+        [`AGENTS.md`](../blob/main/AGENTS.md) or [`CLAUDE.md`](../blob/main/CLAUDE.md) for the current hard constraints.
+        If your idea may contradict a product direction or anti-goal, open a
+        [Discussion](https://github.com/OpenCoworkAI/open-codesign/discussions) first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / pain point
+      description: What user pain or unmet need motivates this request? Describe the problem, not the solution.
+      placeholder: "When I try to export to PPTX with CJK characters, the font falls back to a system default that looks wrong on Windows."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would you build? Describe it at a high level.
+      placeholder: "Add an optional CJK font embedding step to the PPTX exporter that bundles a subset of Noto Sans CJK."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you think about? Why did you rule them out?
+      placeholder: "Using system fonts — rejected because they are not portable across machines."
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: Which part of the product does this touch?
+      options:
+        - UI
+        - Generation capability
+        - Export
+        - Provider / model
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: breaks_constraints
+    attributes:
+      label: Hard-constraints check
+      description: >
+        Open CoDesign has a set of non-negotiable constraints (no bundled runtimes,
+        BYOK only, local-first storage, MIT-compatible licenses, lazy-loaded heavy features).
+        Please confirm you have reviewed them.
+      options:
+        - label: >
+            I have read the [hard constraints in AGENTS.md](../blob/main/AGENTS.md) or [CLAUDE.md](../blob/main/CLAUDE.md), and this proposal
+            does not conflict with any of them.
+          required: true
