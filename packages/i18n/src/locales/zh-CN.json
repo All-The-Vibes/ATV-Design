@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "open-codesign",
+    "appName": "atv-design",
     "send": "发送",
     "cancel": "取消",
     "retry": "重试",
@@ -271,7 +271,7 @@
         "apiKeyEditPlaceholder": "留空则保留 {{mask}}",
         "defaultModel": "默认模型",
         "compatibilityHintTitle": "\u517c\u5bb9\u6027\u63d0\u793a",
-        "compatibilityHintBody": "\u90e8\u5206 coding plan\uff0c\u534f\u8bae\u8f6c\u6362\u670d\u52a1\u6216 OpenAI \u517c\u5bb9\u7f51\u5173\u53ea\u5141\u8bb8\u7279\u5b9a\u5ba2\u6237\u7aef\uff08\u5982 Claude Code\uff0copenclaw\uff0cHermes\uff09\u8bbf\u95ee\u3002\u5373\u4f7f API \u770b\u8d77\u6765\u517c\u5bb9\uff0cOpen CoDesign \u4e5f\u53ef\u80fd\u56e0\u4e3a\u5e94\u7528\u767d\u540d\u5355\u800c\u65e0\u6cd5\u4f7f\u7528\u3002",
+        "compatibilityHintBody": "\u90e8\u5206 coding plan\uff0c\u534f\u8bae\u8f6c\u6362\u670d\u52a1\u6216 OpenAI \u517c\u5bb9\u7f51\u5173\u53ea\u5141\u8bb8\u7279\u5b9a\u5ba2\u6237\u7aef\uff08\u5982 Claude Code\uff0copenclaw\uff0cHermes\uff09\u8bbf\u95ee\u3002\u5373\u4f7f API \u770b\u8d77\u6765\u517c\u5bb9\uff0cATV Design \u4e5f\u53ef\u80fd\u56e0\u4e3a\u5e94\u7528\u767d\u540d\u5355\u800c\u65e0\u6cd5\u4f7f\u7528\u3002",
         "switchToManual": "手动输入",
         "switchToDropdown": "从列表选择",
         "discoveringModels": "正在发现模型…",
@@ -415,7 +415,7 @@
       "logs": "日志",
       "data": "数据目录",
       "change": "更改",
-      "restartHint": "选择 open-codesign 保存配置、日志和本地设计数据的位置。更改会永久保存，重启应用后生效。",
+      "restartHint": "选择 atv-design 保存配置、日志和本地设计数据的位置。更改会永久保存，重启应用后生效。",
       "locationSavedToast": "存储位置已保存。重启应用后生效。",
       "locationSaveFailed": "无法保存存储位置",
       "onboardingTitle": "首次引导",
@@ -494,7 +494,7 @@
     },
     "paste": {
       "title": "粘贴你的 API Key",
-      "description": "自动识别提供商。点击\"测试连通\"验证 Key 与端点后再继续。你的 Key 仅保存在本机 ~/.config/open-codesign/config.toml（文件权限 0600）。",
+      "description": "自动识别提供商。点击\"测试连通\"验证 Key 与端点后再继续。你的 Key 仅保存在本机 ~/.config/atv-design/config.toml（文件权限 0600）。",
       "placeholder": "sk-…",
       "recognized": "已识别提供商：{{provider}}",
       "connected_one": "已连接 {{count}} 个模型",
@@ -546,7 +546,7 @@
           "404": "Base URL 路径错误。试试加 /v1 后缀（如 https://your-host/v1）。",
           "ECONNREFUSED": "无法连接到 Base URL，检查域名 / 端口 / 网络。",
           "NETWORK": "网络错误，检查你的网络连接。",
-          "PARSE": "响应格式异常。请查看日志 ~/Library/Logs/open-codesign/main.log",
+          "PARSE": "响应格式异常。请查看日志 ~/Library/Logs/atv-design/main.log",
           "IPC_BAD_INPUT": "传给连接测试的参数不合法，请检查提供商 / API Key / Base URL。"
         }
       },
@@ -648,7 +648,7 @@
   "inlineComment": {
     "title": "评论",
     "closeComposer": "关闭局部评论面板",
-    "description": "被点击的元素会在画布中保持选中。描述你想调整的视觉或内容变化，open-codesign 会围绕该目标重写产物。",
+    "description": "被点击的元素会在画布中保持选中。描述你想调整的视觉或内容变化，atv-design 会围绕该目标重写产物。",
     "placeholder": "让这个区块更紧凑、标题更有冲击力，并与已关联的设计系统对齐…",
     "applying": "应用中…",
     "applyChange": "应用修改"
@@ -877,7 +877,7 @@
     "showLog": "查看完整日志",
     "showLogFailed": "无法打开日志文件夹",
     "gatewayAllowlistHintTitle": "\u8fd9\u4e2a\u7aef\u70b9\u53ef\u80fd\u9650\u5236\u53ef\u63a5\u5165\u7684\u5e94\u7528",
-    "gatewayAllowlistHintBody": "\u90e8\u5206 coding plan \u548c\u534f\u8bae\u8f6c\u6362\u7f51\u5173\u4f1a\u914d\u7f6e\u5e94\u7528\u767d\u540d\u5355\u3002\u5b83\u4eec\u5373\u4f7f\u58f0\u79f0\u63d0\u4f9b OpenAI \u517c\u5bb9 API\uff0c\u4e5f\u53ef\u80fd\u5728\u6ca1\u6709\u663e\u5f0f\u5141\u8bb8 Open CoDesign \u7684\u60c5\u51b5\u4e0b\u62d2\u7edd\u8bf7\u6c42\u3002",
+    "gatewayAllowlistHintBody": "\u90e8\u5206 coding plan \u548c\u534f\u8bae\u8f6c\u6362\u7f51\u5173\u4f1a\u914d\u7f6e\u5e94\u7528\u767d\u540d\u5355\u3002\u5b83\u4eec\u5373\u4f7f\u58f0\u79f0\u63d0\u4f9b OpenAI \u517c\u5bb9 API\uff0c\u4e5f\u53ef\u80fd\u5728\u6ca1\u6709\u663e\u5f0f\u5141\u8bb8 ATV Design \u7684\u60c5\u51b5\u4e0b\u62d2\u7edd\u8bf7\u6c42\u3002",
     "dismiss": "关闭",
     "report": {
       "title": "上报问题",
@@ -1094,6 +1094,7 @@
     "IPC_BAD_INPUT": "请求参数无效，请重试。",
     "IPC_DB_ERROR": "本地数据库出错，重启应用可能有助于恢复。",
     "IPC_NOT_FOUND": "未找到请求的内容。",
+    "COPILOT_BACKEND_UNAVAILABLE": "所选的 GitHub Copilot 后端不可用，详见错误信息中的修��提示。",
     "PROVIDER_AUTH_MISSING": "该 provider 未配置 API key，请到设置中添加。",
     "PROVIDER_KEY_MISSING": "尚未为该 provider 保存 API key，请到设置中添加。",
     "PROVIDER_ACTIVE_MISSING_KEY": "当前激活的 provider 未配置 API key，请到设置中添加。",

@@ -48,6 +48,7 @@ type Database = BetterSqlite3.Database;
 
 const logger = getLogger('diagnostics-ipc');
 
+// TODO(rebrand): point at atv-design's own repo once published
 const GITHUB_REPO_URL = 'https://github.com/OpenCoworkAI/open-codesign';
 // GitHub issue URL soft cap. Past ~8KB the URL is silently truncated on some
 // browsers; we keep 7KB as headroom and trim `logs` first when needed.
@@ -514,7 +515,7 @@ export async function buildBundle(opts: {
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const destDir = app.getPath('downloads');
-  const destPath = path.join(destDir, `open-codesign-diagnostics-${timestamp}.zip`);
+  const destPath = path.join(destDir, `atv-design-diagnostics-${timestamp}.zip`);
 
   let logContent: string;
   try {
@@ -591,7 +592,7 @@ async function buildDiagnosticsZip(): Promise<string> {
   const summary = [
     '# Diagnostic Export',
     '',
-    `Exported at ${new Date().toISOString()} from open-codesign ${app.getVersion()}.`,
+    `Exported at ${new Date().toISOString()} from ATV Design ${app.getVersion()}.`,
     '',
     'This bundle contains recent logs, redacted config, and environment metadata.',
     '',

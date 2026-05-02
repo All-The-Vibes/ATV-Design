@@ -36,7 +36,7 @@ export function formatBootError(ctx: BootFailureContext): string {
   const stack = err?.stack ?? '(no stack available)';
 
   return [
-    '# Open CoDesign boot failure',
+    '# ATV Design boot failure',
     '',
     `Timestamp: ${timestamp}`,
     `App version: ${appVersion}`,

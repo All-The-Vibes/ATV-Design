@@ -167,7 +167,7 @@ describe('writeAtomic', () => {
     // non-empty directory, so `rename(tmp, path)` can't replace it. This
     // mirrors the real-world EROFS / EACCES case where the tmp was written
     // but the final move failed, and asserts we don't leak `.tmp.<pid>`
-    // siblings into `~/.config/open-codesign/`.
+    // siblings into `~/.config/atv-design/`.
     const dir = freshDir();
     const file = join(dir, 'fp-as-dir');
     try {

@@ -186,7 +186,7 @@ export const IframeErrorEvent = z.object({
 export type IframeErrorEvent = z.infer<typeof IframeErrorEvent>;
 
 export const BRAND = {
-  appName: 'Open CoDesign',
+  appName: 'ATV Design',
   backgroundColor: '#faf8f3',
 } as const;
 

@@ -7,7 +7,7 @@ import { formatBootError, showBootDialog, writeBootErrorSync } from './boot-fall
 function mkCtx(overrides: Partial<Parameters<typeof formatBootError>[0]> = {}) {
   return {
     error: new Error('bad config'),
-    logsDir: join(tmpdir(), 'open-codesign-boot-fallback-test'),
+    logsDir: join(tmpdir(), 'atv-design-boot-fallback-test'),
     appVersion: '0.2.0',
     platform: 'darwin',
     electronVersion: '30.0.0',
@@ -47,7 +47,7 @@ describe('writeBootErrorSync', () => {
       const out = writeBootErrorSync(mkCtx({ logsDir: nested }));
       expect(out).toBe(join(nested, 'boot-errors.log'));
       expect(existsSync(out)).toBe(true);
-      expect(readFileSync(out, 'utf8')).toContain('Open CoDesign boot failure');
+      expect(readFileSync(out, 'utf8')).toContain('ATV Design boot failure');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

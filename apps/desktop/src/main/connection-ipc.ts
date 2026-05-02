@@ -262,7 +262,7 @@ function classifyNetworkError(err: unknown): { code: ConnectionTestError['code']
   }
   return {
     code: 'NETWORK',
-    hint: `网络错误：${message}。查看日志：~/Library/Logs/open-codesign/main.log`,
+    hint: `网络错误：${message}。查看日志：~/Library/Logs/atv-design/main.log`,
   };
 }
 

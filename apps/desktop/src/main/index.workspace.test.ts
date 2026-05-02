@@ -36,8 +36,8 @@ vi.mock('./electron-runtime', () => ({
   BrowserWindow: BrowserWindowMock,
   app: {
     getPath: vi.fn((name: string) => {
-      if (name === 'userData') return '/tmp/open-codesign-tests';
-      if (name === 'logs') return '/tmp/open-codesign-tests/logs';
+      if (name === 'userData') return '/tmp/atv-design-tests';
+      if (name === 'logs') return '/tmp/atv-design-tests/logs';
       if (name === 'temp') return '/tmp';
       return '/tmp';
     }),

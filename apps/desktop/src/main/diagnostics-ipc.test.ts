@@ -366,7 +366,7 @@ describe('diagnostics:v1:reportEvent', () => {
     };
 
     expect(result.schemaVersion).toBe(1);
-    expect(result.bundlePath).toMatch(/open-codesign-diagnostics-.*\.zip$/);
+    expect(result.bundlePath).toMatch(/atv-design-diagnostics-.*\.zip$/);
     expect(result.summaryMarkdown).toMatch(/SOMETHING_BROKE/);
     expect(result.issueUrl).toContain('github.com/OpenCoworkAI/open-codesign/issues/new');
 
@@ -494,7 +494,7 @@ describe('diagnostics:v1:reportEvent', () => {
     );
     const url = buildIssueUrlWithTemplate({
       error,
-      bundlePath: '/tmp/open-codesign-diagnostics-test.zip',
+      bundlePath: '/tmp/atv-design-diagnostics-test.zip',
       appVersion: '9.9.9-test',
       platform: 'darwin',
       platformVersion: '24.0.0',
@@ -744,13 +744,13 @@ describe('buildIssueUrlWithTemplate privacy pipeline', () => {
     const home = os.homedir();
     const url = buildIssueUrlWithTemplate({
       error: makeEvent(),
-      bundlePath: `${home}/Downloads/open-codesign-diagnostics-abc.zip`,
+      bundlePath: `${home}/Downloads/atv-design-diagnostics-abc.zip`,
       appVersion: '1.0.0',
       platform: 'darwin',
       logTail: [],
     });
     const diagnostics = new URL(url).searchParams.get('diagnostics') ?? '';
-    expect(diagnostics).toContain('~/Downloads/open-codesign-diagnostics-abc.zip');
+    expect(diagnostics).toContain('~/Downloads/atv-design-diagnostics-abc.zip');
     expect(diagnostics).not.toContain(home);
   });
 
@@ -859,7 +859,7 @@ describe('diagnostics:v1:showItemInFolder allowlist', () => {
     const db = initInMemoryDb();
     registerDiagnosticsIpc(db);
     expect(() =>
-      invoke('diagnostics:v1:showItemInFolder', '/tmp/open-codesign-diagnostics-2025-01-01.zip'),
+      invoke('diagnostics:v1:showItemInFolder', '/tmp/atv-design-diagnostics-2025-01-01.zip'),
     ).not.toThrow();
   });
 

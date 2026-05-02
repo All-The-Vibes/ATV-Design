@@ -611,7 +611,7 @@ function ReasoningDepthSelector({
  */
 const PARSE_REASON_NOT_JSON_OBJECT = '__parse_reason_not_json_object__';
 
-const DISMISSED_BANNER_PREFIX = 'open-codesign:settings:dismissed-import-banner:';
+const DISMISSED_BANNER_PREFIX = 'atv-design:settings:dismissed-import-banner:';
 
 /**
  * Electron IPC wraps thrown errors as

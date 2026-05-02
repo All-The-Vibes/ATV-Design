@@ -1378,7 +1378,7 @@ if (!IS_VITEST) {
       // best-effort sync log and show a native three-button dialog.
       handleBootFailure(
         err,
-        'Open CoDesign failed to start',
+        'ATV Design failed to start',
         'A startup error prevented the app from loading.',
       );
       app.quit();

@@ -10,8 +10,8 @@
  * attacker-controlled URL via `shell.openExternal`.
  */
 
-const GITHUB_OWNER = 'OpenCoworkAI';
-const GITHUB_REPO = 'open-codesign';
+const GITHUB_OWNER = 'All-The-Vibes';
+const GITHUB_REPO = 'ATV-Design';
 const ALLOWED_HOST = 'github.com';
 const ALLOWED_PATHS = [
   `/${GITHUB_OWNER}/${GITHUB_REPO}/releases`,

@@ -41,7 +41,7 @@ describe('locale-ipc XDG_CONFIG_HOME', () => {
       await setHandler({}, 'zh-CN');
       expect(writeFileMock).toHaveBeenCalled();
       const firstCall = writeFileMock.mock.calls[0];
-      expect(firstCall?.[0]).toBe(join(xdg, 'open-codesign', 'locale.json'));
+      expect(firstCall?.[0]).toBe(join(xdg, 'atv-design', 'locale.json'));
     } finally {
       if (prev === undefined) process.env['XDG_CONFIG_HOME'] = undefined;
       else process.env['XDG_CONFIG_HOME'] = prev;

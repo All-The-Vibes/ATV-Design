@@ -20,7 +20,7 @@ import { useCodesignStore } from '../store';
 // Source: apps/desktop/package.json → repository.url
 // Kept as a constant here so the ErrorBoundary has no runtime dependency on
 // the main process — it must render even when IPC is broken.
-const GITHUB_REPO_URL = 'https://github.com/OpenCoworkAI/open-codesign';
+const GITHUB_REPO_URL = 'https://github.com/All-The-Vibes/ATV-Design';
 
 export interface ErrorBoundaryProps {
   children: ReactNode;

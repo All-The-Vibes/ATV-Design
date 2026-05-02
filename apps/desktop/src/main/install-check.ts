@@ -6,7 +6,7 @@ import { getLogger } from './logger';
  *
  * The main case we care about: on macOS, users frequently double-click the
  * app icon inside the mounted DMG instead of dragging it to /Applications
- * first. That launches the binary from `/Volumes/Open CoDesign/...` — a
+ * first. That launches the binary from `/Volumes/ATV Design/...` — a
  * read-only mount whose identity Electron can't use to establish a stable
  * keychain entry, so `safeStorage.isEncryptionAvailable()` returns false
  * and every "save API key" / "decrypt API key" path fails hard.
@@ -42,15 +42,15 @@ export async function maybeAbortIfRunningFromDmg(): Promise<boolean> {
 
   const { response } = await dialog.showMessageBox({
     type: 'warning',
-    title: 'Open CoDesign 还没安装完成',
-    message: '请先把 Open CoDesign 拖到「应用程序」文件夹',
+    title: 'ATV Design 还没安装完成',
+    message: '请先把 ATV Design 拖到「应用程序」文件夹',
     detail: [
-      '当前是从 DMG 直接运行的。这样 macOS 无法为 Open CoDesign 建立钥匙串条目，',
+      '当前是从 DMG 直接运行的。这样 macOS 无法为 ATV Design 建立钥匙串条目，',
       '你的 API key 会无法加密保存，导入配置也会失败。',
       '',
       '正确步骤：',
       '1. 点下面的「打开「应用程序」文件夹」',
-      '2. 把 Finder 里的 Open CoDesign.app 拖进去',
+      '2. 把 Finder 里的 ATV Design.app 拖进去',
       '3. 从「应用程序」文件夹双击启动',
       '',
       '首次从「应用程序」启动时 macOS 会弹「来自网络的 app」确认框，点「打开」即可。',

@@ -74,7 +74,7 @@ export function EmptyState({ onPickStarter }: EmptyStateProps) {
         <div className="flex flex-col items-center mb-[12px]">
           <img
             src={logoWithText}
-            alt="Open CoDesign"
+            alt="ATV Design"
             className="h-auto"
             style={{ width: 'clamp(280px, 26vw, 400px)' }}
             draggable={false}

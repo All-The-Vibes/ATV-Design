@@ -66,7 +66,7 @@ describe('readPersisted()', () => {
     try {
       await readPersisted();
       expect(readFileMock).toHaveBeenLastCalledWith(
-        join(xdg, 'open-codesign', 'preferences.json'),
+        join(xdg, 'atv-design', 'preferences.json'),
         'utf8',
       );
     } finally {

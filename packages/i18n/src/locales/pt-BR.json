@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "open-codesign",
+    "appName": "atv-design",
     "send": "Enviar",
     "cancel": "Cancelar",
     "retry": "Tentar novamente",
@@ -240,7 +240,7 @@
         "apiKeyEditPlaceholder": "Deixe vazio para manter {{mask}}",
         "defaultModel": "Modelo padrão",
         "compatibilityHintTitle": "Aviso de compatibilidade",
-        "compatibilityHintBody": "Alguns coding plans, relays e gateways compatíveis com OpenAI só permitem clientes específicos, como Claude Code, openclaw ou Hermes. Mesmo que a API pareça compatível, o Open CoDesign ainda pode ser bloqueado por uma lista de apps permitidos.",
+        "compatibilityHintBody": "Alguns coding plans, relays e gateways compatíveis com OpenAI só permitem clientes específicos, como Claude Code, openclaw ou Hermes. Mesmo que a API pareça compatível, o ATV Design ainda pode ser bloqueado por uma lista de apps permitidos.",
         "test": "Testar conexão",
         "testOk": "OK — {{count}} modelos disponíveis",
         "save": "Salvar e continuar",
@@ -380,7 +380,7 @@
       "logs": "Logs",
       "data": "Diretório de dados",
       "change": "Alterar",
-      "restartHint": "Escolha onde o open-codesign guarda configuração, logs e dados locais de design. As alterações são salvas permanentemente e se aplicam depois de reiniciar o app.",
+      "restartHint": "Escolha onde o atv-design guarda configuração, logs e dados locais de design. As alterações são salvas permanentemente e se aplicam depois de reiniciar o app.",
       "locationSavedToast": "Local de armazenamento salvo. Reinicie o app para aplicar.",
       "locationSaveFailed": "Não foi possível salvar o local de armazenamento",
       "onboardingTitle": "Onboarding",
@@ -459,7 +459,7 @@
     },
     "paste": {
       "title": "Cole sua chave de API",
-      "description": "O provedor é detectado automaticamente. Clique em Testar para verificar a chave e o endpoint antes de continuar. Sua chave fica armazenada localmente em ~/.config/open-codesign/config.toml (modo 0600).",
+      "description": "O provedor é detectado automaticamente. Clique em Testar para verificar a chave e o endpoint antes de continuar. Sua chave fica armazenada localmente em ~/.config/atv-design/config.toml (modo 0600).",
       "placeholder": "sk-…",
       "recognized": "Provedor detectado: {{provider}}",
       "connected_one": "{{count}} modelo conectado",
@@ -511,7 +511,7 @@
           "404": "Caminho da URL base incorreto. Tente adicionar o sufixo /v1 (ex.: https://seu-host/v1).",
           "ECONNREFUSED": "Não foi possível acessar a URL base. Verifique domínio/porta/rede.",
           "NETWORK": "Erro de rede. Verifique sua conexão.",
-          "PARSE": "Resposta inesperada. Veja os logs em ~/Library/Logs/open-codesign/main.log",
+          "PARSE": "Resposta inesperada. Veja os logs em ~/Library/Logs/atv-design/main.log",
           "IPC_BAD_INPUT": "Entrada inválida enviada ao teste de conexão. Verifique os campos provedor / chave de API / URL base."
         }
       },
@@ -608,7 +608,7 @@
   "inlineComment": {
     "title": "Comentar em",
     "closeComposer": "Fechar editor de comentário inline",
-    "description": "Os elementos clicados ficam selecionados no canvas. Descreva a mudança visual ou de conteúdo que você quer, e o open-codesign vai reescrever o artefato focando nesse alvo.",
+    "description": "Os elementos clicados ficam selecionados no canvas. Descreva a mudança visual ou de conteúdo que você quer, e o atv-design vai reescrever o artefato focando nesse alvo.",
     "placeholder": "Deixe esta seção mais compacta, refine o título e alinhe ao design system vinculado…",
     "applying": "Aplicando…",
     "applyChange": "Aplicar mudança"
@@ -835,7 +835,7 @@
     "showLog": "Mostrar log completo",
     "showLogFailed": "Falha ao abrir a pasta de logs",
     "gatewayAllowlistHintTitle": "Este endpoint pode restringir quais apps podem se conectar",
-    "gatewayAllowlistHintBody": "Alguns coding plans e gateways de conversão de protocolo mantêm uma lista de apps permitidos. Mesmo anunciando uma API compatível com OpenAI, eles ainda podem recusar o Open CoDesign se este app não estiver explicitamente liberado.",
+    "gatewayAllowlistHintBody": "Alguns coding plans e gateways de conversão de protocolo mantêm uma lista de apps permitidos. Mesmo anunciando uma API compatível com OpenAI, eles ainda podem recusar o ATV Design se este app não estiver explicitamente liberado.",
     "dismiss": "Dispensar",
     "report": {
       "title": "Reportar um bug",
@@ -1052,6 +1052,7 @@
     "IPC_BAD_INPUT": "A requisição continha entrada inválida. Tente novamente.",
     "IPC_DB_ERROR": "Ocorreu um erro no banco de dados local. Reiniciar o app pode ajudar.",
     "IPC_NOT_FOUND": "O item solicitado não foi encontrado.",
+    "COPILOT_BACKEND_UNAVAILABLE": "O backend selecionado do GitHub Copilot não está disponível. Consulte a mensagem de erro para instruções de correção.",
     "PROVIDER_AUTH_MISSING": "Nenhuma chave de API encontrada para este provedor. Adicione sua chave em Configurações.",
     "PROVIDER_KEY_MISSING": "Nenhuma chave de API armazenada para este provedor. Adicione uma em Configurações.",
     "PROVIDER_ACTIVE_MISSING_KEY": "O provedor ativo não tem chave de API. Abra Configurações para adicionar uma.",

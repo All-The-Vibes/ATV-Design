@@ -15,7 +15,7 @@ import {
 const tempDirs: string[] = [];
 
 async function tempRoot(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'open-codesign-storage-'));
+  const dir = await mkdtemp(join(tmpdir(), 'atv-design-storage-'));
   tempDirs.push(dir);
   return dir;
 }
@@ -27,17 +27,17 @@ afterEach(async () => {
 describe('buildAppPaths', () => {
   it('returns file paths and their containing folders for config and logs', () => {
     const paths = buildAppPaths(
-      '/tmp/open-codesign/config.toml',
-      '/tmp/open-codesign/logs/main.log',
-      '/tmp/open-codesign',
+      '/tmp/atv-design/config.toml',
+      '/tmp/atv-design/logs/main.log',
+      '/tmp/atv-design',
     );
 
     expect(paths).toEqual({
-      config: '/tmp/open-codesign/config.toml',
-      configFolder: '/tmp/open-codesign',
-      logs: '/tmp/open-codesign/logs/main.log',
-      logsFolder: '/tmp/open-codesign/logs',
-      data: '/tmp/open-codesign',
+      config: '/tmp/atv-design/config.toml',
+      configFolder: '/tmp/atv-design',
+      logs: '/tmp/atv-design/logs/main.log',
+      logsFolder: '/tmp/atv-design/logs',
+      data: '/tmp/atv-design',
     });
   });
 

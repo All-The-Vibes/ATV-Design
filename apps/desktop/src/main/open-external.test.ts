@@ -4,15 +4,13 @@ import { isAllowedExternalUrl } from './open-external';
 describe('isAllowedExternalUrl', () => {
   it('accepts /issues/new URL (Report flow)', () => {
     expect(
-      isAllowedExternalUrl(
-        'https://github.com/OpenCoworkAI/open-codesign/issues/new?title=x&body=y',
-      ),
+      isAllowedExternalUrl('https://github.com/All-The-Vibes/ATV-Design/issues/new?title=x&body=y'),
     ).toBe(true);
   });
 
   it('accepts /releases URL (update banner)', () => {
     expect(
-      isAllowedExternalUrl('https://github.com/OpenCoworkAI/open-codesign/releases/tag/v0.1.0'),
+      isAllowedExternalUrl('https://github.com/All-The-Vibes/ATV-Design/releases/tag/v0.1.0'),
     ).toBe(true);
   });
 

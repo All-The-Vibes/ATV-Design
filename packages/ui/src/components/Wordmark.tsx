@@ -1,5 +1,5 @@
 /**
- * open-codesign brand wordmark.
+ * ATV Design brand wordmark.
  * Logo icon + word, optional pre-alpha pill.
  * Use anywhere the app needs to identify itself.
  */
@@ -37,8 +37,8 @@ export function Wordmark({ badge, size = 'md' }: WordmarkProps) {
             letterSpacing: '-0.03em',
           }}
         >
-          <span style={{ color: '#142d4c' }}>Open </span>
-          <span style={{ color: '#b5441a' }}>CoDesign</span>
+          <span style={{ color: '#142d4c' }}>ATV </span>
+          <span style={{ color: '#b5441a' }}>Design</span>
         </span>
         {badge ? (
           <span

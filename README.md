@@ -1,6 +1,8 @@
-# atv-design
+# ATV Design
 
-> A hard fork of [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) with three changes: official GitHub Copilot SDK OAuth as a first-class provider, the full [`nextlevelbuilder/ui-ux-pro-max-skill`](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) bundle ported in, and a paraphrased animation-design skill inspired by [Emil Kowalski's `emil-design-eng`](https://github.com/emilkowalski/skill).
+**ATV Design** is a local-first design agent. Prompt → prototype, slides, or PDF. BYOK end-to-end with multi-model support (Claude, GPT, Gemini, Kimi, GLM, Ollama, and GitHub Copilot SDK with OAuth + PKCE). Ships with the full `ui-ux-pro-max` skill bundle and an original animation-design skill.
+
+Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT). See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream license text and credits.
 
 > **Status:** Pre-bootstrap. Upstream working tree not yet overlaid. See `.omc/HANDOFF.md` for the resume runbook.
 

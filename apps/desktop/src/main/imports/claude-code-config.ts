@@ -165,7 +165,7 @@ export function parseClaudeCodeSettings(
     settings.apiKeyHelper.length > 0
   ) {
     warnings.push(
-      `Claude Code settings.json defines apiKeyHelper ("${settings.apiKeyHelper}"). Open CoDesign does not execute helper scripts — please paste a key manually, or export ANTHROPIC_API_KEY in your shell before launching from terminal.`,
+      `Claude Code settings.json defines apiKeyHelper ("${settings.apiKeyHelper}"). ATV Design does not execute helper scripts — please paste a key manually, or export ANTHROPIC_API_KEY in your shell before launching from terminal.`,
     );
   }
 
