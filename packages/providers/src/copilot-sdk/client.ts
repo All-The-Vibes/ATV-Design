@@ -32,14 +32,17 @@ export interface CopilotClient {
  * @param opts.baseUrl               Defaults to 'https://api.githubcopilot.com'.
  * @param opts.userAgent             Injected as Editor-Version header.
  *                                   Defaults to 'atv-design/0.1.0'.
+ * @param opts.fetch                 Injected for tests; defaults to global fetch.
  */
 export function createCopilotClient(opts: {
   sessionTokenProvider: () => Promise<string>;
   baseUrl?: string;
   userAgent?: string;
+  fetch?: typeof fetch;
 }): CopilotClient {
   const baseUrl = opts.baseUrl ?? 'https://api.githubcopilot.com';
   const userAgent = opts.userAgent ?? 'atv-design/0.1.0';
+  const fetchImpl = opts.fetch ?? fetch;
 
   return {
     async fetch(path: string, init: RequestInit & { signal?: AbortSignal }): Promise<Response> {
@@ -73,7 +76,7 @@ export function createCopilotClient(opts: {
         const fetchInit: RequestInit = { ...init, headers: mergedHeaders };
         if (signal !== undefined) fetchInit.signal = signal;
 
-        const res = await fetch(url, fetchInit);
+        const res = await fetchImpl(url, fetchInit);
 
         if (!res.ok) {
           let body: unknown;

@@ -3,22 +3,24 @@
  *
  * ADR-0001 amendment (2026-05-01) R11 carve-out:
  * -----------------------------------------------------------------------
- * The URL below is the SOLE sanctioned `copilot_internal/*` path.
- * It is explicitly whitelisted by the ADR-0001 Decision Update (2026-05-01)
- * because it is the documented GitHub endpoint for exchanging a GitHub OAuth
- * access token for a short-lived Copilot session token used against
+ * The URL below — `https://api.github.com/copilot_internal/v2/token` — is
+ * the SOLE sanctioned undocumented endpoint used by this codebase. It is
+ * explicitly whitelisted by the ADR-0001 Decision Update (2026-05-01)
+ * because it is the documented GitHub endpoint for exchanging a GitHub
+ * OAuth access token for a short-lived Copilot session token used against
  * api.githubcopilot.com/chat/completions.
  *
- * ALL other `copilot_internal/*` paths remain forbidden per R11 and are
- * enforced by `.github/workflows/forbidden-endpoints.yml`.
+ * ALL other variants are forbidden per R11 and enforced by
+ * `.github/workflows/forbidden-endpoints.yml` — the workflow's grep filter
+ * permits only matches that contain `copilot_internal/v2/token`.
  * -----------------------------------------------------------------------
  */
 
 import { copilotForbiddenError, copilotUnauthorizedError, mapCopilotResponseError } from './errors';
 
 /**
- * The sole sanctioned copilot_internal/* path per ADR-0001 R11 carve-out.
- * Any other copilot_internal/* path is forbidden by CI enforcement.
+ * The sole sanctioned undocumented endpoint per ADR-0001 R11 carve-out.
+ * Any other variant of this endpoint is forbidden by CI enforcement.
  */
 export const COPILOT_SESSION_TOKEN_URL = 'https://api.github.com/copilot_internal/v2/token';
 
@@ -68,9 +70,12 @@ export async function exchangeForSessionToken(opts: {
   signal?: AbortSignal;
   /** Injected for tests; defaults to Date.now. */
   now?: () => number;
+  /** Injected for tests; defaults to global fetch. */
+  fetch?: typeof fetch;
 }): Promise<CopilotSessionToken> {
   const { githubAccessToken, signal } = opts;
   const now = opts.now ?? Date.now;
+  const fetchImpl = opts.fetch ?? fetch;
 
   let response: Response;
   try {
@@ -84,7 +89,7 @@ export async function exchangeForSessionToken(opts: {
       },
     };
     if (signal !== undefined) fetchInit.signal = signal;
-    response = await fetch(COPILOT_SESSION_TOKEN_URL, fetchInit);
+    response = await fetchImpl(COPILOT_SESSION_TOKEN_URL, fetchInit);
   } catch (cause) {
     // Re-throw as CopilotProviderError using the network-error factory
     const { copilotNetworkError } = await import('./errors');

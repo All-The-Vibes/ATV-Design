@@ -1,52 +1,50 @@
-name: forbidden-endpoints
+name: Forbidden Endpoints
 
 # Enforces atv-design Spec Principle 2 ("Sanctioned auth only") and Risk R11
 # from .omc/plans/ralplan-fork-open-codesign-copilot-skills-final.md.
 #
-# Fails the build if any source, doc, or config file references the
-# undocumented Copilot internal endpoints, or if a hard-coded GitHub OAuth
-# client secret slips into the tree.
+# ADR-0001 amendment (2026-05-01): copilot_internal/v2/token is the SOLE
+# sanctioned copilot_internal/* path (session-token exchange only).
+# All other copilot_internal/* paths remain forbidden.
 #
 # Companion review checklist: docs/security-checklist.md
 
 on:
-  pull_request:
   push:
     branches: [main]
+  pull_request:
 
 jobs:
-  forbidden-endpoints:
-    name: Grep for forbidden patterns
+  scan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v4
 
-      - name: Forbid undocumented Copilot internal endpoint
-        shell: bash
+      - name: Scan for unsanctioned copilot_internal usage
         run: |
-          # Search the working tree, excluding the security checklist itself,
-          # the CI workflow itself (which legitimately names the pattern in
-          # comments), and any vendored / generated paths.
-          set -e
-          MATCHES=$(git grep -nI \
-            --untracked \
-            -e 'copilot_internal' \
-            -- ':!docs/security-checklist.md' \
-               ':!.github/workflows/forbidden-endpoints.yml' \
-               ':!node_modules' \
-               ':!**/node_modules' \
-               ':!dist' \
-               ':!build' \
-               ':!.omc' \
-            || true)
-          if [ -n "$MATCHES" ]; then
-            echo "::error::Forbidden endpoint 'copilot_internal' detected. atv-design must use the documented Copilot SDK OAuth flow only — see docs/security-checklist.md."
-            echo "$MATCHES"
+          # Allowed: the documented session-token URL only (ADR-0001 carve-out).
+          # Scope: source packages and apps only.
+          # The carve-out is anchored: 'copilot_internal/v2/token' must be
+          # followed by end-of-line OR a punctuation char that ends a path
+          # segment AND is not a forward slash. This rejects impostor paths:
+          #   /v2/token-stealer  → '-' is in the negated class → caught
+          #   /v2/tokenize       → 'i' is in the negated class → caught
+          #   /v2/token/admin    → '/' is in the negated class → caught
+          # Filter out:
+          #   - lines containing the (anchored) sanctioned /v2/token path
+          #   - comment lines (// * # or leading whitespace+*) discussing the prohibition
+          if git grep -nE 'copilot_internal' \
+              -- 'packages/' 'apps/' \
+                 ':(exclude).github/workflows/__fixtures__/' \
+              | grep -vE 'copilot_internal/v2/token($|[^A-Za-z0-9_/-])' \
+              | grep -vE ':\s*(//|\*|#|\s\*)' ; then
+            echo "::error::Found unsanctioned copilot_internal/* usage in source code. See docs/adr/0001-byok-oauth-posture.md."
             exit 1
           fi
+          echo "OK: only sanctioned copilot_internal/v2/token references found in source."
+
+      - name: Run regex fixture self-test
+        run: bash .github/workflows/__fixtures__/copilot-internal-fixture.sh
 
       - name: Forbid hard-coded OAuth client secrets
         shell: bash

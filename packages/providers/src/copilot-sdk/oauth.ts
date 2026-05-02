@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { CopilotProviderError, copilotNetworkError, mapCopilotResponseError } from './errors.js';
+import { copilotNetworkError, mapCopilotResponseError } from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Client ID
@@ -105,6 +105,10 @@ export interface TokenResponse {
  *
  * The POST body contains ONLY: client_id, code, code_verifier, redirect_uri.
  * There is deliberately NO client_secret — this is a public client (PKCE-only).
+ *
+ * The optional `fetch` parameter exists for test injection; production callers
+ * leave it undefined to use global fetch. Injection lives here (not in a
+ * shadow function) so the production path and the tested path are identical.
  */
 export async function exchangeCode(opts: {
   code: string;
@@ -112,8 +116,10 @@ export async function exchangeCode(opts: {
   redirectUri: string;
   clientId?: string;
   signal?: AbortSignal;
+  fetch?: typeof fetch;
 }): Promise<TokenResponse> {
   const clientId = resolveClientId(opts.clientId);
+  const fetchImpl = opts.fetch ?? fetch;
 
   const body = new URLSearchParams({
     client_id: clientId,
@@ -124,7 +130,7 @@ export async function exchangeCode(opts: {
 
   let response: Response;
   try {
-    response = await fetch(TOKEN_URL, {
+    response = await fetchImpl(TOKEN_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

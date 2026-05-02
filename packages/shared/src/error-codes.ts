@@ -32,6 +32,7 @@ export const ERROR_CODES = {
   CLAUDE_CODE_OAUTH_ONLY: 'CLAUDE_CODE_OAUTH_ONLY',
   CODEX_TOKEN_PARSE_FAILED: 'CODEX_TOKEN_PARSE_FAILED',
   CODEX_TOKEN_NOT_LOGGED_IN: 'CODEX_TOKEN_NOT_LOGGED_IN',
+  COPILOT_BACKEND_UNAVAILABLE: 'COPILOT_BACKEND_UNAVAILABLE',
 
   // Generation / input
   INPUT_EMPTY_PROMPT: 'INPUT_EMPTY_PROMPT',
@@ -195,6 +196,12 @@ export const ERROR_CODE_DESCRIPTIONS: Record<CodesignErrorCode, ErrorCodeDescrip
   CODEX_TOKEN_NOT_LOGGED_IN: {
     userFacing: 'ChatGPT subscription is not signed in. Please log in via Settings.',
     userFacingKey: 'err.CODEX_TOKEN_NOT_LOGGED_IN',
+    category: 'provider',
+  },
+  COPILOT_BACKEND_UNAVAILABLE: {
+    userFacing:
+      'The selected GitHub Copilot backend is not available. Check the error message for remediation instructions.',
+    userFacingKey: 'err.COPILOT_BACKEND_UNAVAILABLE',
     category: 'provider',
   },
 
