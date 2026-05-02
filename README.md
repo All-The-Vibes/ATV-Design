@@ -4,7 +4,7 @@
 
 Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT). See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream license text and credits.
 
-> **Status:** Pre-bootstrap. Upstream working tree not yet overlaid. See `.omc/HANDOFF.md` for the resume runbook.
+> **Status:** Phase 1b shipped (GitHub Copilot SDK provider with OAuth + PKCE). Phase 2 (ui-ux-pro-max skill bundle port) and Phase 4 (E2E smoke) pending. See `.omc/HANDOFF.md` for the full resume runbook and remaining work.
 
 ---
 
@@ -29,14 +29,14 @@ The upstream stack — Electron + TypeScript + React 19 + Vite 6 + Tailwind v4, 
 
 ### Prerequisites
 
-- An active GitHub Copilot subscription (any paid tier).
-- Node.js (v20+) and pnpm (v10+).
+- An active GitHub Copilot subscription (any paid tier) — only required if you plan to use the Copilot provider; other BYOK providers work without it.
+- Node.js 22 LTS (see `.nvmrc`) and pnpm 9.15+ (pinned via `packageManager` in `package.json`).
 - Git.
 
 ### Quick start
 
 ```bash
-git clone https://github.com/<your-org>/atv-design.git
+git clone https://github.com/All-The-Vibes/ATV-Design.git atv-design
 cd atv-design
 pnpm install
 pnpm dev
@@ -48,13 +48,15 @@ On first launch, click **Sign in with GitHub** in the provider picker. The OAuth
 
 ## Skill bundles
 
-atv-design ships three sources of skills, all of which live under `skills/` (or wherever the upstream loader discovers them — see `docs/skill-loader.md` once Phase 1a runs):
+atv-design loads skills from three tiers — `<project>/.codesign/skills/`, `~/.config/atv-design/skills/`, and the built-in bundle — with project > user > builtin priority. The full discovery contract is documented in [`docs/skill-loader.md`](./docs/skill-loader.md).
 
-1. **Upstream open-codesign built-ins** (12 modules: dashboards, landing pages, pricing tables, chat UIs, etc.). Inherited from upstream.
+Three sources of skills are planned for the built-in bundle:
 
-2. **`skills/ui-ux-pro-max/`** — full port of `nextlevelbuilder/ui-ux-pro-max-skill`. 67 UI styles, 161 color palettes, 57 font pairings, 161 product reasoning rules, 99 UX guidelines, 25 chart types. MIT licensed; see [`NOTICE`](./NOTICE) and `skills/ui-ux-pro-max/README.md`.
+1. **Upstream open-codesign built-ins** (12 modules: dashboards, landing pages, pricing tables, chat UIs, etc.). Inherited from upstream — *shipped*.
 
-3. **`skills/emil-design-eng-inspired/`** — animation and micro-interaction principles. Authored fresh for atv-design from the principles in `emilkowalski/skill` (which has no LICENSE at fork time); see [`skills/emil-design-eng-inspired/README.md`](./skills/emil-design-eng-inspired/README.md) for the inspired-by-not-verbatim posture.
+2. **`skills/emil-design-eng-inspired/`** — animation and micro-interaction principles. Authored fresh for atv-design from the principles in `emilkowalski/skill` (which has no LICENSE at fork time); see [`skills/emil-design-eng-inspired/README.md`](./skills/emil-design-eng-inspired/README.md) for the inspired-by-not-verbatim posture. *Shipped.*
+
+3. **`skills/ui-ux-pro-max/`** — full port of `nextlevelbuilder/ui-ux-pro-max-skill`. 67 UI styles, 161 color palettes, 57 font pairings, 161 product reasoning rules, 99 UX guidelines, 25 chart types. MIT licensed. *Planned (Phase 2). See `.omc/HANDOFF.md` Step 8.*
 
 ---
 
@@ -113,6 +115,6 @@ Before opening a PR, please:
 
 1. Read [`docs/security-checklist.md`](./docs/security-checklist.md) if your change touches auth, OAuth, providers, or Copilot.
 2. Read [`ATTRIBUTION.md`](./ATTRIBUTION.md) if your change adds a new dependency or ported content.
-3. Run `pnpm test` (unit + integration suites). End-to-end tests are manual on M1.
+3. Run `pnpm typecheck && pnpm lint && pnpm test` (the three gates the pre-commit hook enforces). End-to-end tests are manual on M1.
 
 The roadmap and acceptance criteria are documented in `.omc/specs/` and `.omc/plans/`. Bug reports and feature requests go in GitHub Issues.
