@@ -1,10 +1,7 @@
-import { setLocale as applyLocale, getCurrentLocale, useT } from '@open-codesign/i18n';
-import type { OnboardingState, ReasoningLevel, WireApi } from '@open-codesign/shared';
-import {
-  PROVIDER_SHORTLIST as SHORTLIST,
-  isSupportedOnboardingProvider,
-} from '@open-codesign/shared';
-import { Button } from '@open-codesign/ui';
+import { setLocale as applyLocale, getCurrentLocale, useT } from '@atv-design/i18n';
+import type { OnboardingState, ReasoningLevel, WireApi } from '@atv-design/shared';
+import { PROVIDER_SHORTLIST as SHORTLIST, isSupportedOnboardingProvider } from '@atv-design/shared';
+import { Button } from '@atv-design/ui';
 import {
   AlertCircle,
   AlertTriangle,

@@ -20,7 +20,7 @@
  *  - SDK adapter is lazy-loaded via dynamic import().
  */
 
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { CopilotProviderError } from '../copilot-sdk/errors.js';
 import type { CopilotProviderHandle } from '../copilot-sdk/index.js';
 import type { CopilotTokenStore } from '../copilot-sdk/token-store.js';

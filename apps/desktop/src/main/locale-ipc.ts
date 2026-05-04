@@ -13,7 +13,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { availableLocales, isSupportedLocale, normalizeLocale } from '@open-codesign/i18n';
+import { availableLocales, isSupportedLocale, normalizeLocale } from '@atv-design/i18n';
 import { configDir } from './config';
 import { app, ipcMain } from './electron-runtime';
 import { getLogger } from './logger';

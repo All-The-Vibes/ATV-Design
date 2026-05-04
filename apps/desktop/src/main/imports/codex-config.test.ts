@@ -156,7 +156,7 @@ env_key  = "${envKey}"
 
 describe('readCodexConfig', () => {
   it('reads OPENAI_API_KEY from Codex auth.json for providers requiring OpenAI auth', async () => {
-    const home = join(tmpdir(), `open-codesign-codex-${Date.now()}-${Math.random()}`);
+    const home = join(tmpdir(), `atv-design-codex-${Date.now()}-${Math.random()}`);
     const codexDir = join(home, '.codex');
     await mkdir(codexDir, { recursive: true });
     await writeFile(

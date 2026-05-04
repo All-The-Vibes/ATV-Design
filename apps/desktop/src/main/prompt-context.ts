@@ -1,12 +1,12 @@
 import { open } from 'node:fs/promises';
 import { extname } from 'node:path';
-import type { AttachmentContext, ReferenceUrlContext } from '@open-codesign/core';
+import type { AttachmentContext, ReferenceUrlContext } from '@atv-design/core';
 import {
   CodesignError,
   ERROR_CODES,
   type LocalInputFile,
   type StoredDesignSystem,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 
 const TEXT_EXTS = new Set([
   '.css',

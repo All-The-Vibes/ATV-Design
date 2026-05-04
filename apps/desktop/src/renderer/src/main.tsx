@@ -1,5 +1,5 @@
-import { initI18n } from '@open-codesign/i18n';
-import '@open-codesign/ui/fonts';
+import { initI18n } from '@atv-design/i18n';
+import '@atv-design/ui/fonts';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';

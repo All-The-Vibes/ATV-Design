@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import type { ExampleCategory, LocalizedExample } from '@open-codesign/templates';
+import { useT } from '@atv-design/i18n';
+import type { ExampleCategory, LocalizedExample } from '@atv-design/templates';
 import {
   FileText,
   LayoutDashboard,

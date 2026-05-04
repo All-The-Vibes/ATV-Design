@@ -13,16 +13,15 @@
  * toggleable and Workstream C must not assume byte-identical canvas output.
  */
 
+import type { ModelRef } from '@atv-design/shared';
 import type { AgentEvent, AgentMessage, AgentOptions } from '@mariozechner/pi-agent-core';
-import type { ModelRef } from '@open-codesign/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const completeMock = vi.fn();
 
-vi.mock('@open-codesign/providers', async () => {
-  const actual = await vi.importActual<typeof import('@open-codesign/providers')>(
-    '@open-codesign/providers',
-  );
+vi.mock('@atv-design/providers', async () => {
+  const actual =
+    await vi.importActual<typeof import('@atv-design/providers')>('@atv-design/providers');
   return {
     ...actual,
     complete: (...args: unknown[]) => completeMock(...args),

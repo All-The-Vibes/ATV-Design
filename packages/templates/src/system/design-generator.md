@@ -1,6 +1,6 @@
 # Design generator system prompt
 
-Canonical, human-readable copy of the system prompt used by `@open-codesign/core`
+Canonical, human-readable copy of the system prompt used by `@atv-design/core`
 to drive `designGenerator`. The TypeScript constant in `./index.ts` MUST stay
 in sync with the prose below.
 

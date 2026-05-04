@@ -8,7 +8,7 @@ import {
   ERROR_CODES,
   parseConfigFlexible,
   toPersistedV3,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 import { getActiveStorageLocations } from './storage-settings';
 

@@ -10,7 +10,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CopilotProviderError } from '../copilot-sdk/errors.js';
 import type { CopilotProviderHandle } from '../copilot-sdk/index.js';

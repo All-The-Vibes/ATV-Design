@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import type { Design } from '@open-codesign/shared';
+import type { Design } from '@atv-design/shared';
 import type Database from 'better-sqlite3';
 import { type BrowserWindow, dialog, shell } from 'electron';
 import { getLogger } from './logger';

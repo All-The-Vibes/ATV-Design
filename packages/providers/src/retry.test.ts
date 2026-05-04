@@ -1,4 +1,4 @@
-import { type ChatMessage, CodesignError, type ModelRef } from '@open-codesign/shared';
+import { type ChatMessage, CodesignError, type ModelRef } from '@atv-design/shared';
 import { describe, expect, it, vi } from 'vitest';
 import type { GenerateOptions, GenerateResult } from './index';
 import { type RetryReason, classifyError, completeWithRetry, withBackoff } from './retry';

@@ -15,9 +15,9 @@
  * layer logs them with `reason`.
  */
 
-import { looksLikeGatewayMissingMessagesApi } from '@open-codesign/providers';
-import type { ProviderId, WireApi } from '@open-codesign/shared';
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import { looksLikeGatewayMissingMessagesApi } from '@atv-design/providers';
+import type { ProviderId, WireApi } from '@atv-design/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 
 export const PROVIDER_KEY_HELP_URL: Partial<Record<ProviderId, string>> = {
   openai: 'https://platform.openai.com/account/api-keys',

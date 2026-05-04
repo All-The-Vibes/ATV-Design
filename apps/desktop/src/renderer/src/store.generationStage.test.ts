@@ -1,5 +1,5 @@
-import { initI18n } from '@open-codesign/i18n';
-import type { OnboardingState } from '@open-codesign/shared';
+import { initI18n } from '@atv-design/i18n';
+import type { OnboardingState } from '@atv-design/shared';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCodesignStore } from './store';
 

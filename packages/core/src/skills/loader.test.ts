@@ -2,7 +2,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CodesignError } from '@open-codesign/shared';
+import { CodesignError } from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { loadAllSkills, loadSkillsFromDir } from './loader.js';
 
@@ -60,7 +60,7 @@ describe('loadSkillsFromDir()', () => {
     const skills = await loadSkillsFromDir(builtinDir, 'builtin');
     expect(skills.length).toBe(12);
     const ids = skills.map((s) => s.id).sort();
-    // 5 upstream skills retained from open-codesign
+    // 5 upstream skills retained from atv-design
     expect(ids).toContain('frontend-design-anti-slop');
     expect(ids).toContain('pitch-deck');
     expect(ids).toContain('data-viz-recharts');

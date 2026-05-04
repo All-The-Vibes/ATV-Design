@@ -26,8 +26,8 @@ import {
   type ReportEventInput,
   type ReportEventResult,
   type ReportableError,
-} from '@open-codesign/shared';
-import { computeFingerprint } from '@open-codesign/shared/fingerprint';
+} from '@atv-design/shared';
+import { computeFingerprint } from '@atv-design/shared/fingerprint';
 import type BetterSqlite3 from 'better-sqlite3';
 import { configDir, configPath } from './config';
 import {
@@ -49,7 +49,7 @@ type Database = BetterSqlite3.Database;
 const logger = getLogger('diagnostics-ipc');
 
 // TODO(rebrand): point at atv-design's own repo once published
-const GITHUB_REPO_URL = 'https://github.com/OpenCoworkAI/open-codesign';
+const GITHUB_REPO_URL = 'https://github.com/All-The-Vibes/ATV-Design';
 // GitHub issue URL soft cap. Past ~8KB the URL is silently truncated on some
 // browsers; we keep 7KB as headroom and trim `logs` first when needed.
 const GH_URL_MAX = 7000;

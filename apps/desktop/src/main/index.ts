@@ -14,8 +14,8 @@ import {
   generate,
   generateTitle,
   generateViaAgent,
-} from '@open-codesign/core';
-import { detectProviderFromKey, generateImage } from '@open-codesign/providers';
+} from '@atv-design/core';
+import { detectProviderFromKey, generateImage } from '@atv-design/providers';
 import {
   ApplyCommentPayload,
   BRAND,
@@ -23,8 +23,8 @@ import {
   CodesignError,
   GeneratePayload,
   GeneratePayloadV1,
-} from '@open-codesign/shared';
-import { computeFingerprint } from '@open-codesign/shared/fingerprint';
+} from '@atv-design/shared';
+import { computeFingerprint } from '@atv-design/shared/fingerprint';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { BrowserWindow as ElectronBrowserWindow } from 'electron';
 import { autoUpdater } from 'electron-updater';

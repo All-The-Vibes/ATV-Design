@@ -197,12 +197,12 @@ describe('applyResponsesRoleShaping', () => {
       ],
     };
 
-    const result = applyResponsesRoleShaping(payload, 'You are open-codesign.') as {
+    const result = applyResponsesRoleShaping(payload, 'You are atv-design.') as {
       instructions?: string;
       input: Array<{ role: string }>;
     };
 
-    expect(result.instructions).toBe('You are open-codesign.');
+    expect(result.instructions).toBe('You are atv-design.');
     expect(result.input.map((e) => e.role)).toEqual(['user']);
   });
 

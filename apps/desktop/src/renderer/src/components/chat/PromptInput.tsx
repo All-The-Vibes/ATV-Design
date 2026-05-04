@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import { Tooltip } from '@open-codesign/ui';
+import { useT } from '@atv-design/i18n';
+import { Tooltip } from '@atv-design/ui';
 import { ArrowUp, Square } from 'lucide-react';
 import {
   type FormEvent,

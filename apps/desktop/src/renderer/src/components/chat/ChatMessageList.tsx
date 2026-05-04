@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import type { ChatMessageRow, ChatToolCallPayload } from '@open-codesign/shared';
+import { useT } from '@atv-design/i18n';
+import type { ChatMessageRow, ChatToolCallPayload } from '@atv-design/shared';
 import { FileText } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { AssistantText } from './AssistantText';

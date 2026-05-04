@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, stat, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { TokenSet } from './oauth';
 import { CodexTokenStore, type CodexTokenStoreOptions, type StoredCodexAuth } from './token-store';

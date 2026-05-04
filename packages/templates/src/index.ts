@@ -7,7 +7,7 @@
  * English alias for backward compatibility with pre-i18n callers.
  */
 
-import { type Locale, availableLocales, normalizeLocale } from '@open-codesign/i18n';
+import { type Locale, availableLocales, normalizeLocale } from '@atv-design/i18n';
 import { enDemos } from './locales/en';
 import { ptBRDemos } from './locales/pt-BR';
 import { zhCNDemos } from './locales/zh-CN';

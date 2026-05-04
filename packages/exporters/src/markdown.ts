@@ -69,7 +69,7 @@ function deriveTitle(html: string): string {
   if (t?.[1]) return decodeEntities(stripTags(t[1])).trim();
   const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html ?? '');
   if (h1?.[1]) return decodeEntities(stripTags(h1[1])).trim();
-  return 'open-codesign export';
+  return 'atv-design export';
 }
 
 function convertBody(html: string): string {

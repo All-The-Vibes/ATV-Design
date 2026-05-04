@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import { BRAND } from '@open-codesign/shared';
+import { useT } from '@atv-design/i18n';
+import { BRAND } from '@atv-design/shared';
 import { X } from 'lucide-react';
 import type { StoreApi } from 'zustand';
 import { useStore } from 'zustand';

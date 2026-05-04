@@ -31,7 +31,7 @@ export function buildAuthorizeUrl(opts: AuthorizeUrlOpts): string {
     code_challenge_method: 'S256',
     state: opts.state,
     codex_cli_simplified_flow: 'true',
-    originator: opts.originator ?? 'open-codesign',
+    originator: opts.originator ?? 'atv-design',
     id_token_add_organizations: 'true',
   });
   return `${AUTH_BASE}/oauth/authorize?${params.toString()}`;

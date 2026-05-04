@@ -1,4 +1,4 @@
-import { useT } from '@open-codesign/i18n';
+import { useT } from '@atv-design/i18n';
 import { MessageSquareText, Send, X } from 'lucide-react';
 import { useCodesignStore } from '../../store';
 

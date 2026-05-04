@@ -115,7 +115,7 @@ vi.mock('./imports/opencode-config', () => ({
   readOpencodeConfig: vi.fn(async () => null),
 }));
 
-vi.mock('@open-codesign/providers', () => ({
+vi.mock('@atv-design/providers', () => ({
   pingProvider: vi.fn(async () => ({ ok: true, modelCount: 1 })),
 }));
 
@@ -236,7 +236,7 @@ describe('config:v1:set-provider-and-models — payload validation', () => {
 });
 describe('registerOnboardingIpc — validate-key passes baseUrl to pingProvider', () => {
   it('forwards baseUrl to pingProvider when provided', async () => {
-    const { pingProvider } = await import('@open-codesign/providers');
+    const { pingProvider } = await import('@atv-design/providers');
     const handler = handlers.get('onboarding:validate-key');
     expect(handler).toBeDefined();
 
@@ -254,7 +254,7 @@ describe('registerOnboardingIpc — validate-key passes baseUrl to pingProvider'
   });
 
   it('calls pingProvider without baseUrl when not provided', async () => {
-    const { pingProvider } = await import('@open-codesign/providers');
+    const { pingProvider } = await import('@atv-design/providers');
     vi.mocked(pingProvider).mockClear();
     const handler = handlers.get('onboarding:validate-key');
     expect(handler).toBeDefined();

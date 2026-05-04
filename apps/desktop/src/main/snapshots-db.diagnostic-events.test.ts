@@ -6,7 +6,7 @@
  * in-memory SQLite instance — no Electron, no filesystem.
  */
 
-import type { DiagnosticEventInput } from '@open-codesign/shared';
+import type { DiagnosticEventInput } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import {
   initInMemoryDb,

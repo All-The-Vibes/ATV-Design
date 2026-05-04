@@ -31,7 +31,7 @@ function escapeHtml(s: string): string {
 }
 
 function successPage(): string {
-  return '<html><body style="font-family:system-ui;padding:40px;max-width:560px;margin:0 auto"><h1 style="color:#0f766e;margin-bottom:8px">登录成功</h1><p style="color:#475569">你可以关闭此窗口回到 open-codesign。</p></body></html>';
+  return '<html><body style="font-family:system-ui;padding:40px;max-width:560px;margin:0 auto"><h1 style="color:#0f766e;margin-bottom:8px">登录成功</h1><p style="color:#475569">你可以关闭此窗口回到 atv-design。</p></body></html>';
 }
 
 function errorPage(title: string, detail: string): string {
@@ -64,7 +64,7 @@ export async function startCallbackServer(preferredPort?: number): Promise<Callb
     const code = (err as NodeJS.ErrnoException).code;
     if (code === 'EADDRINUSE') {
       throw new Error(
-        `Codex OAuth 回调端口 ${firstPort} 已被占用（通常是另一个 open-codesign 或 Codex CLI 实例）。请关闭它们后重试。`,
+        `Codex OAuth 回调端口 ${firstPort} 已被占用（通常是另一个 atv-design 或 Codex CLI 实例）。请关闭它们后重试。`,
       );
     }
     throw err;

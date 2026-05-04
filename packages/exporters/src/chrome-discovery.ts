@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 
 /**
  * Locate a system Chrome/Chromium binary. We refuse to bundle Chromium —

@@ -368,7 +368,7 @@ describe('diagnostics:v1:reportEvent', () => {
     expect(result.schemaVersion).toBe(1);
     expect(result.bundlePath).toMatch(/atv-design-diagnostics-.*\.zip$/);
     expect(result.summaryMarkdown).toMatch(/SOMETHING_BROKE/);
-    expect(result.issueUrl).toContain('github.com/OpenCoworkAI/open-codesign/issues/new');
+    expect(result.issueUrl).toContain('github.com/All-The-Vibes/ATV-Design/issues/new');
 
     const url = new URL(result.issueUrl);
     expect(url.searchParams.get('template')).toBe('bug_report.yml');
@@ -462,7 +462,7 @@ describe('diagnostics:v1:reportEvent', () => {
       }),
     );
 
-    const recomputed = (await import('@open-codesign/shared/fingerprint')).computeFingerprint({
+    const recomputed = (await import('@atv-design/shared/fingerprint')).computeFingerprint({
       errorCode: 'FP_CODE',
       stack: 'Error: fp\n    at foo (a.ts:1:1)',
       message: 'fp check',

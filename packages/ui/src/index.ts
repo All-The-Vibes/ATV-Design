@@ -1,4 +1,4 @@
-// Fonts are loaded once via the dedicated `@open-codesign/ui/fonts` entry point
+// Fonts are loaded once via the dedicated `@atv-design/ui/fonts` entry point
 // (see apps/desktop/src/renderer/src/main.tsx). Do not re-import them here.
 export { Button } from './components/Button';
 export { Card } from './components/Card';

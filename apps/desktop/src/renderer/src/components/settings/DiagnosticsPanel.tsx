@@ -1,5 +1,5 @@
-import { getCurrentLocale, useT } from '@open-codesign/i18n';
-import type { DiagnosticEventRow, ReportableError } from '@open-codesign/shared';
+import { getCurrentLocale, useT } from '@atv-design/i18n';
+import type { DiagnosticEventRow, ReportableError } from '@atv-design/shared';
 import { AlertCircle, Download, FolderOpen } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useCodesignStore } from '../../store';

@@ -61,7 +61,7 @@ export function makeReadUrlTool(): AgentTool<typeof ReadUrlParams, ReadUrlDetail
         res = await fetch(params.url, {
           ...(signal ? { signal } : {}),
           headers: {
-            'user-agent': 'open-codesign/0.1 (+https://github.com/hqhq1025/codesign)',
+            'user-agent': 'atv-design/0.1 (+https://github.com/All-The-Vibes/ATV-Design)',
             accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.1',
           },
         });

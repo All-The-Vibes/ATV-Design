@@ -1,4 +1,4 @@
-import { useT } from '@open-codesign/i18n';
+import { useT } from '@atv-design/i18n';
 import {
   type ElementRectsMessage,
   type IframeErrorMessage,
@@ -7,7 +7,7 @@ import {
   isElementRectsMessage,
   isIframeErrorMessage,
   isOverlayMessage,
-} from '@open-codesign/runtime';
+} from '@atv-design/runtime';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EmptyState } from '../preview/EmptyState';
 import { ErrorState } from '../preview/ErrorState';

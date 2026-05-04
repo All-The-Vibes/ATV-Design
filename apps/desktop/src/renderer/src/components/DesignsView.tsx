@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import type { Design } from '@open-codesign/shared';
+import { useT } from '@atv-design/i18n';
+import type { Design } from '@atv-design/shared';
 import { Copy, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { relativeTime } from '../lib/relativeTime';

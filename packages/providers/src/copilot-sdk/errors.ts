@@ -5,12 +5,12 @@
  * error instances that consumers can `instanceof`-check or switch on `.code`.
  *
  * PRINCIPLES: no console.*, no secrets in messages (CLAUDE.md ban).
- * Extends CodesignError (from @open-codesign/shared) so the project-wide
+ * Extends CodesignError (from @atv-design/shared) so the project-wide
  * error handling infra (diagnostic events, normalizeProviderError) works
  * without modification.
  */
 
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 
 // ---------------------------------------------------------------------------
 // Core error class

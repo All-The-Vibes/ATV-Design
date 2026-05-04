@@ -5,8 +5,8 @@
  * calls the registered handlers directly with an in-memory DB.
  */
 
-import { CodesignError } from '@open-codesign/shared';
-import type { Design } from '@open-codesign/shared';
+import { CodesignError } from '@atv-design/shared';
+import type { Design } from '@atv-design/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Collect registered handlers so tests can invoke them directly.

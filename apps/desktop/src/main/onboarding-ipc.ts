@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { type ValidateResult, pingProvider } from '@open-codesign/providers';
+import { type ValidateResult, pingProvider } from '@atv-design/providers';
 import {
   BUILTIN_PROVIDERS,
   type ClaudeCodeDetectionMeta,
@@ -22,7 +22,7 @@ import {
   hydrateConfig,
   isSupportedOnboardingProvider,
   modelsEndpointUrl,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { buildAuthHeadersForWire } from './auth-headers';
 import { defaultConfigDir, readConfig, writeConfig } from './config';
 import { dialog, ipcMain, shell } from './electron-runtime';

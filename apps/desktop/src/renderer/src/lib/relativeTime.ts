@@ -1,4 +1,4 @@
-import { i18n } from '@open-codesign/i18n';
+import { i18n } from '@atv-design/i18n';
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;

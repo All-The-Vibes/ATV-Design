@@ -1,5 +1,5 @@
-import { type ExporterFormat, exportArtifact } from '@open-codesign/exporters';
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import { type ExporterFormat, exportArtifact } from '@atv-design/exporters';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import type { BrowserWindow } from 'electron';
 import { dialog, ipcMain } from './electron-runtime';
 

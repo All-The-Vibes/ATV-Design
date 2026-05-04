@@ -29,7 +29,7 @@ import type {
   DiagnosticEventRow,
   DiagnosticLevel,
   SnapshotCreateInput,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import type BetterSqlite3 from 'better-sqlite3';
 import { getLogger } from './logger';
 

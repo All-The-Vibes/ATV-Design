@@ -10,7 +10,7 @@
  * and small scalar metadata. That invariant keeps reports shareable.
  */
 
-import type { ActionTimelineEntry } from '@open-codesign/shared';
+import type { ActionTimelineEntry } from '@atv-design/shared';
 
 const CAPACITY = 40;
 const WINDOW_MS = 60_000;

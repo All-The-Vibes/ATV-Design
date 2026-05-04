@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import type { CommentRow } from '@open-codesign/shared';
+import { useT } from '@atv-design/i18n';
+import type { CommentRow } from '@atv-design/shared';
 import { Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';

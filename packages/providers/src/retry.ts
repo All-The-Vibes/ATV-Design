@@ -19,7 +19,7 @@ import {
   ERROR_CODES,
   type ModelRef,
   type WireApi,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { normalizeProviderError } from './errors';
 import { looksLikeGatewayMissingMessagesApi } from './gateway-compat';
 import { type GenerateOptions, type GenerateResult, complete } from './index';

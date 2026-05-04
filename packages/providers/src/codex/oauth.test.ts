@@ -57,7 +57,7 @@ describe('buildAuthorizeUrl', () => {
     expect(params.get('code_challenge_method')).toBe('S256');
     expect(params.get('state')).toBe('state-xyz');
     expect(params.get('codex_cli_simplified_flow')).toBe('true');
-    expect(params.get('originator')).toBe('open-codesign');
+    expect(params.get('originator')).toBe('atv-design');
     expect(params.get('id_token_add_organizations')).toBe('true');
   });
 

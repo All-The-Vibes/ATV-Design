@@ -1,4 +1,4 @@
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import en from './locales/en.json';
 import zhCN from './locales/zh-CN.json';

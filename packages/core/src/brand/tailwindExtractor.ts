@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { DesignToken } from '@open-codesign/shared';
+import type { DesignToken } from '@atv-design/shared';
 
 // Matches a JS/TS object key that starts a nested block or a leaf value.
 // We intentionally parse the config as text — never require() or eval() it.

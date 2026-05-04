@@ -6,7 +6,7 @@
   "main": "./out/main/index.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OpenCoworkAI/open-codesign.git"
+    "url": "git+https://github.com/All-The-Vibes/ATV-Design.git"
   },
   "scripts": {
     "postinstall": "node scripts/install-sqlite-bindings.cjs",

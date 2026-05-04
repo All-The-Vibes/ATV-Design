@@ -1,4 +1,4 @@
-import { parseTweakSchema } from '@open-codesign/shared';
+import { parseTweakSchema } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import { makeDeclareTweakSchemaTool } from './declare-tweak-schema.js';
 import type { TextEditorFsCallbacks } from './text-editor.js';

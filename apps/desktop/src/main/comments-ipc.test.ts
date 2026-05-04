@@ -20,7 +20,7 @@ vi.mock('./logger', () => ({
   getLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }),
 }));
 
-import { CodesignError } from '@open-codesign/shared';
+import { CodesignError } from '@atv-design/shared';
 import {
   COMMENTS_CHANNELS_V1,
   registerCommentsIpc,

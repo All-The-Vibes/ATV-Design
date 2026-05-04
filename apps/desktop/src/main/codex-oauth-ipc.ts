@@ -10,7 +10,7 @@ import {
   exchangeCode,
   generatePkce,
   startCallbackServer,
-} from '@open-codesign/providers/codex';
+} from '@atv-design/providers/codex';
 import {
   CHATGPT_CODEX_PROVIDER_ID,
   CodesignError,
@@ -18,7 +18,7 @@ import {
   ERROR_CODES,
   type ProviderEntry,
   hydrateConfig,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { configDir, writeConfig } from './config';
 import { ipcMain, shell } from './electron-runtime';
 import { getLogger } from './logger';

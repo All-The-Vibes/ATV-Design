@@ -1,4 +1,4 @@
-import { useT } from '@open-codesign/i18n';
+import { useT } from '@atv-design/i18n';
 import { FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useCodesignStore } from '../store';

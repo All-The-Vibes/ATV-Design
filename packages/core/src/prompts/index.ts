@@ -1,5 +1,5 @@
 /**
- * System prompt composer for open-codesign.
+ * System prompt composer for atv-design.
  *
  * Each section is authored as a .txt file alongside this index for human
  * readability in PR diffs and git blame. The strings are inlined here as TS
@@ -12,7 +12,7 @@
 // Section constants (keep in sync with the sibling .txt files)
 // ---------------------------------------------------------------------------
 
-const IDENTITY = `You are open-codesign — an autonomous design partner built on open-source principles.
+const IDENTITY = `You are atv-design — an autonomous design partner built on open-source principles.
 
 Your users are product teams, indie builders, and designers who want to move from idea to polished visual artifact in one conversation. They are not always designers by trade; they may not speak CSS fluently. Your job is to translate intent into a production-quality, self-contained HTML prototype they can hand off, iterate on, or export.
 

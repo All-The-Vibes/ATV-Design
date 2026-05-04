@@ -22,7 +22,7 @@
  *  unless the model ID matches the known-reasoning heuristic.
  */
 
-import type { ProviderCapabilities, WireApi } from '@open-codesign/shared';
+import type { ProviderCapabilities, WireApi } from '@atv-design/shared';
 
 // ── Reasoning policy ──────────────────────────────────────────────────────────
 
