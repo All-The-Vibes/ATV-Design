@@ -70,12 +70,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends rpm
 
       - name: Build workspace
-        run: pnpm --filter '!@open-codesign/desktop' -r build
+        run: pnpm --filter '!@atv-design/desktop' -r build
 
       - name: Package Linux (AppImage + deb + rpm)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        run: pnpm --filter @open-codesign/desktop release
+        run: pnpm --filter @atv-design/desktop release
 
       - name: Assert artifacts
         run: |

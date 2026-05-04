@@ -33,7 +33,7 @@ jobs:
   gate:
     name: Gate (lint · typecheck · test)
     runs-on: ubuntu-latest
-    if: github.repository == 'OpenCoworkAI/open-codesign'
+    if: github.repository == 'All-The-Vibes/ATV-Design'
     env:
       RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
     steps:
@@ -70,7 +70,7 @@ jobs:
   changelog:
     name: Build changelog
     runs-on: ubuntu-latest
-    if: github.repository == 'OpenCoworkAI/open-codesign'
+    if: github.repository == 'All-The-Vibes/ATV-Design'
     env:
       RELEASE_REF: ${{ github.event_name == 'push' && github.ref || format('refs/tags/{0}', inputs.tag) }}
     outputs:
@@ -185,7 +185,7 @@ jobs:
 
       # Build all workspace packages (turborepo respects dep graph)
       - name: Build workspace
-        run: pnpm --filter '!@open-codesign/desktop' -r build
+        run: pnpm --filter '!@atv-design/desktop' -r build
 
       # Package the Electron app.
       # CSC_IDENTITY_AUTO_DISCOVERY=false: skip ad-hoc Mac signing prompt.
@@ -198,7 +198,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm --filter @open-codesign/desktop release
+        run: pnpm --filter @atv-design/desktop release
 
       - name: Package desktop (mac, per-arch)
         if: runner.os == 'macOS'
@@ -206,8 +206,8 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pnpm --filter @open-codesign/desktop exec electron-vite build
-          pnpm --filter @open-codesign/desktop exec electron-builder --mac --${{ matrix.mac_arch }} --publish never
+          pnpm --filter @atv-design/desktop exec electron-vite build
+          pnpm --filter @atv-design/desktop exec electron-builder --mac --${{ matrix.mac_arch }} --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -260,7 +260,7 @@ jobs:
           sudo lxd init --auto
 
       - name: Build workspace
-        run: pnpm --filter '!@open-codesign/desktop' -r build
+        run: pnpm --filter '!@atv-design/desktop' -r build
 
       - name: Package snap
         working-directory: apps/desktop

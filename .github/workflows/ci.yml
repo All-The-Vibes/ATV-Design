@@ -44,7 +44,7 @@ jobs:
       # missing assets, or bad vite config fail here instead of only during a
       # tag release. Skip electron-builder packaging (that's release.yml's job).
       - name: Build smoke (electron-vite bundle)
-        run: pnpm --filter @open-codesign/desktop exec electron-vite build
+        run: pnpm --filter @atv-design/desktop exec electron-vite build
 
   # Linux packaging smoke lives in .github/workflows/packaging-smoke.yml —
   # it was pulled out of this workflow because workflow-level

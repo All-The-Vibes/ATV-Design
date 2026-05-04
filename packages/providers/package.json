@@ -1,5 +1,5 @@
 {
-  "name": "@open-codesign/providers",
+  "name": "@atv-design/providers",
   "version": "0.1.4",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@mariozechner/pi-ai": "^0.70.2",
-    "@open-codesign/shared": "workspace:*"
+    "@atv-design/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",
