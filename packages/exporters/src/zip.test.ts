@@ -41,7 +41,7 @@ describe('exportZip', () => {
     const { readFile } = await import('node:fs/promises');
     const readme = await readFile(join(extractDir, 'README.md'), 'utf8');
     expect(readme).toContain('Test bundle');
-    expect(readme).toContain('open-codesign');
+    expect(readme).toContain('atv-design');
   });
 
   it('produces a valid zip without any extra assets', async () => {

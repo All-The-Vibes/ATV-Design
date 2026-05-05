@@ -1,5 +1,5 @@
 {
-  "name": "@open-codesign/templates",
+  "name": "@atv-design/templates",
   "version": "0.1.4",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@open-codesign/i18n": "workspace:*",
-    "@open-codesign/shared": "workspace:*"
+    "@atv-design/i18n": "workspace:*",
+    "@atv-design/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

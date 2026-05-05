@@ -1,4 +1,4 @@
-import { useT } from '@open-codesign/i18n';
+import { useT } from '@atv-design/i18n';
 import { ArrowUpRight } from 'lucide-react';
 import logoWithText from '../assets/logo-with-text.png';
 

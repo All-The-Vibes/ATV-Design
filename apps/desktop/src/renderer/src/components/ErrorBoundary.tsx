@@ -12,8 +12,8 @@
  * preview / topbar) so a single crash never blanks the entire window.
  */
 
-import { useT } from '@open-codesign/i18n';
-import { Button } from '@open-codesign/ui';
+import { useT } from '@atv-design/i18n';
+import { Button } from '@atv-design/ui';
 import { Component, type ErrorInfo, type ReactNode, useState } from 'react';
 import { useCodesignStore } from '../store';
 

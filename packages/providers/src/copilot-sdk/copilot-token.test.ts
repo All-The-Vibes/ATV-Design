@@ -7,7 +7,7 @@
  *   - Error mapping for 401, 403, 5xx.
  */
 
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { COPILOT_SESSION_TOKEN_URL, exchangeForSessionToken } from './copilot-token';
 import { CopilotProviderError } from './errors';

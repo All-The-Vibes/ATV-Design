@@ -1,4 +1,4 @@
-import { CodesignError } from '@open-codesign/shared';
+import { CodesignError } from '@atv-design/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { pingProvider } from './validate';
 

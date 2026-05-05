@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { DesignToken } from '@open-codesign/shared';
+import type { DesignToken } from '@atv-design/shared';
 
 type TokenType = DesignToken['type'];
 

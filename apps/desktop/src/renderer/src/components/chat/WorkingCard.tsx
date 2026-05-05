@@ -1,4 +1,4 @@
-import type { ChatToolCallPayload } from '@open-codesign/shared';
+import type { ChatToolCallPayload } from '@atv-design/shared';
 import {
   BookOpen,
   Check,

@@ -1,4 +1,4 @@
-import { useT } from '@open-codesign/i18n';
+import { useT } from '@atv-design/i18n';
 import { FileCode2, Folder, FolderOpen, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { formatAbsoluteTime, formatRelativeTime, useDesignFiles } from '../hooks/useDesignFiles';

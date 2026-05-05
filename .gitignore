@@ -71,6 +71,10 @@ docs/*
 !docs/adr/**
 # Skill-loader rationale is referenced by code reviews
 !docs/skill-loader.md
+!docs/oauth-setup.md
+!docs/known-issues.md
+!docs/superpowers/
+!docs/superpowers/**
 
 # Internal marketing drafts — not for public repo
 promo-copy/
@@ -80,6 +84,7 @@ website/public/demos/_speedup/
 
 # Agent worktrees / transcripts
 .claude/projects/
+.worktrees/
 .codex-temp/
 
 # OMC runtime state (per-session, not source). Plans/specs/handoff stay tracked.

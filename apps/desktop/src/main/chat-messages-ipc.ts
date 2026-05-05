@@ -6,8 +6,8 @@
  * touching snapshot callers.
  */
 
-import type { ChatAppendInput, ChatMessageKind, ChatMessageRow } from '@open-codesign/shared';
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import type { ChatAppendInput, ChatMessageKind, ChatMessageRow } from '@atv-design/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import type BetterSqlite3 from 'better-sqlite3';
 import { ipcMain } from './electron-runtime';
 import { getLogger } from './logger';

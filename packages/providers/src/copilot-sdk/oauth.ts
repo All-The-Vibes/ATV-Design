@@ -15,12 +15,21 @@ const FALLBACK_CLIENT_ID = 'Iv1.b507a08c87ecfe98';
 
 /**
  * Prefer the env override when present so deployments can inject their own
- * registered OAuth App client_id without recompiling.
+ * registered OAuth App client_id without recompiling. Prefer the rebranded
+ * ATV Design name, but keep the legacy open-codesign env name as a
+ * compatibility fallback.
  */
+const CLIENT_ID_ENV_KEYS = [
+  'ATV_DESIGN_GITHUB_CLIENT_ID',
+  'OPEN_CODESIGN_GITHUB_CLIENT_ID',
+] as const;
+
 function resolveClientId(explicit?: string): string {
   if (explicit !== undefined && explicit.length > 0) return explicit;
-  const env = process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'];
-  if (typeof env === 'string' && env.length > 0) return env;
+  for (const envKey of CLIENT_ID_ENV_KEYS) {
+    const env = process.env[envKey];
+    if (typeof env === 'string' && env.length > 0) return env;
+  }
   return FALLBACK_CLIENT_ID;
 }
 

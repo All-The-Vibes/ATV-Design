@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import { Button } from '@open-codesign/ui';
+import { useT } from '@atv-design/i18n';
+import { Button } from '@atv-design/ui';
 import { AlertTriangle, Copy, RotateCw } from 'lucide-react';
 import { useState } from 'react';
 

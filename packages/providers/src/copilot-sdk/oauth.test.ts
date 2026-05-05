@@ -6,6 +6,8 @@ import { AUTHORIZE_URL, SCOPE, buildAuthorizeUrl, exchangeCode, generatePkce } f
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  Reflect.deleteProperty(process.env, 'ATV_DESIGN_GITHUB_CLIENT_ID');
+  Reflect.deleteProperty(process.env, 'OPEN_CODESIGN_GITHUB_CLIENT_ID');
 });
 
 // ---------------------------------------------------------------------------
@@ -205,9 +207,9 @@ describe('exchangeCode', () => {
     ).rejects.toBeInstanceOf(CopilotProviderError);
   });
 
-  it('env override: OPEN_CODESIGN_GITHUB_CLIENT_ID is used when no explicit clientId given', async () => {
-    const original = process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'];
-    process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = 'Iv1.testoverride';
+  it('env override: ATV_DESIGN_GITHUB_CLIENT_ID is used when no explicit clientId given', async () => {
+    const original = process.env['ATV_DESIGN_GITHUB_CLIENT_ID'];
+    process.env['ATV_DESIGN_GITHUB_CLIENT_ID'] = 'Iv1.testoverride';
 
     let capturedInit: RequestInit | undefined;
     vi.stubGlobal(
@@ -226,12 +228,41 @@ describe('exchangeCode', () => {
       const body = new URLSearchParams(capturedInit?.body as string);
       expect(body.get('client_id')).toBe('Iv1.testoverride');
     } finally {
+      process.env['ATV_DESIGN_GITHUB_CLIENT_ID'] = original;
+    }
+  });
+
+  it('legacy OPEN_CODESIGN_GITHUB_CLIENT_ID remains a compatibility fallback', async () => {
+    Reflect.deleteProperty(process.env, 'ATV_DESIGN_GITHUB_CLIENT_ID');
+    const original = process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'];
+    process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = 'Iv1.legacyoverride';
+
+    let capturedInit: RequestInit | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        capturedInit = init;
+        return new Response(
+          JSON.stringify({ access_token: 'x', token_type: 'bearer', scope: '' }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }),
+    );
+
+    try {
+      await exchangeCode({ code: 'c', verifier: 'v', redirectUri: 'r' });
+      const body = new URLSearchParams(capturedInit?.body as string);
+      expect(body.get('client_id')).toBe('Iv1.legacyoverride');
+    } finally {
       process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = original;
     }
   });
 
   it('explicit clientId overrides env', async () => {
-    process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = 'Iv1.fromenv';
+    const originalAtv = process.env['ATV_DESIGN_GITHUB_CLIENT_ID'];
+    const originalLegacy = process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'];
+    process.env['ATV_DESIGN_GITHUB_CLIENT_ID'] = 'Iv1.fromenv';
+    process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = 'Iv1.legacy';
     let capturedInit: RequestInit | undefined;
     vi.stubGlobal(
       'fetch',
@@ -249,7 +280,16 @@ describe('exchangeCode', () => {
       const body = new URLSearchParams(capturedInit?.body as string);
       expect(body.get('client_id')).toBe('Iv1.explicit');
     } finally {
-      process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = undefined;
+      if (originalAtv === undefined) {
+        Reflect.deleteProperty(process.env, 'ATV_DESIGN_GITHUB_CLIENT_ID');
+      } else {
+        process.env['ATV_DESIGN_GITHUB_CLIENT_ID'] = originalAtv;
+      }
+      if (originalLegacy === undefined) {
+        Reflect.deleteProperty(process.env, 'OPEN_CODESIGN_GITHUB_CLIENT_ID');
+      } else {
+        process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = originalLegacy;
+      }
     }
   });
 });

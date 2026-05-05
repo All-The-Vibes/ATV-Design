@@ -6,10 +6,10 @@ body:
   - type: markdown
     attributes:
       value: |
-        **Before filing:** search [existing issues](https://github.com/OpenCoworkAI/open-codesign/issues) and skim
+        **Before filing:** search [existing issues](https://github.com/All-The-Vibes/ATV-Design/issues) and skim
         [`AGENTS.md`](../blob/main/AGENTS.md) or [`CLAUDE.md`](../blob/main/CLAUDE.md) for the current hard constraints.
         If your idea may contradict a product direction or anti-goal, open a
-        [Discussion](https://github.com/OpenCoworkAI/open-codesign/discussions) first.
+        [Discussion](https://github.com/All-The-Vibes/ATV-Design/discussions) first.
 
   - type: textarea
     id: problem
@@ -55,7 +55,7 @@ body:
     attributes:
       label: Hard-constraints check
       description: >
-        Open CoDesign has a set of non-negotiable constraints (no bundled runtimes,
+        ATV Design has a set of non-negotiable constraints (no bundled runtimes,
         BYOK only, local-first storage, MIT-compatible licenses, lazy-loaded heavy features).
         Please confirm you have reviewed them.
       options:

@@ -115,7 +115,7 @@ vi.mock('./imports/opencode-config', () => ({
   readOpencodeConfig: vi.fn(async () => null),
 }));
 
-vi.mock('@open-codesign/providers', () => ({
+vi.mock('@atv-design/providers', () => ({
   pingProvider: vi.fn(async () => ({ ok: true, modelCount: 1 })),
 }));
 
@@ -236,7 +236,7 @@ describe('config:v1:set-provider-and-models — payload validation', () => {
 });
 describe('registerOnboardingIpc — validate-key passes baseUrl to pingProvider', () => {
   it('forwards baseUrl to pingProvider when provided', async () => {
-    const { pingProvider } = await import('@open-codesign/providers');
+    const { pingProvider } = await import('@atv-design/providers');
     const handler = handlers.get('onboarding:validate-key');
     expect(handler).toBeDefined();
 
@@ -254,7 +254,7 @@ describe('registerOnboardingIpc — validate-key passes baseUrl to pingProvider'
   });
 
   it('calls pingProvider without baseUrl when not provided', async () => {
-    const { pingProvider } = await import('@open-codesign/providers');
+    const { pingProvider } = await import('@atv-design/providers');
     vi.mocked(pingProvider).mockClear();
     const handler = handlers.get('onboarding:validate-key');
     expect(handler).toBeDefined();
@@ -319,16 +319,16 @@ describe('config:v1:import-codex-config empty env handling', () => {
           wire: 'openai-chat',
           baseUrl: 'https://api.example.com/v1',
           defaultModel: 'gpt-test',
-          envKey: 'OPEN_CODESIGN_EMPTY_ENV_FOR_TEST',
+          envKey: 'ATV_DESIGN_EMPTY_ENV_FOR_TEST',
         },
       ],
       activeProvider: 'codex-empty-env',
       activeModel: 'gpt-test',
-      envKeyMap: { 'codex-empty-env': 'OPEN_CODESIGN_EMPTY_ENV_FOR_TEST' },
+      envKeyMap: { 'codex-empty-env': 'ATV_DESIGN_EMPTY_ENV_FOR_TEST' },
       apiKeyMap: {},
       warnings: [],
     });
-    process.env['OPEN_CODESIGN_EMPTY_ENV_FOR_TEST'] = '   ';
+    process.env['ATV_DESIGN_EMPTY_ENV_FOR_TEST'] = '   ';
 
     const handler = handlers.get('config:v1:import-codex-config');
     expect(handler).toBeDefined();
@@ -340,7 +340,7 @@ describe('config:v1:import-codex-config empty env handling', () => {
     expect(encryptSecret).not.toHaveBeenCalled();
     const written = vi.mocked(writeConfig).mock.calls.at(-1)?.[0];
     expect(written?.secrets['codex-empty-env']).toBeUndefined();
-    process.env['OPEN_CODESIGN_EMPTY_ENV_FOR_TEST'] = undefined;
+    Reflect.deleteProperty(process.env, 'ATV_DESIGN_EMPTY_ENV_FOR_TEST');
   });
 
   it('encrypts Codex auth.json API keys for providers requiring OpenAI auth', async () => {

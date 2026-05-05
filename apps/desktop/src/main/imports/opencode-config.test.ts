@@ -10,7 +10,7 @@ import {
 } from './opencode-config';
 
 async function makeHome(): Promise<string> {
-  const home = join(tmpdir(), `open-codesign-opencode-${Date.now()}-${Math.random()}`);
+  const home = join(tmpdir(), `atv-design-opencode-${Date.now()}-${Math.random()}`);
   await mkdir(home, { recursive: true });
   return home;
 }

@@ -1,4 +1,4 @@
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 
 export type ImageGenerationProvider = 'openai' | 'openrouter';
 export type ImageOutputFormat = 'png' | 'jpeg' | 'webp';

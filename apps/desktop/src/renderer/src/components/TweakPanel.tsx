@@ -1,4 +1,4 @@
-import { useT } from '@open-codesign/i18n';
+import { useT } from '@atv-design/i18n';
 import {
   type EditmodeBlock,
   type TokenSchemaEntry,
@@ -6,7 +6,7 @@ import {
   parseEditmodeBlock,
   parseTweakSchema,
   replaceEditmodeBlock,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
 import { useCodesignStore } from '../store';

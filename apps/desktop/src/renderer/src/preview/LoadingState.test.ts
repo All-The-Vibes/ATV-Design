@@ -1,4 +1,4 @@
-import { initI18n } from '@open-codesign/i18n';
+import { initI18n } from '@atv-design/i18n';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { STAGES } from './LoadingState';
 
@@ -12,7 +12,7 @@ describe('LoadingState stage list', () => {
   });
 
   it('has a label for each stage in en locale', async () => {
-    const { i18n } = await import('@open-codesign/i18n');
+    const { i18n } = await import('@atv-design/i18n');
     for (const stage of STAGES) {
       const key = `loading.stage.${stage}`;
       const value = i18n.t(key) as string;

@@ -1,6 +1,6 @@
 ---
 title: Architecture
-description: How Open CoDesign is laid out across packages and apps.
+description: How ATV Design is laid out across packages and apps.
 ---
 
 # Architecture
@@ -51,4 +51,4 @@ A bird's-eye view. Detailed module READMEs live in each `packages/*/README.md`.
 - Exporters are never bundled into the main shell — they dynamic-import on first use.
 - Only `apps/desktop` writes to disk. Other packages go through IPC.
 
-For data-flow walkthroughs (single generation, inline comment, slider drag), see the per-package `README.md` files in the [monorepo](https://github.com/OpenCoworkAI/open-codesign/tree/main/packages).
+For data-flow walkthroughs (single generation, inline comment, slider drag), see the per-package `README.md` files in the [monorepo](https://github.com/All-The-Vibes/ATV-Design/tree/main/packages).

@@ -16,7 +16,7 @@ describe('isAllowedExternalUrl', () => {
 
   it('rejects unrelated host', () => {
     expect(
-      isAllowedExternalUrl('https://evil.example.com/OpenCoworkAI/open-codesign/issues/new'),
+      isAllowedExternalUrl('https://evil.example.com/All-The-Vibes/ATV-Design/issues/new'),
     ).toBe(false);
   });
 
@@ -25,12 +25,12 @@ describe('isAllowedExternalUrl', () => {
   });
 
   it('rejects non-https protocols', () => {
-    expect(isAllowedExternalUrl('http://github.com/OpenCoworkAI/open-codesign/issues/new')).toBe(
+    expect(isAllowedExternalUrl('http://github.com/All-The-Vibes/ATV-Design/issues/new')).toBe(
       false,
     );
-    expect(
-      isAllowedExternalUrl('file:///Users/attacker/OpenCoworkAI/open-codesign/issues/new'),
-    ).toBe(false);
+    expect(isAllowedExternalUrl('file:///Users/attacker/All-The-Vibes/ATV-Design/issues/new')).toBe(
+      false,
+    );
   });
 
   it('rejects malformed URL strings', () => {
@@ -39,15 +39,13 @@ describe('isAllowedExternalUrl', () => {
   });
 
   it('rejects repo root and other paths like /pulls', () => {
-    expect(isAllowedExternalUrl('https://github.com/OpenCoworkAI/open-codesign')).toBe(false);
-    expect(isAllowedExternalUrl('https://github.com/OpenCoworkAI/open-codesign/pulls/1')).toBe(
-      false,
-    );
+    expect(isAllowedExternalUrl('https://github.com/All-The-Vibes/ATV-Design')).toBe(false);
+    expect(isAllowedExternalUrl('https://github.com/All-The-Vibes/ATV-Design/pulls/1')).toBe(false);
   });
 
   it('does not accept a prefix-smuggled path like /issuesFAKE', () => {
     // Exact "/issues" or "/issues/..." — not "/issuesEVIL/..."
-    expect(isAllowedExternalUrl('https://github.com/OpenCoworkAI/open-codesign/issuesEVIL/1')).toBe(
+    expect(isAllowedExternalUrl('https://github.com/All-The-Vibes/ATV-Design/issuesEVIL/1')).toBe(
       false,
     );
   });

@@ -1,4 +1,4 @@
-import type { ActionTimelineEntry, ReportableError } from '@open-codesign/shared';
+import type { ActionTimelineEntry, ReportableError } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import {
   type SummaryInput,
@@ -381,11 +381,11 @@ describe('composeSummaryMarkdown', () => {
     it('redacts /tmp paths', () => {
       const md = composeSummaryMarkdown(
         baseInput({
-          error: baseEvent({ message: 'wrote /tmp/open-codesign-cache/foo then failed' }),
+          error: baseEvent({ message: 'wrote /tmp/atv-design-cache/foo then failed' }),
           includePaths: false,
         }),
       );
-      expect(md).not.toContain('/tmp/open-codesign-cache');
+      expect(md).not.toContain('/tmp/atv-design-cache');
       expect(md).toContain('[path omitted]');
     });
 

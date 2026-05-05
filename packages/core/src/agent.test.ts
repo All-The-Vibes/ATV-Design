@@ -1,6 +1,6 @@
+import type { LoadedSkill, ModelRef } from '@atv-design/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import type { AgentEvent, AgentMessage, AgentOptions } from '@mariozechner/pi-agent-core';
-import type { LoadedSkill, ModelRef } from '@open-codesign/shared';
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const loadBuiltinSkillsMock = vi.fn(async (): Promise<LoadedSkill[]> => []);
@@ -285,7 +285,7 @@ describe('generateViaAgent() — Phase 1 pass-through', () => {
     if (!call) throw new Error('expected agent call');
     const init = call.options.initialState;
     expect(init?.tools).toEqual([]);
-    expect(init?.systemPrompt).toContain('open-codesign');
+    expect(init?.systemPrompt).toContain('atv-design');
     expect(init?.messages).toHaveLength(1);
     const seed = init?.messages?.[0];
     expect(seed?.role).toBe('user');

@@ -1,5 +1,5 @@
 {
-  "name": "@open-codesign/artifacts",
+  "name": "@atv-design/artifacts",
   "version": "0.1.4",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@open-codesign/shared": "workspace:*",
+    "@atv-design/shared": "workspace:*",
     "zod": "^3.24.1"
   },
   "devDependencies": {

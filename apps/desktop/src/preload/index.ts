@@ -24,7 +24,7 @@ import type {
   SnapshotCreateInput,
   SupportedOnboardingProvider,
   WireApi,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { contextBridge, ipcRenderer } from 'electron';
 import type { CodexOAuthStatus } from '../main/codex-oauth-ipc';
 import type {

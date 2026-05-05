@@ -29,8 +29,8 @@
  *     responsibility through str_replace_based_edit_tool.
  */
 
+import { type TweakSchema, parseTweakSchema, replaceTweakSchema } from '@atv-design/shared';
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
-import { type TweakSchema, parseTweakSchema, replaceTweakSchema } from '@open-codesign/shared';
 import { Type } from '@sinclair/typebox';
 import type { TextEditorFsCallbacks } from './text-editor.js';
 

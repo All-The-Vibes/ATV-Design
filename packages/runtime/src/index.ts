@@ -15,7 +15,7 @@
  * valid JSX, Babel will surface a syntax error via the iframe error overlay.
  */
 
-import { ensureEditmodeMarkers } from '@open-codesign/shared';
+import { ensureEditmodeMarkers } from '@atv-design/shared';
 
 import BABEL_STANDALONE from '../vendor/babel.standalone.js?raw';
 import DESIGN_CANVAS_JSX from '../vendor/design-canvas.jsx?raw';

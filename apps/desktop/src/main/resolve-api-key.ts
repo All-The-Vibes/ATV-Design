@@ -1,4 +1,4 @@
-import { CHATGPT_CODEX_PROVIDER_ID, CodesignError, ERROR_CODES } from '@open-codesign/shared';
+import { CHATGPT_CODEX_PROVIDER_ID, CodesignError, ERROR_CODES } from '@atv-design/shared';
 
 /**
  * Abstract dependencies of `resolveActiveApiKey` so unit tests can stub the

@@ -9,8 +9,8 @@
  * initSnapshotsDb().
  */
 
-import type { Design, DesignSnapshot, SnapshotCreateInput } from '@open-codesign/shared';
-import { CodesignError } from '@open-codesign/shared';
+import type { Design, DesignSnapshot, SnapshotCreateInput } from '@atv-design/shared';
+import { CodesignError } from '@atv-design/shared';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { BrowserWindow } from 'electron';
 import { bindWorkspace, checkWorkspaceFolderExists, openWorkspaceFolder } from './design-workspace';

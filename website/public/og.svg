@@ -37,7 +37,7 @@
   <!-- Logo lockup -->
   <g transform="translate(80, 80)">
     <image xlink:href="logo.png" x="0" y="0" width="40" height="40"/>
-    <text x="54" y="29" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="600" font-size="24" fill="#1f1d18" letter-spacing="-0.3">open-codesign</text>
+    <text x="54" y="29" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-weight="600" font-size="24" fill="#1f1d18" letter-spacing="-0.3">atv-design</text>
   </g>
 
   <!-- Headlines -->
@@ -79,5 +79,5 @@
   </g>
 
   <!-- Repo URL -->
-  <text x="80" y="580" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, monospace" font-weight="500" font-size="19" fill="#8c887d">github.com/OpenCoworkAI/open-codesign</text>
+  <text x="80" y="580" font-family="'JetBrains Mono', ui-monospace, SFMono-Regular, monospace" font-weight="500" font-size="19" fill="#8c887d">github.com/All-The-Vibes/ATV-Design</text>
 </svg>

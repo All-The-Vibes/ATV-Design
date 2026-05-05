@@ -1,5 +1,5 @@
-import { type ArtifactEvent, createArtifactParser } from '@open-codesign/artifacts';
-import type { GenerateResult, ReasoningLevel } from '@open-codesign/providers';
+import { type ArtifactEvent, createArtifactParser } from '@atv-design/artifacts';
+import type { GenerateResult, ReasoningLevel } from '@atv-design/providers';
 import {
   type RetryReason,
   complete,
@@ -7,7 +7,7 @@ import {
   filterActive,
   formatSkillsForPrompt,
   inferReasoning,
-} from '@open-codesign/providers';
+} from '@atv-design/providers';
 import type {
   Artifact,
   ChatMessage,
@@ -17,8 +17,8 @@ import type {
   SelectedElement,
   StoredDesignSystem,
   WireApi,
-} from '@open-codesign/shared';
-import { CodesignError, ERROR_CODES } from '@open-codesign/shared';
+} from '@atv-design/shared';
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import { remapProviderError } from './errors.js';
 import { type CoreLogger, NOOP_LOGGER } from './logger.js';
 import { type PromptComposeOptions, composeSystemPrompt } from './prompts/index.js';

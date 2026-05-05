@@ -1,5 +1,5 @@
 {
-  "name": "@open-codesign/runtime",
+  "name": "@atv-design/runtime",
   "version": "0.1.4",
   "private": true,
   "type": "module",
@@ -15,7 +15,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@open-codesign/shared": "workspace:*"
+    "@atv-design/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

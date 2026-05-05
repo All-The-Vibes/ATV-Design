@@ -1,4 +1,4 @@
-import { CodesignError } from '@open-codesign/shared';
+import { CodesignError } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import { parseRequest } from './exporter-ipc';
 

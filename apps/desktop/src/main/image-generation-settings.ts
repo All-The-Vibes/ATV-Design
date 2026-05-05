@@ -2,7 +2,7 @@ import {
   type GenerateImageOptions,
   defaultImageBaseUrl,
   defaultImageModel,
-} from '@open-codesign/providers';
+} from '@atv-design/providers';
 import {
   CodesignError,
   type Config,
@@ -21,7 +21,7 @@ import {
   type ImageGenerationSize,
   ImageGenerationSizeSchema,
   hydrateConfig,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { writeConfig } from './config';
 import { ipcMain } from './electron-runtime';
 import { buildSecretRef, decryptSecret } from './keychain';

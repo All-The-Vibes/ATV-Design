@@ -1,4 +1,4 @@
-import type { DesignToken } from '@open-codesign/shared';
+import type { DesignToken } from '@atv-design/shared';
 import type { CoreLogger } from '../logger.js';
 
 // W3C Design Tokens Community Group spec (2025.10 stable) defines leaf tokens

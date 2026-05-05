@@ -17,7 +17,7 @@
  * so the gateway WAF accepts us. User-supplied httpHeaders always win.
  */
 
-import type { WireApi } from '@open-codesign/shared';
+import type { WireApi } from '@atv-design/shared';
 
 /** Matches pi-ai 0.67.68 so both paths present the same UA to gateways. */
 const CLAUDE_CODE_VERSION = '2.1.75';

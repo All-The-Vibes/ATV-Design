@@ -4,7 +4,7 @@
 
 Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT). See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream license text and credits.
 
-> **Status:** Phase 1b shipped (GitHub Copilot SDK provider with OAuth + PKCE). Phase 2 (ui-ux-pro-max skill bundle port) and Phase 4 (E2E smoke) pending. See `.omc/HANDOFF.md` for the full resume runbook and remaining work.
+> **Status:** GitHub Copilot OAuth + PKCE shipped. The additive `ui-ux-pro-max` bundle is preserved under `skills/ui-ux-pro-max/` and exposed through flattened builtin entrypoints. M1 convergence is the current repo state; `.omc/HANDOFF.md` is historical context only.
 
 ---
 
@@ -14,9 +14,9 @@ Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codes
 |------|----------|-----------|
 | Branding | open-codesign | atv-design |
 | Config dir | `~/.config/open-codesign/` | `~/.config/atv-design/` |
-| OAuth scheme | (upstream's) | `atvdesign://oauth-callback` |
+| OAuth scheme | (upstream's) | loopback HTTP `http://127.0.0.1:<random-port>/oauth-callback` |
 | Providers | Anthropic, OpenAI, Gemini, DeepSeek, Kimi, GLM, Ollama, OpenAI-compatible (BYOK) | All of the above **plus** GitHub Copilot SDK with PKCE |
-| Skill bundles | 12 built-in design modules | + `skills/ui-ux-pro-max/` (verbatim port, MIT) + `skills/emil-design-eng-inspired/` (paraphrase, original prose) |
+| Skill bundles | open-codesign builtin set | 12 runtime-loaded builtins total (4 retained upstream carryovers + 7 `uipromax-*` + `emil-design-eng-inspired`) plus preserved source bundles under `skills/ui-ux-pro-max/` and `skills/emil-design-eng-inspired/` |
 | License hygiene | (upstream MIT) | NOTICE with full upstream MIT text from open-codesign and ui-ux-pro-max + per-bundle READMEs |
 | CI | (upstream's) | + `.github/workflows/forbidden-endpoints.yml` blocking regressions to undocumented Copilot endpoints |
 | Auth posture | (varies by provider) | BYOK end-to-end with one BYOK ADR committed (`docs/adr/0001-byok-oauth-posture.md`) |
@@ -50,13 +50,13 @@ On first launch, click **Sign in with GitHub** in the provider picker. The OAuth
 
 atv-design loads skills from three tiers — `<project>/.codesign/skills/`, `~/.config/atv-design/skills/`, and the built-in bundle — with project > user > builtin priority. The full discovery contract is documented in [`docs/skill-loader.md`](./docs/skill-loader.md).
 
-Three sources of skills are planned for the built-in bundle:
+ATV Design ships both the runtime-loaded builtin entrypoints and the preserved source bundles they came from:
 
-1. **Upstream open-codesign built-ins** (12 modules: dashboards, landing pages, pricing tables, chat UIs, etc.). Inherited from upstream — *shipped*.
+1. **`packages/core/src/skills/builtin/*.md`** — the 12 runtime-loaded skill entrypoints the current loader discovers. This set includes four retained upstream carryovers, seven `uipromax-*` ports, and `emil-design-eng-inspired`.
 
-2. **`skills/emil-design-eng-inspired/`** — animation and micro-interaction principles. Authored fresh for atv-design from the principles in `emilkowalski/skill` (which has no LICENSE at fork time); see [`skills/emil-design-eng-inspired/README.md`](./skills/emil-design-eng-inspired/README.md) for the inspired-by-not-verbatim posture. *Shipped.*
+2. **`skills/ui-ux-pro-max/`** — the preserved additive source bundle from `nextlevelbuilder/ui-ux-pro-max-skill`, including data, scripts, templates, references, and font assets. The runtime entrypoints live at `packages/core/src/skills/builtin/uipromax-*.md`. *Shipped.*
 
-3. **`skills/ui-ux-pro-max/`** — full port of `nextlevelbuilder/ui-ux-pro-max-skill`. 67 UI styles, 161 color palettes, 57 font pairings, 161 product reasoning rules, 99 UX guidelines, 25 chart types. MIT licensed. *Planned (Phase 2). See `.omc/HANDOFF.md` Step 8.*
+3. **`skills/emil-design-eng-inspired/`** — the authored source/provenance bundle for the Emil-inspired motion and design guidance. The runtime entrypoint lives at `packages/core/src/skills/builtin/emil-design-eng-inspired.md`. *Shipped.*
 
 ---
 

@@ -85,5 +85,5 @@ If you have to choose between *correct curve* and *correct duration*, choose the
 ## Cross-references
 
 - For component-level UI patterns (dropdown structure, modal anatomy, sheet behavior on mobile), see the `ui-ux-pro-max` bundle.
-- For the underlying design system (palettes, typography pairings, product-type reasoning rules), see the open-codesign built-in skills and the `ui-ux-pro-max` data files.
+- For the underlying design system (palettes, typography pairings, product-type reasoning rules), see the atv-design built-in skills and the `ui-ux-pro-max` data files.
 - For the upstream that inspired this skill, see https://github.com/emilkowalski/skill.

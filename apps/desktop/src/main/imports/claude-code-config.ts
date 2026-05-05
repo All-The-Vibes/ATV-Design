@@ -1,7 +1,7 @@
 import { access } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import type { ProviderEntry } from '@open-codesign/shared';
+import type { ProviderEntry } from '@atv-design/shared';
 import { safeReadImportFile } from './safe-read';
 
 export function claudeCodeSettingsPath(home: string = homedir()): string {

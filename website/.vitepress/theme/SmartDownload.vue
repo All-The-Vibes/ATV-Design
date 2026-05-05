@@ -20,52 +20,52 @@ import pkg from '../../../package.json';
  */
 
 const latestVersion = (pkg as { version: string }).version;
-const releasesBase = `https://github.com/OpenCoworkAI/open-codesign/releases/download/v${latestVersion}`;
+const releasesBase = `https://github.com/All-The-Vibes/ATV-Design/releases/download/v${latestVersion}`;
 
 type Asset = { label: string; file: string; size: string; url: string };
 
 const macArm: Asset = {
   label: 'macOS · Apple Silicon',
-  file: `open-codesign-${latestVersion}-arm64.dmg`,
+  file: `atv-design-${latestVersion}-arm64.dmg`,
   size: '135 MB',
-  url: `${releasesBase}/open-codesign-${latestVersion}-arm64.dmg`,
+  url: `${releasesBase}/atv-design-${latestVersion}-arm64.dmg`,
 };
 const macIntel: Asset = {
   label: 'macOS · Intel',
-  file: `open-codesign-${latestVersion}-x64.dmg`,
+  file: `atv-design-${latestVersion}-x64.dmg`,
   size: '140 MB',
-  url: `${releasesBase}/open-codesign-${latestVersion}-x64.dmg`,
+  url: `${releasesBase}/atv-design-${latestVersion}-x64.dmg`,
 };
 const winX64: Asset = {
   label: 'Windows · x64',
-  file: `open-codesign-${latestVersion}-x64-setup.exe`,
+  file: `atv-design-${latestVersion}-x64-setup.exe`,
   size: '~110 MB',
-  url: `${releasesBase}/open-codesign-${latestVersion}-x64-setup.exe`,
+  url: `${releasesBase}/atv-design-${latestVersion}-x64-setup.exe`,
 };
 const winArm: Asset = {
   label: 'Windows · ARM64',
-  file: `open-codesign-${latestVersion}-arm64-setup.exe`,
+  file: `atv-design-${latestVersion}-arm64-setup.exe`,
   size: '~100 MB',
-  url: `${releasesBase}/open-codesign-${latestVersion}-arm64-setup.exe`,
+  url: `${releasesBase}/atv-design-${latestVersion}-arm64-setup.exe`,
 };
 const linuxAppImage: Asset = {
   label: 'Linux · AppImage (x64)',
-  file: `open-codesign-${latestVersion}-x64.AppImage`,
+  file: `atv-design-${latestVersion}-x64.AppImage`,
   size: '~140 MB',
-  url: `${releasesBase}/open-codesign-${latestVersion}-x64.AppImage`,
+  url: `${releasesBase}/atv-design-${latestVersion}-x64.AppImage`,
 };
 const linuxSnap: Asset = {
   label: 'Linux · Snap (x64)',
-  file: `open-codesign-${latestVersion}-x64.snap`,
+  file: `atv-design-${latestVersion}-x64.snap`,
   size: '~140 MB',
-  url: `${releasesBase}/open-codesign-${latestVersion}-x64.snap`,
+  url: `${releasesBase}/atv-design-${latestVersion}-x64.snap`,
 };
 
 const allAssets: Asset[] = [macArm, macIntel, winX64, winArm, linuxAppImage, linuxSnap];
 const primary = ref<Asset | null>(null);
 const detectedLabel = ref<string>('');
 const isMac = ref(false);
-const xattrCmd = 'xattr -cr "/Applications/Open CoDesign.app"';
+const xattrCmd = 'xattr -cr "/Applications/atv-design.app"';
 const copied = ref(false);
 
 async function copyXattr() {
@@ -141,7 +141,7 @@ const secondaryAssets = () => {
           <strong>打不开 / "damaged, move to Trash"?</strong>
         </div>
         <ol class="macos-gatekeeper-steps">
-          <li>把 <b>Open CoDesign</b> 拖到 <b>/Applications</b></li>
+          <li>把 <b>ATV Design</b> 拖到 <b>/Applications</b></li>
           <li>Sequoia 15+ 会拦下首次启动。终端跑一次下面这行，然后双击就能开：</li>
         </ol>
         <button
@@ -154,8 +154,7 @@ const secondaryAssets = () => {
           <span class="macos-gatekeeper-copy">{{ copied ? '✓ 已复制' : '复制 / Copy' }}</span>
         </button>
         <p class="macos-gatekeeper-foot">
-          v0.1 未签名 / notarized——开源项目签名成本较高，Stage 2 路线图中。<br/>
-          0.1.2 及更早 build 路径是 <code>/Applications/open-codesign.app</code>。
+          本地打包出来的 macOS app bundle 路径是 <code>/Applications/atv-design.app</code>。
         </p>
       </div>
     </div>
@@ -170,7 +169,7 @@ const secondaryAssets = () => {
           </a>
         </li>
         <li class="releases-link">
-          <a href="https://github.com/OpenCoworkAI/open-codesign/releases">
+          <a href="https://github.com/All-The-Vibes/ATV-Design/releases">
             所有版本 / All releases on GitHub →
           </a>
         </li>
@@ -179,7 +178,7 @@ const secondaryAssets = () => {
 
     <div v-if="!isMac" class="other-install-hint">
       <strong>macOS 用户</strong>：下载 <code>.dmg</code> 后，Sequoia 15+ 装完需要跑一次
-      <code>xattr -cr "/Applications/Open CoDesign.app"</code> 才能双击打开。<br/>
+      <code>xattr -cr "/Applications/atv-design.app"</code> 才能双击打开。<br/>
       <strong>Windows</strong>：SmartScreen → 更多信息 → 仍要运行。
     </div>
   </div>

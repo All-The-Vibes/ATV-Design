@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, readdir, stat, unlink, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
 import { join } from 'node:path';
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CopilotProviderError } from './errors';
 import { CopilotTokenStore, type StoredCopilotAuth } from './token-store';

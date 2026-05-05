@@ -1,5 +1,5 @@
-import { buildSrcdoc } from '@open-codesign/runtime';
-import type { Design } from '@open-codesign/shared';
+import { buildSrcdoc } from '@atv-design/runtime';
+import type { Design } from '@atv-design/shared';
 import { Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 

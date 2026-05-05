@@ -1,4 +1,4 @@
-import type { ChatMessage, LoadedSkill } from '@open-codesign/shared';
+import type { ChatMessage, LoadedSkill } from '@atv-design/shared';
 
 // ---------------------------------------------------------------------------
 // Provider-agnostic skill injector — progressive disclosure (level 1+2)

@@ -1,4 +1,4 @@
-import { type Config, hydrateConfig } from '@open-codesign/shared';
+import { type Config, hydrateConfig } from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./electron-runtime', () => ({

@@ -22,15 +22,8 @@
  *     events directly via `onEvent`.
  */
 
-import {
-  Agent,
-  type AgentEvent,
-  type AgentMessage,
-  type AgentTool,
-} from '@mariozechner/pi-agent-core';
-import type { Message as PiAiMessage, Model as PiAiModel } from '@mariozechner/pi-ai';
-import { type ArtifactEvent, createArtifactParser } from '@open-codesign/artifacts';
-import type { RetryDecision, RetryReason } from '@open-codesign/providers';
+import { type ArtifactEvent, createArtifactParser } from '@atv-design/artifacts';
+import type { RetryDecision, RetryReason } from '@atv-design/providers';
 import {
   classifyError,
   claudeCodeIdentityHeaders,
@@ -38,7 +31,7 @@ import {
   looksLikeClaudeOAuthToken,
   shouldForceClaudeCodeIdentity,
   withBackoff,
-} from '@open-codesign/providers';
+} from '@atv-design/providers';
 import {
   type Artifact,
   type ChatMessage,
@@ -49,7 +42,14 @@ import {
   type StoredDesignSystem,
   type WireApi,
   canonicalBaseUrl,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
+import {
+  Agent,
+  type AgentEvent,
+  type AgentMessage,
+  type AgentTool,
+} from '@mariozechner/pi-agent-core';
+import type { Message as PiAiMessage, Model as PiAiModel } from '@mariozechner/pi-ai';
 import type { TSchema } from '@sinclair/typebox';
 import { buildTransformContext } from './context-prune.js';
 import { remapProviderError } from './errors.js';
@@ -331,7 +331,7 @@ async function collectSkills(
   const start = Date.now();
   try {
     const { loadBuiltinSkills } = await import('./skills/loader.js');
-    const { filterActive, formatSkillsForPrompt } = await import('@open-codesign/providers');
+    const { filterActive, formatSkillsForPrompt } = await import('@atv-design/providers');
     const skills = await loadBuiltinSkills();
     const active = filterActive(skills, providerId);
     const blobs = formatSkillsForPrompt(active);
@@ -873,13 +873,13 @@ export async function generateViaAgent(
       ? async () => {
           try {
             const key = await input.getApiKey?.();
-            return key && key.length > 0 ? key : input.apiKey || 'open-codesign-keyless';
+            return key && key.length > 0 ? key : input.apiKey || 'atv-design-keyless';
           } catch (err) {
             capturedGetApiKeyError = err;
             throw err;
           }
         }
-      : () => input.apiKey || 'open-codesign-keyless',
+      : () => input.apiKey || 'atv-design-keyless',
   });
 
   if (deps.onEvent) {
@@ -910,7 +910,7 @@ export async function generateViaAgent(
   // whether the failed attempt produced any such artefact and, if so, mark the
   // error as non-retryable.
   const isFirstTurn = input.history.length === 0;
-  const RETRY_BLOCKED = Symbol.for('open-codesign.retry.blocked');
+  const RETRY_BLOCKED = Symbol.for('atv-design.retry.blocked');
   type RetryBlockedError = Error & { [RETRY_BLOCKED]?: true };
   const sendOnce = async (): Promise<void> => {
     const preLen = agent.state.messages.length;

@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { type ProviderEntry, type WireApi, detectWireFromBaseUrl } from '@open-codesign/shared';
+import { type ProviderEntry, type WireApi, detectWireFromBaseUrl } from '@atv-design/shared';
 import { safeReadImportFile } from './safe-read';
 
 /**

@@ -1,4 +1,4 @@
-import { CodesignError } from '@open-codesign/shared';
+import { CodesignError } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import { remapProviderError, rewriteUpstreamMessage } from './errors';
 

@@ -1,5 +1,5 @@
-import { initI18n } from '@open-codesign/i18n';
-import type { OnboardingState, SelectedElement } from '@open-codesign/shared';
+import { initI18n } from '@atv-design/i18n';
+import type { OnboardingState, SelectedElement } from '@atv-design/shared';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   coerceUsageSnapshot,

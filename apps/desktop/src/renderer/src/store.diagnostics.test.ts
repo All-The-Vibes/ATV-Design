@@ -3,7 +3,7 @@ import type {
   ListEventsResult,
   ReportEventInput,
   ReportEventResult,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordAction, resetTimeline } from './lib/action-timeline';
 import { useCodesignStore } from './store';

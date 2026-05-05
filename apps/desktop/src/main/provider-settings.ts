@@ -12,7 +12,7 @@ import {
   type WireApi,
   isSupportedOnboardingProvider,
   resolveProviderCapabilities,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { maskSecret } from './keychain';
 
 export interface ProviderRow {

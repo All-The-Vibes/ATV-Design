@@ -26,7 +26,7 @@ vi.mock('./codex-oauth-ipc', () => ({
 }));
 
 import { createHash } from 'node:crypto';
-import { hydrateConfig } from '@open-codesign/shared';
+import { hydrateConfig } from '@atv-design/shared';
 import {
   CONNECTION_FETCH_TIMEOUT_MS,
   _clearModelsCache,

@@ -13,7 +13,7 @@ import {
   type ModelRef,
   type ProviderCapabilities,
   type WireApi,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import {
   claudeCodeIdentityHeaders,
   looksLikeClaudeOAuthToken,
@@ -239,7 +239,7 @@ export async function complete(
   if (!opts.apiKey && opts.allowKeyless !== true) {
     throw new CodesignError('Missing API key', ERROR_CODES.PROVIDER_AUTH_MISSING);
   }
-  const apiKey = opts.apiKey || 'open-codesign-keyless';
+  const apiKey = opts.apiKey || 'atv-design-keyless';
 
   // Gemini's OpenAI-compat endpoint rejects the `models/` prefix that its own
   // /models listing returns (issue #175). Normalize on the wire only; Settings

@@ -5,8 +5,8 @@
  * rather than paying the prompt-token cost every turn.
  */
 
+import type { StoredDesignSystem } from '@atv-design/shared';
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
-import type { StoredDesignSystem } from '@open-codesign/shared';
 import { Type } from '@sinclair/typebox';
 
 const ReadDesignSystemParams = Type.Object({});

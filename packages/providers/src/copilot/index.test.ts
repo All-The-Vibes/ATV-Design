@@ -10,7 +10,7 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CopilotProviderError } from '../copilot-sdk/errors.js';
 import type { CopilotProviderHandle } from '../copilot-sdk/index.js';
@@ -68,6 +68,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await fs.rm(tmpDir, { recursive: true, force: true });
+  Reflect.deleteProperty(process.env, 'ATV_DESIGN_COPILOT_BACKEND');
   Reflect.deleteProperty(process.env, 'OPEN_CODESIGN_COPILOT_BACKEND');
 });
 
@@ -109,7 +110,7 @@ describe('chooseCopilot', () => {
   it('throws COPILOT_BACKEND_UNAVAILABLE when env-var preference is an unknown backend', async () => {
     await tokenStore.save(validAuth);
     // garbage env value should be ignored (typed pref stays undefined) AND fall through to SDK
-    process.env['OPEN_CODESIGN_COPILOT_BACKEND'] = 'cli'; // legacy/future value
+    process.env['ATV_DESIGN_COPILOT_BACKEND'] = 'cli'; // future/garbage value
     const result = await chooseCopilot({ tokenStore });
     // 'cli' is no longer a valid backend kind → ignored → SDK chosen
     expect(result.backend).toBe('sdk');
@@ -117,9 +118,16 @@ describe('chooseCopilot', () => {
 
   it('opts.envBackend overrides process.env', async () => {
     await tokenStore.save(validAuth);
-    process.env['OPEN_CODESIGN_COPILOT_BACKEND'] = 'cli';
+    process.env['ATV_DESIGN_COPILOT_BACKEND'] = 'cli';
     // opts.envBackend = 'sdk' wins; ignored garbage env doesn't matter
     const result = await chooseCopilot({ envBackend: 'sdk', tokenStore });
+    expect(result.backend).toBe('sdk');
+  });
+
+  it('falls back to legacy OPEN_CODESIGN_COPILOT_BACKEND when needed', async () => {
+    await tokenStore.save(validAuth);
+    process.env['OPEN_CODESIGN_COPILOT_BACKEND'] = 'cli';
+    const result = await chooseCopilot({ tokenStore });
     expect(result.backend).toBe('sdk');
   });
 });

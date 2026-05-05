@@ -1,5 +1,5 @@
-import { useT } from '@open-codesign/i18n';
-import { buildSrcdoc } from '@open-codesign/runtime';
+import { useT } from '@atv-design/i18n';
+import { buildSrcdoc } from '@atv-design/runtime';
 import { FileCode2, Folder, FolderOpen } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDesignFiles } from '../hooks/useDesignFiles';

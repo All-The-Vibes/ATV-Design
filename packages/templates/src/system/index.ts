@@ -1,5 +1,5 @@
 /**
- * System prompts shipped with open-codesign.
+ * System prompts shipped with atv-design.
  *
  * Each prompt is exported both as a TypeScript constant (for runtime use) and
  * mirrored in a sibling `.md` file (for human review in PR diffs). The string

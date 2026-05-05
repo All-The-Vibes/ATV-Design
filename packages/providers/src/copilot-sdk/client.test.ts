@@ -2,7 +2,7 @@
  * client.test.ts — unit tests for createCopilotClient.
  */
 
-import { ERROR_CODES } from '@open-codesign/shared';
+import { ERROR_CODES } from '@atv-design/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCopilotClient } from './client';
 import { CopilotProviderError } from './errors';

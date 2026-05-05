@@ -33,13 +33,13 @@ import {
   CHATGPT_CODEX_PROVIDER_ID,
   type Config,
   hydrateConfig,
-} from '@open-codesign/shared';
+} from '@atv-design/shared';
 import { resolveActiveCredentials, resolveCredentialsForProvider } from './connection-ipc';
 
 function makeCfg(input: {
   activeProvider: string;
   activeModel: string;
-  providers?: Record<string, import('@open-codesign/shared').ProviderEntry>;
+  providers?: Record<string, import('@atv-design/shared').ProviderEntry>;
   secrets?: Record<string, { ciphertext: string }>;
 }): Config {
   return hydrateConfig({

@@ -6,8 +6,8 @@
  * already imports from onboarding-ipc for cached config / key lookup).
  */
 
-import { looksLikeClaudeOAuthToken, withClaudeCodeIdentity } from '@open-codesign/providers';
-import type { SupportedOnboardingProvider, WireApi } from '@open-codesign/shared';
+import { looksLikeClaudeOAuthToken, withClaudeCodeIdentity } from '@atv-design/providers';
+import type { SupportedOnboardingProvider, WireApi } from '@atv-design/shared';
 
 export function buildAuthHeadersForWire(
   wire: WireApi,
