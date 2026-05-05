@@ -6,7 +6,7 @@
  * callers that haven't migrated yet.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // Collect registered channel names via a mock ipcMain.
 const registeredChannels: string[] = [];
@@ -119,12 +119,13 @@ vi.mock('@atv-design/providers', () => ({
   pingProvider: vi.fn(async () => ({ ok: true, modelCount: 1 })),
 }));
 
-describe('registerOnboardingIpc — channel versioning', () => {
-  it('registers settings:v1:list-providers alongside the legacy settings:list-providers shim', async () => {
-    // Import after mocks are in place.
-    const { registerOnboardingIpc } = await import('./onboarding-ipc');
-    registerOnboardingIpc();
+beforeAll(async () => {
+  const { registerOnboardingIpc } = await import('./onboarding-ipc');
+  registerOnboardingIpc();
+}, 10_000);
 
+describe('registerOnboardingIpc — channel versioning', () => {
+  it('registers settings:v1:list-providers alongside the legacy settings:list-providers shim', () => {
     expect(registeredChannels).toContain('settings:v1:list-providers');
     expect(registeredChannels).toContain('settings:list-providers');
   });

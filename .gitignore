@@ -93,5 +93,12 @@ website/public/demos/_speedup/
 .omc/notepad.md
 .omc/project-memory.json
 
+# OMX runtime state (per-session, not source). Plans/specs/handoff stay tracked.
+.omx/state/
+.omx/logs/
+.omx/metrics.json
+.omx/notepad.md
+.omx/project-memory.json
+
 # Per-session memory buffer (not source)
 .remember/
