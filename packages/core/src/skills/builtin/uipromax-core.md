@@ -9,11 +9,13 @@ trigger:
 disable_model_invocation: false
 user_invocable: true
 ---
-_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/ui-ux-pro-max/SKILL.md. Supplemental data, references/, scripts/, templates/ not ported in M1 — see docs/known-issues.md._
+_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/ui-ux-pro-max/SKILL.md. In source checkouts, the preserved source bundle, support data, scripts, templates, references, and font assets live under `skills/ui-ux-pro-max/`. Packaged M1 apps currently ship this flattened builtin entrypoint only, so treat repo-local file paths below as source-build helpers rather than packaged-runtime contracts._
 
 # UI/UX Pro Max - Design Intelligence
 
 Comprehensive design guide for web and mobile applications. Contains 50+ styles, 161 color palettes, 57 font pairings, 161 product types with reasoning rules, 99 UX guidelines, and 25 chart types across 10 technology stacks. Searchable database with priority-based recommendations.
+
+Source-build note: the shell commands in this section assume a repo checkout with `skills/ui-ux-pro-max/` present. In packaged M1 builds, use the design-system guidance directly instead of assuming those repo-local helpers exist.
 
 ## When to Apply
 

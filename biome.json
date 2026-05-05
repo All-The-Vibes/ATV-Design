@@ -14,7 +14,8 @@
       "**/coverage/**",
       "**/.turbo/**",
       "**/vendor/**",
-      "packaging/**"
+      "packaging/**",
+      "skills/ui-ux-pro-max/**"
     ]
   },
   "formatter": {

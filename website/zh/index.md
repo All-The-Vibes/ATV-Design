@@ -1,26 +1,26 @@
 ---
 layout: home
-title: Open CoDesign
+title: ATV Design
 titleTemplate: 开源 AI 设计工具 — 自带密钥，本地优先，MIT
-description: Open CoDesign 是一款开源桌面 AI 设计工具，Claude Design 的自托管替代方案。自带 API Key（Anthropic、OpenAI、Gemini、DeepSeek、Ollama），一切本地运行。MIT 协议。
+description: ATV Design 是一款开源桌面 AI 设计工具，Claude Design 的自托管替代方案。自带 API Key（Anthropic、OpenAI、Gemini、DeepSeek、Ollama），一切本地运行。MIT 协议。
 
 hero:
-  name: Open CoDesign
+  name: ATV Design
   text: 用心设计。
   tagline: 开源桌面 AI 设计工具。v0.1.4 已发布；v0.2.0 正在准备 Agentic Design 大更新，会带来真实工作区和带权限的本地工具循环。
   image:
     src: /logo-hero.png
-    alt: Open CoDesign — 开源 AI 设计工具
+    alt: ATV Design — 开源 AI 设计工具
   actions:
     - theme: brand
-      text: 下载 macOS 版
-      link: https://github.com/OpenCoworkAI/open-codesign/releases
-    - theme: alt
-      text: 在 GitHub 上 Star
-      link: https://github.com/OpenCoworkAI/open-codesign
-    - theme: alt
       text: 快速开始（90 秒）
       link: /zh/quickstart
+    - theme: alt
+      text: 在 GitHub 上 Star
+      link: https://github.com/All-The-Vibes/ATV-Design
+    - theme: alt
+      text: 从源码构建
+      link: /zh/quickstart#从源码构建
 
 features:
   - icon: 🪶
@@ -28,7 +28,7 @@ features:
     details: Anthropic、OpenAI、Gemini、DeepSeek、OpenRouter、SiliconFlow、本地 Ollama，或任意 OpenAI 兼容中继——包括 keyless（IP 白名单）代理。设置里切 provider，我们不做代理，也不按 token 计费。
   - icon: ⚡
     title: 一键导入配置
-    details: 已经在用 Claude Code 或 Codex？Open CoDesign 直接读你的配置文件——provider、model、API Key，一次带过来。
+    details: 已经在用 Claude Code 或 Codex？ATV Design 直接读你的配置文件——provider、model、API Key，一次带过来。
   - icon: 🏡
     title: 你的电脑就是云
     details: 设计稿、提示词和设置都在本地磁盘。v0.1 用 SQLite 保存设计历史；v0.2 会迁到 JSONL session 加真实工作区文件。无需注册账号，默认无遥测。
@@ -64,8 +64,6 @@ features:
 <script setup>
 import { withBase } from 'vitepress'
 </script>
-
-<SmartDownload />
 
 <div class="codesign-section">
 
@@ -148,7 +146,7 @@ import { withBase } from 'vitepress'
 
 |                       | 开源           | 模型                 | 本地运行  | 价格                 |
 | --------------------- | :------------: | :------------------: | :-------: | :------------------: |
-| **Open CoDesign**     | **MIT**        | **任意（自带密钥）** | **✓**     | **仅 token 成本**    |
+| **ATV Design**     | **MIT**        | **任意（自带密钥）** | **✓**     | **仅 token 成本**    |
 | Claude Design         | ✗ 闭源         | 仅 Opus              | ✗         | 订阅                 |
 | v0 by Vercel          | ✗ 闭源         | 平台精选             | ✗         | 订阅                 |
 | Lovable               | ✗ 闭源         | 平台精选             | ✗         | 订阅                 |
@@ -170,18 +168,18 @@ import { withBase } from 'vitepress'
 <div class="codesign-community">
   <div class="community-card">
     <h3>用户交流群（微信）</h3>
-    <p class="community-hint">扫码加入中文讨论组。二维码每 7 天刷新，当前截至 <strong>5 月 4 日</strong> 有效。过期请到 <a href="https://github.com/OpenCoworkAI/open-codesign/issues">GitHub Issues</a> 留言提醒我们更新。</p>
+    <p class="community-hint">扫码加入中文讨论组。二维码会定期刷新；如果过期，请到 <a href="https://github.com/All-The-Vibes/ATV-Design/issues">GitHub Issues</a> 留言提醒我们更新。</p>
     <img
       :src="withBase('/community/wechat-group.jpg')"
-      alt="Open CoDesign 用户交流群微信二维码"
+      alt="ATV Design 用户交流群微信二维码"
       class="wechat-qr"
       width="240"
     />
   </div>
   <div class="community-card">
     <h3>GitHub 社区</h3>
-    <p class="community-hint">Bug 报告、功能需求、异步讨论都在 GitHub Issues。安全问题请走 <a href="https://github.com/OpenCoworkAI/open-codesign/blob/main/SECURITY.md">SECURITY.md</a> 私下联系。</p>
-    <p class="community-cta"><a href="https://github.com/OpenCoworkAI/open-codesign/issues" class="community-button">打开 Issues →</a></p>
+    <p class="community-hint">Bug 报告、功能需求、异步讨论都在 GitHub Issues。安全问题请走 <a href="https://github.com/All-The-Vibes/ATV-Design/blob/main/SECURITY.md">SECURITY.md</a> 私下联系。</p>
+    <p class="community-cta"><a href="https://github.com/All-The-Vibes/ATV-Design/issues" class="community-button">打开 Issues →</a></p>
   </div>
 </div>
 
@@ -191,7 +189,7 @@ import { withBase } from 'vitepress'
 
 ### 准备好不被任何厂商锁住了吗？
 
-<a href="/open-codesign/zh/quickstart" class="cta-primary">90 秒上手 →</a>
-<a href="https://github.com/OpenCoworkAI/open-codesign" class="cta-secondary">在 GitHub 查看</a>
+<a href="/ATV-Design/zh/quickstart" class="cta-primary">90 秒上手 →</a>
+<a href="https://github.com/All-The-Vibes/ATV-Design" class="cta-secondary">在 GitHub 查看</a>
 
 </div>

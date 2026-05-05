@@ -67,12 +67,25 @@ export interface ChooseCopilotResult {
 // ---------------------------------------------------------------------------
 
 const SDK_SIGN_IN_HINT = 'Sign in to GitHub Copilot via Settings → Copilot → Sign in';
+const COPILOT_BACKEND_ENV_KEYS = [
+  'ATV_DESIGN_COPILOT_BACKEND',
+  'OPEN_CODESIGN_COPILOT_BACKEND',
+] as const;
 
 const noopLogger: Required<NonNullable<ChooseCopilotOptions['logger']>> = {
   info: () => undefined,
   warn: () => undefined,
   error: () => undefined,
 };
+
+function resolveEnvBackend(override?: string): string | undefined {
+  if (override !== undefined) return override;
+  for (const envKey of COPILOT_BACKEND_ENV_KEYS) {
+    const env = process.env[envKey];
+    if (typeof env === 'string' && env.length > 0) return env;
+  }
+  return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // probeCopilotBackends — surface availability without selecting
@@ -104,7 +117,7 @@ export async function chooseCopilot(opts: ChooseCopilotOptions): Promise<ChooseC
 
   // 1. Resolve preference. Currently only 'sdk' is meaningful; unknown values
   //    are ignored (forward-compatible with future backends).
-  const envRaw = opts.envBackend ?? process.env['OPEN_CODESIGN_COPILOT_BACKEND'];
+  const envRaw = resolveEnvBackend(opts.envBackend);
   const envPreference: CopilotBackendKind | undefined = envRaw === 'sdk' ? envRaw : undefined;
   const preference: CopilotBackendKind | undefined = opts.backend ?? envPreference;
 

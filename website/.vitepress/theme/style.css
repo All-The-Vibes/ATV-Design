@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /**
- * open-codesign tokens — kept in sync with packages/ui/src/tokens.css.
+ * atv-design tokens — kept in sync with packages/ui/src/tokens.css.
  * If you change a value here, update tokens.css too.
  */
 :root {
@@ -71,7 +71,7 @@
   --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-/* Map open-codesign tokens onto VitePress variables. */
+/* Map atv-design tokens onto VitePress variables. */
 :root {
   --vp-c-bg: var(--color-background);
   --vp-c-bg-alt: var(--color-background-secondary);

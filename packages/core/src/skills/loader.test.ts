@@ -1,4 +1,4 @@
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -75,6 +75,17 @@ describe('loadSkillsFromDir()', () => {
     expect(ids).toContain('uipromax-ui-styling');
     expect(ids).toContain('uipromax-slides');
     expect(ids).toContain('uipromax-banner-design');
+  });
+
+  it('ships the preserved ui-ux-pro-max bundle alongside the flattened builtin entrypoints', async () => {
+    const repoRoot = fileURLToPath(new URL('../../../..', import.meta.url));
+    await expect(access(join(repoRoot, 'skills/ui-ux-pro-max/SKILL.md'))).resolves.toBeUndefined();
+    await expect(
+      access(join(repoRoot, 'skills/ui-ux-pro-max/scripts/search.py')),
+    ).resolves.toBeUndefined();
+    await expect(
+      access(join(repoRoot, 'skills/ui-ux-pro-max/design-system/data/slide-layouts.csv')),
+    ).resolves.toBeUndefined();
   });
 
   it('returns empty array when directory does not exist', async () => {

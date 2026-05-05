@@ -6,7 +6,7 @@ import { computed } from 'vue';
  * Thin wrapper around <video> that resolves a public-folder URL through
  * VitePress's `base` config at runtime. Using `<source src="/demos/foo.mp4">`
  * directly in markdown triggers Rollup to resolve it as a module import,
- * which fails with the site's `/open-codesign/` base prefix.
+ * which fails with the site's `/ATV-Design/` base prefix.
  */
 const props = defineProps<{
   /** Path under `website/public`, e.g. `/demos/app-showcase.mp4`. */

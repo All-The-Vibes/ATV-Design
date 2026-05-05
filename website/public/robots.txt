@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://opencoworkai.github.io/open-codesign/sitemap.xml
+Sitemap: https://all-the-vibes.github.io/ATV-Design/sitemap.xml

@@ -9,7 +9,7 @@
 
 **Section affected:** "Implementation Constraints" — redirect URI design.
 
-The custom URL scheme redirect URI (`atvdesign://oauth-callback`) in the original decision (Section "Implementation Constraints") is superseded by loopback HTTP. The core BYOK posture (public OAuth client ID + PKCE, no embedded secrets, optional self-registration) remains unchanged.
+The original custom URL-scheme redirect design in Section "Implementation Constraints" is superseded by loopback HTTP. The core BYOK posture (public OAuth client ID + PKCE, no embedded secrets, optional self-registration) remains unchanged.
 
 **Rationale:** Pre-mortem Scenario 2 in the ralplan identified a critical cross-platform OAuth UX hazard — Windows packaged builds (Squirrel/NSIS installer) break custom URL-scheme registration, causing OAuth to fail in production while working in dev. Loopback HTTP (`http://127.0.0.1:<random-port>/oauth-callback`) sidesteps this entirely: no OS-level registration needed, no installer integration points, works uniformly across macOS/Windows/Linux. The Codex provider (`packages/providers/src/codex/oauth-server.ts`) in this same fork already uses this pattern as battle-tested precedent.
 
@@ -31,20 +31,20 @@ atv-design ships with a **fork-published public GitHub OAuth client ID** that us
 
 ## Implementation Constraints
 
-- **Redirect URI:** `atvdesign://oauth-callback`. This is registered both in the GitHub OAuth app config (set once when the maintainer registers the public client) and in the Electron `app.setAsDefaultProtocolClient('atvdesign')` call (or the equivalent via [`electron-deeplink`](https://www.npmjs.com/package/electron-deeplink)).
+- **Redirect URI:** `http://127.0.0.1:<random-port>/oauth-callback`. The provider starts a one-shot loopback server on `127.0.0.1`, asks the OS for a free ephemeral port, and passes the resulting redirect URI to GitHub for that sign-in attempt.
 - **PKCE parameters:**
   - `code_verifier` — 43–128 random URL-safe characters generated per OAuth session, stored only in memory until token exchange completes.
   - `code_challenge` — `BASE64URL(SHA256(code_verifier))`, sent in the authorization URL.
   - `code_challenge_method` — `S256` always; the `plain` method is forbidden.
-- **Token storage:** the resulting access token (and any refresh token) is persisted to `~/.config/atv-design/config.toml` with file mode `0600`. Tokens are NEVER logged.
-- **Rotation/refresh:** if GitHub issues refresh tokens for the Copilot SDK OAuth flow, atv-design uses them. If only short-lived access tokens are issued, the app re-prompts for sign-in on expiry.
+- **Token storage:** the GitHub OAuth access token and Copilot session-token metadata are persisted to `~/.config/atv-design/copilot-auth.json` with file mode `0600`. Tokens are NEVER logged.
+- **Rotation/refresh:** GitHub OAuth access still requires a fresh sign-in on expiry. The short-lived Copilot session token is refreshed through the documented GitHub exchange before chat requests when needed.
 
 ## Alternative considered: self-registration
 
 A privacy-and-sovereignty-conscious user can opt out of the fork-published client ID and register their own GitHub OAuth app instead. `docs/oauth-setup.md` documents both paths:
 
 - **Default (recommended for most users):** use the fork-published public client ID.
-- **Self-registration (for users who don't want their OAuth requests routed through the maintainer-controlled app):** create their own OAuth app at `https://github.com/settings/developers`, set the redirect URI to `atvdesign://oauth-callback`, and paste their client ID into `~/.config/atv-design/config.toml` under the `[github_oauth]` section before first launch.
+- **Self-registration (for users who don't want their OAuth requests routed through the maintainer-controlled app):** create their own OAuth app at `https://github.com/settings/developers`, register a loopback callback URL for `/oauth-callback`, and launch ATV Design with `ATV_DESIGN_GITHUB_CLIENT_ID=<client-id>` before first launch. Legacy builds also honor `OPEN_CODESIGN_GITHUB_CLIENT_ID`.
 
 Both paths use the same PKCE-protected authorization-code flow. Neither requires a client secret.
 
@@ -52,7 +52,7 @@ Both paths use the same PKCE-protected authorization-code flow. Neither requires
 
 **What changed:**
 
-Redirect URI is now `http://127.0.0.1:<random-port>/oauth-callback` instead of `atvdesign://oauth-callback`. The flow starts a one-shot HTTP listener bound to `localhost` with a randomly assigned port (via `:0`), passes that dynamically generated URI to the OAuth authorization endpoint, and tears down the server after the callback is received or a 2-minute timeout expires.
+Redirect URI is now `http://127.0.0.1:<random-port>/oauth-callback`. The flow starts a one-shot HTTP listener bound to `localhost` with a randomly assigned port (via `:0`), passes that dynamically generated URI to the OAuth authorization endpoint, and tears down the server after the callback is received or a 2-minute timeout expires.
 
 **Why:**
 
@@ -73,7 +73,7 @@ Loopback requires a lightweight one-shot HTTP listener; minor risk of port colli
 - Still PKCE-protected (code-verifier, code-challenge, `S256`).
 - Still no embedded `client_secret`.
 - Still BYOK end-to-end.
-- Self-registration alternative unchanged (users supply their own client ID and set redirect URI to `http://127.0.0.1:<port>/oauth-callback`).
+- Self-registration alternative unchanged (users supply their own client ID and a loopback callback URL, then launch ATV Design with a client-ID override).
 
 **Implementation location:**
 

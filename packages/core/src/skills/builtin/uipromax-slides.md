@@ -9,7 +9,7 @@ trigger:
 disable_model_invocation: false
 user_invocable: true
 ---
-_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/slides/SKILL.md. Supplemental data, references/, scripts/, templates/ not ported in M1 — see docs/known-issues.md._
+_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/slides/SKILL.md. In source checkouts, the preserved source bundle, support data, scripts, templates, references, and font assets live under `skills/ui-ux-pro-max/`. Packaged M1 apps currently ship this flattened builtin entrypoint only, so treat repo-local file paths below as source-build helpers rather than packaged-runtime contracts._
 
 # Slides
 

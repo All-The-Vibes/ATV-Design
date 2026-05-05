@@ -1,32 +1,32 @@
 ---
-title: Open CoDesign vs Lovable — Open-Source Lovable Alternative
+title: ATV Design vs Lovable — Open-Source Lovable Alternative
 description: Open-source desktop alternative to Lovable. BYOK with any model (Claude, GPT, Gemini, DeepSeek, Ollama), local-first, MIT. Comparison and when to pick each.
 head:
   - - meta
     - property: og:title
-      content: Open CoDesign vs Lovable — Open-Source Lovable Alternative
+      content: ATV Design vs Lovable — Open-Source Lovable Alternative
   - - meta
     - property: og:description
       content: Self-hosted desktop alternative to Lovable. BYOK, multi-model, on-device, MIT licensed.
 ---
 
-# Open CoDesign vs Lovable — Open-Source Lovable Alternative
+# ATV Design vs Lovable — Open-Source Lovable Alternative
 
-Looking for an **open-source alternative to Lovable**? Open CoDesign is an MIT-licensed desktop app that takes prompts to polished interfaces — locally, with your own API key, against any model provider.
+Looking for an **open-source alternative to Lovable**? ATV Design is an MIT-licensed desktop app that takes prompts to polished interfaces — locally, with your own API key, against any model provider.
 
-[Download Open CoDesign →](https://github.com/OpenCoworkAI/open-codesign/releases) · [90-second Quickstart](./quickstart)
+[Quickstart (90 s)](./quickstart) · [Build from source](./quickstart#build-from-source)
 
 ## At a glance
 
-Lovable is a hosted web app that generates full-stack web apps from prompts and deploys them in-platform. Open CoDesign is a local desktop app focused on the design + prototype layer: prompt to HTML/React/PPTX/PDF, with full model freedom and on-device storage.
+Lovable is a hosted web app that generates full-stack web apps from prompts and deploys them in-platform. ATV Design is a local desktop app focused on the design + prototype layer: prompt to HTML/React/PPTX/PDF, with full model freedom and on-device storage.
 
 Pick **Lovable** if you want end-to-end full-stack app generation with a hosted deploy target and database wired in.
 
-Pick **Open CoDesign** if you want design-grade frontend prototypes, any model via BYOK, on-device privacy, local version history, and exports beyond web (PDF, PPTX, ZIP).
+Pick **ATV Design** if you want design-grade frontend prototypes, any model via BYOK, on-device privacy, local version history, and exports beyond web (PDF, PPTX, ZIP).
 
 ## Feature matrix
 
-|                         | Open CoDesign (open-source) | Lovable |
+|                         | ATV Design (open-source) | Lovable |
 | ----------------------- | :-------------------------: | :-----: |
 | License                 | **MIT**                     | Closed  |
 | Runs on                 | **Your laptop (macOS / Windows / Linux)** | Cloud (browser) |
@@ -42,12 +42,12 @@ Pick **Open CoDesign** if you want design-grade frontend prototypes, any model v
 | Design skills           | **12 built-in modules**     | —       |
 | Self-hosted             | **Yes (it's an app, not a service)** | No |
 
-## Why someone would switch from Lovable to Open CoDesign
+## Why someone would switch from Lovable to ATV Design
 
 - **Model choice.** Use Claude Opus for visual polish, cheap models (DeepSeek/Kimi) for iteration, local Ollama for privacy work — switch per generation.
 - **BYOK cost control.** Pay only the token cost to your provider. No platform margin.
 - **On-device privacy.** Prompts, designs, and codebase scans stay on your laptop.
-- **Design-grade prototypes, not app scaffolding.** If your deliverable is a landing page, pitch deck, pricing page, dashboard mockup — not a full-stack app — Open CoDesign is purpose-built for that.
+- **Design-grade prototypes, not app scaffolding.** If your deliverable is a landing page, pitch deck, pricing page, dashboard mockup — not a full-stack app — ATV Design is purpose-built for that.
 - **Export flexibility.** PDF one-pagers, PPTX decks, ZIP asset bundles, Markdown with frontmatter — formats Lovable doesn't ship.
 
 ## Why someone would stay on Lovable
@@ -58,18 +58,18 @@ Pick **Open CoDesign** if you want design-grade frontend prototypes, any model v
 
 Different product shapes. Both are fine choices.
 
-## Is Open CoDesign a clone of Lovable?
+## Is ATV Design a clone of Lovable?
 
-No. Open CoDesign is an independent MIT-licensed desktop project. It shares no code with Lovable and is not affiliated with them.
+No. ATV Design is a fork of Open CoDesign, the MIT-licensed desktop design tool originally published by OpenCoworkAI. It shares no code with Lovable and is not affiliated with them.
 
-## Install Open CoDesign
+## Install ATV Design
 
-- [Pre-built installer](https://github.com/OpenCoworkAI/open-codesign/releases)
 - [90-second Quickstart](./quickstart)
 - [Build from source](./quickstart#build-from-source)
+- [GitHub repository](https://github.com/All-The-Vibes/ATV-Design)
 
 ## FAQ
 
-- **Does Open CoDesign generate full-stack apps like Lovable?** No — it focuses on design-grade frontend artifacts (HTML, React components, slide decks, PDFs). If you need backend + DB + deploy, Lovable is a better fit.
+- **Does ATV Design generate full-stack apps like Lovable?** No — it focuses on design-grade frontend artifacts (HTML, React components, slide decks, PDFs). If you need backend + DB + deploy, Lovable is a better fit.
 - **Can I use Ollama?** Yes.
 - **License?** MIT.

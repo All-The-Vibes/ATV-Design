@@ -71,6 +71,8 @@ docs/*
 !docs/adr/**
 # Skill-loader rationale is referenced by code reviews
 !docs/skill-loader.md
+!docs/oauth-setup.md
+!docs/known-issues.md
 !docs/superpowers/
 !docs/superpowers/**
 

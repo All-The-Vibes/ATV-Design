@@ -1,32 +1,32 @@
 ---
-title: Open CoDesign vs v0 — Open-Source v0 Alternative
+title: ATV Design vs v0 — Open-Source v0 Alternative
 description: Open-source, self-hosted alternative to v0 by Vercel. BYOK with any model (Claude, GPT, Gemini, DeepSeek, Ollama), local-first, MIT-licensed. Feature comparison and when to pick each.
 head:
   - - meta
     - property: og:title
-      content: Open CoDesign vs v0 — Open-Source v0 Alternative
+      content: ATV Design vs v0 — Open-Source v0 Alternative
   - - meta
     - property: og:description
       content: Self-hosted desktop alternative to v0 by Vercel. BYOK, multi-model, local-first. MIT licensed.
 ---
 
-# Open CoDesign vs v0 — Open-Source v0 Alternative
+# ATV Design vs v0 — Open-Source v0 Alternative
 
-Looking for an **open-source alternative to v0 by Vercel**? Open CoDesign is an MIT-licensed desktop app that turns prompts into React components and UI prototypes — but runs entirely on your laptop, with your own API key, against any model you like.
+Looking for an **open-source alternative to v0 by Vercel**? ATV Design is an MIT-licensed desktop app that turns prompts into React components and UI prototypes — but runs entirely on your laptop, with your own API key, against any model you like.
 
-[Download Open CoDesign →](https://github.com/OpenCoworkAI/open-codesign/releases) · [90-second Quickstart](./quickstart)
+[Quickstart (90 s)](./quickstart) · [Build from source](./quickstart#build-from-source)
 
 ## At a glance
 
-v0 by Vercel is a hosted web app that generates React + Tailwind components and deploys them to Vercel infrastructure. Open CoDesign is a desktop app that generates the same class of artifacts locally, with whichever model provider you already pay for.
+v0 by Vercel is a hosted web app that generates React + Tailwind components and deploys them to Vercel infrastructure. ATV Design is a desktop app that generates the same class of artifacts locally, with whichever model provider you already pay for.
 
 Pick **v0** if you want zero setup, tight Vercel + Next.js deploy integration, and are happy on a per-seat subscription.
 
-Pick **Open CoDesign** if you want any model (not just OpenAI/Vercel's), BYOK cost control, on-device privacy, local version history, or exports to PPTX / PDF / ZIP in addition to HTML/React.
+Pick **ATV Design** if you want any model (not just OpenAI/Vercel's), BYOK cost control, on-device privacy, local version history, or exports to PPTX / PDF / ZIP in addition to HTML/React.
 
 ## Feature matrix
 
-|                         | Open CoDesign (open-source) | v0 by Vercel |
+|                         | ATV Design (open-source) | v0 by Vercel |
 | ----------------------- | :-------------------------: | :-----------: |
 | License                 | **MIT**                     | Closed        |
 | Runs on                 | **Your laptop (macOS / Windows / Linux)** | Cloud (browser) |
@@ -43,12 +43,12 @@ Pick **Open CoDesign** if you want any model (not just OpenAI/Vercel's), BYOK co
 | Tailwind support        | **Yes (v4)**                | Yes           |
 | Ecosystem lock-in       | **None**                    | Tight Vercel / Next.js coupling |
 
-## Why someone would switch from v0 to Open CoDesign
+## Why someone would switch from v0 to ATV Design
 
-- **Model freedom.** v0 runs on whatever OpenAI model Vercel chose. Open CoDesign lets you pick per-task: Claude Opus for polish, DeepSeek/Kimi for cheap iteration, local Ollama for privacy-sensitive work.
+- **Model freedom.** v0 runs on whatever OpenAI model Vercel chose. ATV Design lets you pick per-task: Claude Opus for polish, DeepSeek/Kimi for cheap iteration, local Ollama for privacy-sensitive work.
 - **No per-seat pricing.** Pay only the token cost to whichever provider you bring.
 - **Data stays on-device.** Your prompts and designs never leave your laptop unless you send them to a model provider yourself.
-- **Broader export surface.** v0 outputs React + HTML. Open CoDesign adds PDF, PPTX, ZIP bundles, and Markdown for when your deliverable isn't a component.
+- **Broader export surface.** v0 outputs React + HTML. ATV Design adds PDF, PPTX, ZIP bundles, and Markdown for when your deliverable isn't a component.
 - **Not locked to Next.js/Vercel.** Output is standard HTML/React you can drop into any stack.
 
 ## Why someone would stay on v0
@@ -59,19 +59,19 @@ Pick **Open CoDesign** if you want any model (not just OpenAI/Vercel's), BYOK co
 
 Both are reasonable. Use what fits.
 
-## Is Open CoDesign a clone of v0?
+## Is ATV Design a clone of v0?
 
-No. Open CoDesign is an independent MIT-licensed desktop project by OpenCoworkAI. It shares no code with v0 by Vercel. "v0" is a trademark of Vercel Inc.; Open CoDesign is not affiliated with Vercel.
+No. ATV Design is a fork of Open CoDesign, the MIT-licensed desktop design tool originally published by OpenCoworkAI. It shares no code with v0 by Vercel. "v0" is a trademark of Vercel Inc.; ATV Design is not affiliated with Vercel.
 
-## Install Open CoDesign
+## Install ATV Design
 
-- [Pre-built installer](https://github.com/OpenCoworkAI/open-codesign/releases) — macOS DMG, Windows EXE, Linux AppImage
-- [90-second Quickstart](./quickstart) — from prompt to export
+- [90-second Quickstart](./quickstart) — current M1 path
 - [Build from source](./quickstart#build-from-source) — Node 22 LTS + pnpm 9.15+
+- [GitHub repository](https://github.com/All-The-Vibes/ATV-Design)
 
 ## FAQ
 
-- **Is Open CoDesign really an open-source v0 alternative?** Yes — both take natural-language prompts and produce React/HTML. Open CoDesign goes further with multi-model BYOK, on-device history, and PDF/PPTX/ZIP exports.
+- **Is ATV Design really an open-source v0 alternative?** Yes — both take natural-language prompts and produce React/HTML. ATV Design goes further with multi-model BYOK, on-device history, and PDF/PPTX/ZIP exports.
 - **Can I deploy output to Vercel?** Yes. The React/HTML output is framework-agnostic — deploy anywhere.
 - **Does it work with local Ollama?** Yes. Point it at any OpenAI-compatible endpoint.
 - **License?** MIT. Fork it, ship it, sell it.

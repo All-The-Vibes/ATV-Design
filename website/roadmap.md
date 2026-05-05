@@ -36,7 +36,7 @@ Reliability and provider-access release.
 Expected in about one week. v0.2 changes the core loop from one-shot prompt-to-artifact generation into a local design agent with real files.
 
 - Every design is a pi session with JSONL history and a workspace folder
-- The agent uses pi built-ins for read, write, edit, bash, grep, find, and ls, gated by Open CoDesign's permission UI
+- The agent uses pi built-ins for read, write, edit, bash, grep, find, and ls, gated by ATV Design's permission UI
 - Design-specific tools cover `ask`, `scaffold`, `skill`, `preview`, `gen_image`, `tweaks`, `todos`, and `done`
 - `DESIGN.md` becomes a shared design-system artifact that users and the agent can both edit
 - v0.1 SQLite designs migrate into workspace files and session history
@@ -52,7 +52,7 @@ The first follow-up track is renderer depth around the new agent loop.
 
 ## v0.3 — Codebase → design system
 
-Point at a local repo; Open CoDesign extracts Tailwind tokens, CSS variables, and W3C design tokens so later generations follow the same system. The extractors (`tailwindExtractor`, `cssVarExtractor`, `dtcgImporter`) are already implemented library-side with test coverage; v0.3 wires them deeper into the desktop UI.
+Point at a local repo; ATV Design extracts Tailwind tokens, CSS variables, and W3C design tokens so later generations follow the same system. The extractors (`tailwindExtractor`, `cssVarExtractor`, `dtcgImporter`) are already implemented library-side with test coverage; v0.3 wires them deeper into the desktop UI.
 
 ## v0.4 — Web capture + handoff
 

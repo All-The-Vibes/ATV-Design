@@ -2,7 +2,7 @@
 
 **Probed:** 2026-04-30
 **Source:** `packages/core/src/skills/loader.ts` and `packages/shared/src/skills.ts` from upstream `OpenCoworkAI/open-codesign@main`
-**Status:** **PASSED** — A9 acceptance criterion met. The working assumption that v0.1's loader is Anthropic-spec compatible is **confirmed empirically**. Phase 2 (skill bundle ports) can proceed without an adapter.
+**Status:** **PASSED** — A9 acceptance criterion met. The working assumption that v0.1's loader is Anthropic-spec compatible is **confirmed empirically**, and the current repo ships the additive `ui-ux-pro-max` bundle through flattened builtin entrypoints plus a preserved source bundle.
 
 This document is the empirical answer to the consensus plan's Phase 1a critical-unknown probe. The runbook that produced it is at `docs/skill-loader-probe-plan.md`.
 
@@ -22,10 +22,10 @@ Discovery happens at three tiers, in priority order **project > user > builtin**
 
 For atv-design, this means:
 
-- **ui-ux-pro-max bundle (Phase 2):** copy upstream `nextlevelbuilder/ui-ux-pro-max-skill` into `packages/core/src/skills/builtin/ui-ux-pro-max/` is **wrong** — the loader does not recurse, so files inside that subdirectory would be invisible. Correct landing path is to **flatten the bundle**: each ported `.md` file lives directly under `packages/core/src/skills/builtin/` with a name-spaced filename (e.g., `ui-ux-pro-max-palettes.md`, `ui-ux-pro-max-styles.md`). Alternative: ship them as a `user`-tier bundle the user copies into their config directory.
-- **emil-design-eng-inspired (Phase 3):** the same flattening rule. Land it at `packages/core/src/skills/builtin/emil-design-eng-inspired.md`. Our currently-authored skill at `skills/emil-design-eng-inspired/SKILL.md` needs to move (and the file rename: `SKILL.md` becomes `emil-design-eng-inspired.md` since the `id` is the basename).
+- **ui-ux-pro-max bundle:** the loader still does not recurse, so the preserved nested source bundle under `skills/ui-ux-pro-max/` is intentionally **not** loader-facing. The shipped runtime surface is the flattened `packages/core/src/skills/builtin/uipromax-*.md` entrypoint set.
+- **emil-design-eng-inspired:** the same flattening rule applies. The shipped runtime entrypoint is `packages/core/src/skills/builtin/emil-design-eng-inspired.md`, while `skills/emil-design-eng-inspired/` remains the source/provenance bundle.
 
-This is a **plan amendment**: the consensus plan assumed nested SKILL.md files in `skills/<bundle>/SKILL.md` would be discovered. They will not be. The flattening is mechanical.
+This remains the key loader constraint: nested SKILL bundles can be preserved in-repo for provenance and local lookup, but the runtime loader only discovers the flattened `*.md` entrypoints.
 
 ## Frontmatter schema (Zod)
 
@@ -100,38 +100,29 @@ This confirms Spec assumption AS1 — the provider abstraction exists and is ext
 
 **Pattern for the Copilot SDK provider:** copy `packages/providers/src/codex/` to `packages/providers/src/copilot-sdk/`, replace token-exchange URLs and shape, add PKCE helpers per `docs/adr/0001-byok-oauth-posture.md`.
 
-**Plan amendment — OAuth flow style:** The Codex provider uses a **local loopback HTTP server** (`oauth-server.ts`), not a custom URL scheme. This is a meaningful deviation from the consensus plan's design (which assumed `atvdesign://oauth-callback`). The loopback pattern is more portable across OSes (no `setAsDefaultProtocolClient`, no Windows registry write, no Linux `.desktop` MimeType — just a temporary `http://localhost:RANDOM_PORT/callback`). Recommendation: **adopt the loopback pattern for the Copilot SDK provider too**. It eliminates Pre-mortem Scenario 2 entirely (no packaging-time URL-scheme registration risk). Update ADR 0001 and `docs/oauth-setup.md` accordingly.
+**Plan amendment — OAuth flow style:** The Codex provider uses a **local loopback HTTP server** (`oauth-server.ts`), not a custom URL scheme. That pattern is now the live Copilot SDK implementation too: the callback is `http://127.0.0.1:<random-port>/oauth-callback`, which avoids OS-level protocol-handler registration and keeps the flow consistent across macOS, Windows, and Linux.
 
 ## Decision
 
 - **Drop-in compatible** for the Anthropic-spec content we already authored or plan to port. ✅
 - **Adapter not needed.** ✅
 - **Loader patch not needed.** ✅
-- **Filename and path adjustment needed:** flatten `skills/<bundle>/SKILL.md` to `packages/core/src/skills/builtin/<bundle>-name.md`. (Or ship as user-tier bundle.) Mechanical change.
-- **OAuth pattern revision:** loopback HTTP server, not custom URL scheme. ADR 0001 follow-up.
+- **Filename and path adjustment needed:** flatten `skills/<bundle>/SKILL.md` to `packages/core/src/skills/builtin/<bundle>-name.md`. This is now the shipped pattern for `uipromax-*` and `emil-design-eng-inspired`.
+- **OAuth pattern revision:** loopback HTTP server, not custom URL scheme. This is now the live implementation and the docs should describe it as such.
 
 ## Verification (the gate test that closes A9)
 
-The plan calls for landing one trivial probe SKILL.md, starting the app, and confirming runtime pickup. Because Phase 1b OAuth round-trip is still pending (and `pnpm install` is yet to run), the runtime gate cannot fire today. **Planned verification:**
+The current gate is the unit test suite in `packages/core/src/skills/loader.test.ts`. It now verifies:
+
+- builtin discovery count and IDs
+- precedence across builtin, user, and project tiers
+- the preserved `skills/ui-ux-pro-max/` bundle ships alongside the flattened builtin entrypoints
+
+Run:
 
 ```bash
-mkdir -p packages/core/src/skills/builtin
-cat > packages/core/src/skills/builtin/loader-probe-test.md << 'EOF'
----
-name: loader-probe-test
-description: Trivial skill used to verify atv-design Phase 1a loader probe. Triggered by the literal user prompt "PROBE_LOADER_TEST_TOKEN_42".
----
-
-# Loader Probe Test
-
-If you can read this skill at runtime, the upstream loader is Anthropic-spec compatible and Phase 2 ports succeed.
-EOF
-
-pnpm install
-pnpm --filter @open-codesign/core test -- skills/loader.test
+pnpm --filter @atv-design/core test
 ```
-
-The unit test at `packages/core/src/skills/loader.test.ts` already exercises the loader against fixtures; if it passes after we drop the probe file in, A9 is closed. Convert the runtime gate (start the app) to a follow-up after Phase 1b.
 
 ## Cross-references
 

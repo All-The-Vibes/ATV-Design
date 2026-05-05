@@ -1,32 +1,32 @@
 ---
-title: Open CoDesign vs Bolt.new — Open-Source Bolt Alternative
+title: ATV Design vs Bolt.new — Open-Source Bolt Alternative
 description: Open-source desktop alternative to Bolt.new. BYOK with any model (Claude, GPT, Gemini, DeepSeek, Ollama), local-first, MIT. Comparison and when to pick each.
 head:
   - - meta
     - property: og:title
-      content: Open CoDesign vs Bolt.new — Open-Source Bolt Alternative
+      content: ATV Design vs Bolt.new — Open-Source Bolt Alternative
   - - meta
     - property: og:description
       content: Self-hosted desktop alternative to Bolt.new. BYOK, multi-model, on-device, MIT licensed.
 ---
 
-# Open CoDesign vs Bolt.new — Open-Source Bolt Alternative
+# ATV Design vs Bolt.new — Open-Source Bolt Alternative
 
-Looking for an **open-source alternative to Bolt.new**? Open CoDesign is an MIT-licensed desktop app that takes prompts to interactive prototypes — running entirely on your laptop, with your own keys, against any model provider.
+Looking for an **open-source alternative to Bolt.new**? ATV Design is an MIT-licensed desktop app that takes prompts to interactive prototypes — running entirely on your laptop, with your own keys, against any model provider.
 
-[Download Open CoDesign →](https://github.com/OpenCoworkAI/open-codesign/releases) · [90-second Quickstart](./quickstart)
+[Quickstart (90 s)](./quickstart) · [Build from source](./quickstart#build-from-source)
 
 ## At a glance
 
-Bolt.new is a hosted in-browser full-stack IDE that scaffolds and runs web apps using WebContainers. Open CoDesign is a desktop app focused on design and prototype artifacts, with full BYOK model freedom and on-device storage.
+Bolt.new is a hosted in-browser full-stack IDE that scaffolds and runs web apps using WebContainers. ATV Design is a desktop app focused on design and prototype artifacts, with full BYOK model freedom and on-device storage.
 
 Pick **Bolt.new** if you want a browser-based full-stack IDE with hot-reload execution and hosted deploy.
 
-Pick **Open CoDesign** if you want a native desktop tool for design-grade prototypes, any model via BYOK, on-device privacy, and exports beyond web (PDF, PPTX, ZIP).
+Pick **ATV Design** if you want a native desktop tool for design-grade prototypes, any model via BYOK, on-device privacy, and exports beyond web (PDF, PPTX, ZIP).
 
 ## Feature matrix
 
-|                         | Open CoDesign (open-source) | Bolt.new (StackBlitz) |
+|                         | ATV Design (open-source) | Bolt.new (StackBlitz) |
 | ----------------------- | :-------------------------: | :-------------------: |
 | License                 | **MIT**                     | Closed (core hosted product) |
 | Runs on                 | **Your laptop (macOS / Windows / Linux)** | Cloud (browser + WebContainers) |
@@ -42,7 +42,7 @@ Pick **Open CoDesign** if you want a native desktop tool for design-grade protot
 | Demo prompts            | **15 ready-to-edit**        | Templates |
 | Ecosystem               | Framework-agnostic output   | Node.js-in-browser centric |
 
-## Why someone would switch from Bolt.new to Open CoDesign
+## Why someone would switch from Bolt.new to ATV Design
 
 - **Model freedom.** Use any provider per generation. Polish on Claude Opus, iterate cheaply on DeepSeek/Kimi, go private with Ollama.
 - **No subscription, no token metering.** BYOK — pay your provider directly at their rates.
@@ -58,18 +58,18 @@ Pick **Open CoDesign** if you want a native desktop tool for design-grade protot
 
 Different product shapes. Both are fine picks.
 
-## Is Open CoDesign a clone of Bolt.new?
+## Is ATV Design a clone of Bolt.new?
 
-No. Open CoDesign is an independent MIT-licensed desktop project by OpenCoworkAI. It shares no code with Bolt.new and is not affiliated with StackBlitz.
+No. ATV Design is a fork of Open CoDesign, the MIT-licensed desktop design tool originally published by OpenCoworkAI. It shares no code with Bolt.new and is not affiliated with StackBlitz.
 
-## Install Open CoDesign
+## Install ATV Design
 
-- [Pre-built installer](https://github.com/OpenCoworkAI/open-codesign/releases)
 - [90-second Quickstart](./quickstart)
 - [Build from source](./quickstart#build-from-source)
+- [GitHub repository](https://github.com/All-The-Vibes/ATV-Design)
 
 ## FAQ
 
-- **Does Open CoDesign run a full web app like Bolt.new?** No — it renders design-grade artifacts (HTML, React components, PDFs, slide decks) in a sandboxed iframe. If you need a runnable full Node.js project, Bolt.new is a better fit.
+- **Does ATV Design run a full web app like Bolt.new?** No — it renders design-grade artifacts (HTML, React components, PDFs, slide decks) in a sandboxed iframe. If you need a runnable full Node.js project, Bolt.new is a better fit.
 - **Can I use local models?** Yes — point at any OpenAI-compatible endpoint including Ollama.
 - **License?** MIT.

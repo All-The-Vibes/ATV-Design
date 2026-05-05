@@ -9,11 +9,13 @@ trigger:
 disable_model_invocation: false
 user_invocable: true
 ---
-_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/design/SKILL.md. Supplemental data, references/, scripts/, templates/ not ported in M1 — see docs/known-issues.md._
+_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/design/SKILL.md. In source checkouts, the preserved source bundle, support data, scripts, templates, references, and font assets live under `skills/ui-ux-pro-max/`. Packaged M1 apps currently ship this flattened builtin entrypoint only, so treat repo-local file paths below as source-build helpers rather than packaged-runtime contracts._
 
 # Design
 
 Unified design skill: brand, tokens, UI, logo, CIP, slides, banners, social photos, icons.
+
+Source-build note: the reference and script paths in this skill assume a repo checkout with `skills/ui-ux-pro-max/design/` present. In packaged M1 builds, use the builtin guidance itself and do not assume those repo-local helpers are available.
 
 ## When to Use
 
@@ -33,12 +35,12 @@ Unified design skill: brand, tokens, UI, logo, CIP, slides, banners, social phot
 | Brand identity, voice, assets | `brand` | External skill |
 | Tokens, specs, CSS vars | `design-system` | External skill |
 | shadcn/ui, Tailwind, code | `ui-styling` | External skill |
-| Logo creation, AI generation | Logo (built-in) | `references/logo-design.md` |
-| CIP mockups, deliverables | CIP (built-in) | `references/cip-design.md` |
-| Presentations, pitch decks | Slides (built-in) | `references/slides.md` |
-| Banners, covers, headers | Banner (built-in) | `references/banner-sizes-and-styles.md` |
-| Social media images/photos | Social Photos (built-in) | `references/social-photos-design.md` |
-| SVG icons, icon sets | Icon (built-in) | `references/icon-design.md` |
+| Logo creation, AI generation | Logo (built-in) | `skills/ui-ux-pro-max/design/references/logo-design.md` |
+| CIP mockups, deliverables | CIP (built-in) | `skills/ui-ux-pro-max/design/references/cip-design.md` |
+| Presentations, pitch decks | Slides (built-in) | `skills/ui-ux-pro-max/design/references/slides.md` |
+| Banners, covers, headers | Banner (built-in) | `skills/ui-ux-pro-max/design/references/banner-sizes-and-styles.md` |
+| Social media images/photos | Social Photos (built-in) | `skills/ui-ux-pro-max/design/references/social-photos-design.md` |
+| SVG icons, icon sets | Icon (built-in) | `skills/ui-ux-pro-max/design/references/icon-design.md` |
 
 ## Logo Design (Built-in)
 
@@ -47,15 +49,15 @@ Unified design skill: brand, tokens, UI, logo, CIP, slides, banners, social phot
 ### Logo: Generate Design Brief
 
 ```bash
-python3 ~/.claude/skills/design/scripts/logo/search.py "tech startup modern" --design-brief -p "BrandName"
+python3 skills/ui-ux-pro-max/design/scripts/logo/search.py "tech startup modern" --design-brief -p "BrandName"
 ```
 
 ### Logo: Search Styles/Colors/Industries
 
 ```bash
-python3 ~/.claude/skills/design/scripts/logo/search.py "minimalist clean" --domain style
-python3 ~/.claude/skills/design/scripts/logo/search.py "tech professional" --domain color
-python3 ~/.claude/skills/design/scripts/logo/search.py "healthcare medical" --domain industry
+python3 skills/ui-ux-pro-max/design/scripts/logo/search.py "minimalist clean" --domain style
+python3 skills/ui-ux-pro-max/design/scripts/logo/search.py "tech professional" --domain color
+python3 skills/ui-ux-pro-max/design/scripts/logo/search.py "healthcare medical" --domain industry
 ```
 
 ### Logo: Generate with AI
@@ -63,8 +65,8 @@ python3 ~/.claude/skills/design/scripts/logo/search.py "healthcare medical" --do
 **ALWAYS** generate output logo images with white background.
 
 ```bash
-python3 ~/.claude/skills/design/scripts/logo/generate.py --brand "TechFlow" --style minimalist --industry tech
-python3 ~/.claude/skills/design/scripts/logo/generate.py --prompt "coffee shop vintage badge" --style vintage
+python3 skills/ui-ux-pro-max/design/scripts/logo/generate.py --brand "TechFlow" --style minimalist --industry tech
+python3 skills/ui-ux-pro-max/design/scripts/logo/generate.py --prompt "coffee shop vintage badge" --style vintage
 ```
 
 **IMPORTANT:** When scripts fail, try to fix them directly.
@@ -78,32 +80,32 @@ After generation, **ALWAYS** ask user about HTML preview via `AskUserQuestion`. 
 ### CIP: Generate Brief
 
 ```bash
-python3 ~/.claude/skills/design/scripts/cip/search.py "tech startup" --cip-brief -b "BrandName"
+python3 skills/ui-ux-pro-max/design/scripts/cip/search.py "tech startup" --cip-brief -b "BrandName"
 ```
 
 ### CIP: Search Domains
 
 ```bash
-python3 ~/.claude/skills/design/scripts/cip/search.py "business card letterhead" --domain deliverable
-python3 ~/.claude/skills/design/scripts/cip/search.py "luxury premium elegant" --domain style
-python3 ~/.claude/skills/design/scripts/cip/search.py "hospitality hotel" --domain industry
-python3 ~/.claude/skills/design/scripts/cip/search.py "office reception" --domain mockup
+python3 skills/ui-ux-pro-max/design/scripts/cip/search.py "business card letterhead" --domain deliverable
+python3 skills/ui-ux-pro-max/design/scripts/cip/search.py "luxury premium elegant" --domain style
+python3 skills/ui-ux-pro-max/design/scripts/cip/search.py "hospitality hotel" --domain industry
+python3 skills/ui-ux-pro-max/design/scripts/cip/search.py "office reception" --domain mockup
 ```
 
 ### CIP: Generate Mockups
 
 ```bash
 # With logo (RECOMMENDED)
-python3 ~/.claude/skills/design/scripts/cip/generate.py --brand "TopGroup" --logo /path/to/logo.png --deliverable "business card" --industry "consulting"
+python3 skills/ui-ux-pro-max/design/scripts/cip/generate.py --brand "TopGroup" --logo /path/to/logo.png --deliverable "business card" --industry "consulting"
 
 # Full CIP set
-python3 ~/.claude/skills/design/scripts/cip/generate.py --brand "TopGroup" --logo /path/to/logo.png --industry "consulting" --set
+python3 skills/ui-ux-pro-max/design/scripts/cip/generate.py --brand "TopGroup" --logo /path/to/logo.png --industry "consulting" --set
 
 # Pro model (4K text)
-python3 ~/.claude/skills/design/scripts/cip/generate.py --brand "TopGroup" --logo logo.png --deliverable "business card" --model pro
+python3 skills/ui-ux-pro-max/design/scripts/cip/generate.py --brand "TopGroup" --logo logo.png --deliverable "business card" --model pro
 
 # Without logo
-python3 ~/.claude/skills/design/scripts/cip/generate.py --brand "TechFlow" --deliverable "business card" --no-logo-prompt
+python3 skills/ui-ux-pro-max/design/scripts/cip/generate.py --brand "TechFlow" --deliverable "business card" --no-logo-prompt
 ```
 
 Models: `flash` (default, `gemini-2.5-flash-image`), `pro` (`gemini-3-pro-image-preview`)
@@ -111,7 +113,7 @@ Models: `flash` (default, `gemini-2.5-flash-image`), `pro` (`gemini-3-pro-image-
 ### CIP: Render HTML Presentation
 
 ```bash
-python3 ~/.claude/skills/design/scripts/cip/render-html.py --brand "TopGroup" --industry "consulting" --images /path/to/cip-output
+python3 skills/ui-ux-pro-max/design/scripts/cip/render-html.py --brand "TopGroup" --industry "consulting" --images /path/to/cip-output
 ```
 
 **Tip:** If no logo exists, use Logo Design section above first.
@@ -120,23 +122,23 @@ python3 ~/.claude/skills/design/scripts/cip/render-html.py --brand "TopGroup" --
 
 Strategic HTML presentations with Chart.js, design tokens, copywriting formulas.
 
-Load `references/slides-create.md` for the creation workflow.
+Load `skills/ui-ux-pro-max/design/references/slides-create.md` for the creation workflow.
 
 ### Slides: Knowledge Base
 
 | Topic | File |
 |-------|------|
-| Creation Guide | `references/slides-create.md` |
-| Layout Patterns | `references/slides-layout-patterns.md` |
-| HTML Template | `references/slides-html-template.md` |
-| Copywriting | `references/slides-copywriting-formulas.md` |
-| Strategies | `references/slides-strategies.md` |
+| Creation Guide | `skills/ui-ux-pro-max/design/references/slides-create.md` |
+| Layout Patterns | `skills/ui-ux-pro-max/design/references/slides-layout-patterns.md` |
+| HTML Template | `skills/ui-ux-pro-max/design/references/slides-html-template.md` |
+| Copywriting | `skills/ui-ux-pro-max/design/references/slides-copywriting-formulas.md` |
+| Strategies | `skills/ui-ux-pro-max/design/references/slides-strategies.md` |
 
 ## Banner Design (Built-in)
 
 22 art direction styles across social, ads, web, print. Uses `frontend-design`, `ai-artist`, `ai-multimodal`, `chrome-devtools` skills.
 
-Load `references/banner-sizes-and-styles.md` for complete sizes and styles reference.
+Load `skills/ui-ux-pro-max/design/references/banner-sizes-and-styles.md` for complete sizes and styles reference.
 
 ### Banner: Workflow
 
@@ -186,21 +188,21 @@ Load `references/banner-sizes-and-styles.md` for complete sizes and styles refer
 ### Icon: Generate Single Icon
 
 ```bash
-python3 ~/.claude/skills/design/scripts/icon/generate.py --prompt "settings gear" --style outlined
-python3 ~/.claude/skills/design/scripts/icon/generate.py --prompt "shopping cart" --style filled --color "#6366F1"
-python3 ~/.claude/skills/design/scripts/icon/generate.py --name "dashboard" --category navigation --style duotone
+python3 skills/ui-ux-pro-max/design/scripts/icon/generate.py --prompt "settings gear" --style outlined
+python3 skills/ui-ux-pro-max/design/scripts/icon/generate.py --prompt "shopping cart" --style filled --color "#6366F1"
+python3 skills/ui-ux-pro-max/design/scripts/icon/generate.py --name "dashboard" --category navigation --style duotone
 ```
 
 ### Icon: Generate Batch Variations
 
 ```bash
-python3 ~/.claude/skills/design/scripts/icon/generate.py --prompt "cloud upload" --batch 4 --output-dir ./icons
+python3 skills/ui-ux-pro-max/design/scripts/icon/generate.py --prompt "cloud upload" --batch 4 --output-dir ./icons
 ```
 
 ### Icon: Multi-size Export
 
 ```bash
-python3 ~/.claude/skills/design/scripts/icon/generate.py --prompt "user profile" --sizes "16,24,32,48" --output-dir ./icons
+python3 skills/ui-ux-pro-max/design/scripts/icon/generate.py --prompt "user profile" --sizes "16,24,32,48" --output-dir ./icons
 ```
 
 ### Icon: Top Styles
@@ -221,7 +223,7 @@ python3 ~/.claude/skills/design/scripts/icon/generate.py --prompt "user profile"
 
 Multi-platform social image design: HTML/CSS → screenshot export. Uses `ui-ux-pro-max`, `brand`, `design-system`, `chrome-devtools` skills.
 
-Load `references/social-photos-design.md` for sizes, templates, best practices.
+Load `skills/ui-ux-pro-max/design/references/social-photos-design.md` for sizes, templates, best practices.
 
 ### Social Photos: Workflow
 
@@ -247,9 +249,9 @@ Load `references/social-photos-design.md` for sizes, templates, best practices.
 
 ### Complete Brand Package
 
-1. **Logo** → `scripts/logo/generate.py` → Generate logo variants
-2. **CIP** → `scripts/cip/generate.py --logo ...` → Create deliverable mockups
-3. **Presentation** → Load `references/slides-create.md` → Build pitch deck
+1. **Logo** → `skills/ui-ux-pro-max/design/scripts/logo/generate.py` → Generate logo variants
+2. **CIP** → `skills/ui-ux-pro-max/design/scripts/cip/generate.py --logo ...` → Create deliverable mockups
+3. **Presentation** → Load `skills/ui-ux-pro-max/design/references/slides-create.md` → Build pitch deck
 
 ### New Design System
 
@@ -261,36 +263,36 @@ Load `references/social-photos-design.md` for sizes, templates, best practices.
 
 | Topic | File |
 |-------|------|
-| Design Routing | `references/design-routing.md` |
-| Logo Design Guide | `references/logo-design.md` |
-| Logo Styles | `references/logo-style-guide.md` |
-| Logo Colors | `references/logo-color-psychology.md` |
-| Logo Prompts | `references/logo-prompt-engineering.md` |
-| CIP Design Guide | `references/cip-design.md` |
-| CIP Deliverables | `references/cip-deliverable-guide.md` |
-| CIP Styles | `references/cip-style-guide.md` |
-| CIP Prompts | `references/cip-prompt-engineering.md` |
-| Slides Create | `references/slides-create.md` |
-| Slides Layouts | `references/slides-layout-patterns.md` |
-| Slides Template | `references/slides-html-template.md` |
-| Slides Copy | `references/slides-copywriting-formulas.md` |
-| Slides Strategy | `references/slides-strategies.md` |
-| Banner Sizes & Styles | `references/banner-sizes-and-styles.md` |
-| Social Photos Guide | `references/social-photos-design.md` |
-| Icon Design Guide | `references/icon-design.md` |
+| Design Routing | `skills/ui-ux-pro-max/design/references/design-routing.md` |
+| Logo Design Guide | `skills/ui-ux-pro-max/design/references/logo-design.md` |
+| Logo Styles | `skills/ui-ux-pro-max/design/references/logo-style-guide.md` |
+| Logo Colors | `skills/ui-ux-pro-max/design/references/logo-color-psychology.md` |
+| Logo Prompts | `skills/ui-ux-pro-max/design/references/logo-prompt-engineering.md` |
+| CIP Design Guide | `skills/ui-ux-pro-max/design/references/cip-design.md` |
+| CIP Deliverables | `skills/ui-ux-pro-max/design/references/cip-deliverable-guide.md` |
+| CIP Styles | `skills/ui-ux-pro-max/design/references/cip-style-guide.md` |
+| CIP Prompts | `skills/ui-ux-pro-max/design/references/cip-prompt-engineering.md` |
+| Slides Create | `skills/ui-ux-pro-max/design/references/slides-create.md` |
+| Slides Layouts | `skills/ui-ux-pro-max/design/references/slides-layout-patterns.md` |
+| Slides Template | `skills/ui-ux-pro-max/design/references/slides-html-template.md` |
+| Slides Copy | `skills/ui-ux-pro-max/design/references/slides-copywriting-formulas.md` |
+| Slides Strategy | `skills/ui-ux-pro-max/design/references/slides-strategies.md` |
+| Banner Sizes & Styles | `skills/ui-ux-pro-max/design/references/banner-sizes-and-styles.md` |
+| Social Photos Guide | `skills/ui-ux-pro-max/design/references/social-photos-design.md` |
+| Icon Design Guide | `skills/ui-ux-pro-max/design/references/icon-design.md` |
 
 ## Scripts
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/logo/search.py` | Search logo styles, colors, industries |
-| `scripts/logo/generate.py` | Generate logos with Gemini AI |
-| `scripts/logo/core.py` | BM25 search engine for logo data |
-| `scripts/cip/search.py` | Search CIP deliverables, styles, industries |
-| `scripts/cip/generate.py` | Generate CIP mockups with Gemini |
-| `scripts/cip/render-html.py` | Render HTML presentation from CIP mockups |
-| `scripts/cip/core.py` | BM25 search engine for CIP data |
-| `scripts/icon/generate.py` | Generate SVG icons with Gemini 3.1 Pro |
+| `skills/ui-ux-pro-max/design/scripts/logo/search.py` | Search logo styles, colors, industries |
+| `skills/ui-ux-pro-max/design/scripts/logo/generate.py` | Generate logos with Gemini AI |
+| `skills/ui-ux-pro-max/design/scripts/logo/core.py` | BM25 search engine for logo data |
+| `skills/ui-ux-pro-max/design/scripts/cip/search.py` | Search CIP deliverables, styles, industries |
+| `skills/ui-ux-pro-max/design/scripts/cip/generate.py` | Generate CIP mockups with Gemini |
+| `skills/ui-ux-pro-max/design/scripts/cip/render-html.py` | Render HTML presentation from CIP mockups |
+| `skills/ui-ux-pro-max/design/scripts/cip/core.py` | BM25 search engine for CIP data |
+| `skills/ui-ux-pro-max/design/scripts/icon/generate.py` | Generate SVG icons with Gemini 3.1 Pro |
 
 ## Setup
 

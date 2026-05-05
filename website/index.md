@@ -1,26 +1,26 @@
 ---
 layout: home
-title: Open CoDesign
+title: ATV Design
 titleTemplate: Open-Source AI Design Tool — BYOK, Local-First, MIT
-description: Open CoDesign is an open-source desktop AI design tool — a self-hosted alternative to Claude Design. Bring your own API key (Anthropic, OpenAI, Gemini, DeepSeek, Ollama). Everything runs locally. MIT licensed.
+description: ATV Design is an open-source desktop AI design tool — a self-hosted alternative to Claude Design. Bring your own API key (Anthropic, OpenAI, Gemini, DeepSeek, Ollama). Everything runs locally. MIT licensed.
 
 hero:
-  name: Open CoDesign
+  name: ATV Design
   text: Design with intent.
   tagline: An open-source desktop AI design tool. v0.1.4 is out; v0.2.0 is preparing the Agentic Design update with workspace-backed sessions and permissioned local tools.
   image:
     src: /logo-hero.png
-    alt: Open CoDesign — open-source AI design tool
+    alt: ATV Design — open-source AI design tool
   actions:
     - theme: brand
-      text: Download for macOS
-      link: https://github.com/OpenCoworkAI/open-codesign/releases
-    - theme: alt
-      text: Star on GitHub
-      link: https://github.com/OpenCoworkAI/open-codesign
-    - theme: alt
       text: Quickstart (90 s)
       link: /quickstart
+    - theme: alt
+      text: Star on GitHub
+      link: https://github.com/All-The-Vibes/ATV-Design
+    - theme: alt
+      text: Build from source
+      link: /quickstart#build-from-source
 
 features:
   - icon: 🪶
@@ -28,7 +28,7 @@ features:
     details: Anthropic, OpenAI, Gemini, DeepSeek, OpenRouter, SiliconFlow, local Ollama, or any OpenAI-compatible relay — including keyless (IP-allowlisted) proxies. Switch providers in Settings. We don't proxy, we don't charge per token.
   - icon: ⚡
     title: Import in one click
-    details: Already using Claude Code or Codex? Open CoDesign reads your existing config — providers, models, API keys — and brings it all in with a single click.
+    details: Already using Claude Code or Codex? ATV Design reads your existing config — providers, models, API keys — and brings it all in with a single click.
   - icon: 🏡
     title: Your laptop is the cloud
     details: Designs, prompts, and settings stay on disk. v0.1 keeps design history in local SQLite; v0.2 moves sessions into JSONL plus real workspace files. No mandatory account, no telemetry by default.
@@ -64,8 +64,6 @@ features:
 <script setup>
 import { withBase } from 'vitepress'
 </script>
-
-<SmartDownload />
 
 <div class="codesign-section">
 
@@ -116,7 +114,7 @@ import { withBase } from 'vitepress'
   </figure>
   <figure>
     <img :src="withBase('/screenshots/hub-examples.png')" alt="Built-in example library — fifteen ready-to-run design briefs" />
-    <figcaption><b>Fifteen demo briefs.</b> Landing, dashboard, pricing, pitch deck, chat UI — one click to see Open CoDesign in action.</figcaption>
+    <figcaption><b>Fifteen demo briefs.</b> Landing, dashboard, pricing, pitch deck, chat UI — one click to see ATV Design in action.</figcaption>
   </figure>
   <figure>
     <img :src="withBase('/screenshots/add-provider-menu.png')" alt="Add provider menu — Claude Code, Codex, custom, and presets" />
@@ -148,7 +146,7 @@ import { withBase } from 'vitepress'
 
 |                       | Open source    | Models             | Runs locally | Pricing             |
 | --------------------- | :------------: | :----------------: | :----------: | :-----------------: |
-| **Open CoDesign**     | **MIT**        | **Any (BYOK)**     | **✓**        | **Token cost only** |
+| **ATV Design**     | **MIT**        | **Any (BYOK)**     | **✓**        | **Token cost only** |
 | Claude Design         | ✗ Closed       | Opus only          | ✗            | Subscription        |
 | v0 by Vercel          | ✗ Closed       | Curated            | ✗            | Subscription        |
 | Lovable               | ✗ Closed       | Curated            | ✗            | Subscription        |
@@ -170,13 +168,13 @@ import { withBase } from 'vitepress'
 <div class="codesign-community">
   <div class="community-card">
     <h3>GitHub</h3>
-    <p class="community-hint">Bug reports, feature requests, and async discussion all happen in Issues. Security issues → <a href="https://github.com/OpenCoworkAI/open-codesign/blob/main/SECURITY.md">SECURITY.md</a>.</p>
-    <p class="community-cta"><a href="https://github.com/OpenCoworkAI/open-codesign/issues" class="community-button">Open Issues →</a></p>
+    <p class="community-hint">Bug reports, feature requests, and async discussion all happen in Issues. Security issues → <a href="https://github.com/All-The-Vibes/ATV-Design/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+    <p class="community-cta"><a href="https://github.com/All-The-Vibes/ATV-Design/issues" class="community-button">Open Issues →</a></p>
   </div>
   <div class="community-card">
     <h3>WeChat (中文社群)</h3>
-    <p class="community-hint">Chinese-speaking users chat in our WeChat group — the QR lives in the <a href="/open-codesign/zh/#社群">Chinese landing page</a>. Codes rotate every 7 days; we refresh in-repo.</p>
-    <p class="community-cta"><a href="/open-codesign/zh/#社群" class="community-button">View QR →</a></p>
+    <p class="community-hint">Chinese-speaking users chat in our WeChat group — the QR lives in the <a href="/ATV-Design/zh/#社群">Chinese landing page</a>. Codes rotate every 7 days; we refresh in-repo.</p>
+    <p class="community-cta"><a href="/ATV-Design/zh/#社群" class="community-button">View QR →</a></p>
   </div>
 </div>
 
@@ -186,7 +184,7 @@ import { withBase } from 'vitepress'
 
 ### Ready to design without the lock-in?
 
-<a href="/open-codesign/quickstart" class="cta-primary">Get started in 90 seconds →</a>
-<a href="https://github.com/OpenCoworkAI/open-codesign" class="cta-secondary">View on GitHub</a>
+<a href="/ATV-Design/quickstart" class="cta-primary">Get started in 90 seconds →</a>
+<a href="https://github.com/All-The-Vibes/ATV-Design" class="cta-secondary">View on GitHub</a>
 
 </div>

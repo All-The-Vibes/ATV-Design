@@ -1,5 +1,7 @@
 # atv-design — Resume Handoff
 
+> **Historical note (2026-05-04):** The remainder of this file is an April 30 pre-convergence snapshot. It does **not** describe the current repo state. Current truth: ATV Design has the rebranded package/runtime surfaces, GitHub Copilot OAuth uses loopback HTTP `http://127.0.0.1:<random-port>/oauth-callback`, and the additive `ui-ux-pro-max` bundle now ships under `skills/ui-ux-pro-max/`. Use the current `README.md`, `docs/oauth-setup.md`, and verification gates before following any phased instructions below.
+
 **Snapshot date:** 2026-04-30
 **Snapshot author:** autopilot session that started Phase 0 and pivoted to artifact-only mode after a network throttle blocked the upstream clone.
 **State:** Phase 0 partial. Phase 1a not started. Phase 1b not started. Phases 2 / 3 / 4 / 5 partially pre-staged as artifact-only files.
@@ -101,7 +103,7 @@ The autopilot session couldn't do this because the upstream tree wasn't on disk.
 - All `apps/*/package.json` and `packages/*/package.json` — update names if they reference open-codesign.
 - `README.md` — replace upstream README with one that points to the atv-design fork (or merge).
 - Any Electron `BrowserWindow` title or `app.setName` call — update to `atv-design`.
-- Custom URL scheme registrations — change `opencodesign://` (or whatever upstream uses) to `atvdesign://oauth-callback` per the BYOK ADR.
+- OAuth callback plumbing — use the loopback HTTP callback flow documented in ADR 0001, not a custom URL scheme.
 - Config directory references — change `~/.config/open-codesign/` to `~/.config/atv-design/`.
 
 Verify with `git grep -i 'open-codesign\|opencodesign\|opencoworkai'` and audit each hit.
@@ -117,7 +119,7 @@ This is where **you** (the human) need to act, because it requires:
 1. **Register a GitHub OAuth app** at https://github.com/settings/developers (Path A in `docs/oauth-setup.md`):
    - Name: `atv-design`
    - Homepage URL: your fork's URL.
-   - Authorization callback URL: `atvdesign://oauth-callback`
+   - Authorization callback URL: current repo uses the loopback callback flow documented in `docs/oauth-setup.md`
    - **Do not generate a client secret.** PKCE only.
    - Copy the resulting Client ID into the source as `DEFAULT_GITHUB_OAUTH_CLIENT_ID` (path TBD post-Phase-1b).
 
