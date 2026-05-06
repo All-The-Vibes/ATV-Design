@@ -21,6 +21,7 @@ import {
   BRAND,
   CancelGenerationPayloadV1,
   CodesignError,
+  GITHUB_COPILOT_PROVIDER_ID,
   GeneratePayload,
   GeneratePayloadV1,
 } from '@atv-design/shared';
@@ -41,6 +42,7 @@ import {
 import { registerCommentsIpc, registerCommentsUnavailableIpc } from './comments-ipc';
 import { configDir } from './config';
 import { registerConnectionIpc } from './connection-ipc';
+import { getCopilotSessionToken, registerCopilotOAuthIpc } from './copilot-oauth-ipc';
 import { scanDesignSystem } from './design-system';
 import { registerDiagnosticsIpc } from './diagnostics-ipc';
 import { makeRuntimeVerifier } from './done-verify';
@@ -217,6 +219,7 @@ function extractUpstreamHttpStatus(err: unknown): number | undefined {
 function resolveActiveApiKeyFromState(providerId: string): Promise<string> {
   return resolveActiveApiKey(providerId, {
     getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
+    getCopilotSessionToken,
     getApiKeyForProvider,
   });
 }
@@ -224,8 +227,13 @@ function resolveActiveApiKeyFromState(providerId: string): Promise<string> {
 function resolveApiKeyForActive(providerId: string, allowKeyless: boolean): Promise<string> {
   return resolveApiKeyWithKeylessFallback(providerId, allowKeyless, {
     getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
+    getCopilotSessionToken,
     getApiKeyForProvider,
   });
+}
+
+function providerUsesDynamicBearer(providerId: string): boolean {
+  return providerId === CHATGPT_CODEX_PROVIDER_ID || providerId === GITHUB_COPILOT_PROVIDER_ID;
 }
 
 function escapeRegExp(input: string): string {
@@ -868,14 +876,14 @@ function registerIpcHandlers(db: Database | null): void {
       let clearTimeoutGuard: () => void = () => {};
       try {
         clearTimeoutGuard = await armTimeout(id, controller);
-        const isCodex = active.model.provider === CHATGPT_CODEX_PROVIDER_ID;
+        const usesDynamicBearer = providerUsesDynamicBearer(active.model.provider);
         const result = await runGenerate(
           {
             prompt: payload.prompt,
             history: payload.history,
             model: active.model,
             apiKey,
-            ...(isCodex
+            ...(usesDynamicBearer
               ? { getApiKey: () => resolveActiveApiKeyFromState(active.model.provider) }
               : {}),
             attachments: promptContext.attachments,
@@ -1008,14 +1016,14 @@ function registerIpcHandlers(db: Database | null): void {
       let clearTimeoutGuard: () => void = () => {};
       try {
         clearTimeoutGuard = await armTimeout(id, controller);
-        const isCodex = active.model.provider === CHATGPT_CODEX_PROVIDER_ID;
+        const usesDynamicBearer = providerUsesDynamicBearer(active.model.provider);
         const result = await runGenerate(
           {
             prompt: payload.prompt,
             history: payload.history,
             model: active.model,
             apiKey,
-            ...(isCodex
+            ...(usesDynamicBearer
               ? { getApiKey: () => resolveActiveApiKeyFromState(active.model.provider) }
               : {}),
             attachments: promptContext.attachments,
@@ -1353,6 +1361,7 @@ if (!IS_VITEST) {
       registerConnectionIpc();
       registerOnboardingIpc();
       registerCodexOAuthIpc();
+      registerCopilotOAuthIpc();
       registerPreferencesIpc();
       registerImageGenerationSettingsIpc();
       registerExporterIpc(() => mainWindow);

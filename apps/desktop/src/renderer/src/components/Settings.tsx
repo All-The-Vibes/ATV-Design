@@ -34,6 +34,7 @@ import { recordAction } from '../lib/action-timeline';
 import { useCodesignStore } from '../store';
 import { AddCustomProviderModal } from './AddCustomProviderModal';
 import { ChatgptLoginCard } from './ChatgptLoginCard';
+import { CopilotLoginCard } from './CopilotLoginCard';
 import { DiagnosticsPanel } from './settings/DiagnosticsPanel';
 
 type Tab = 'models' | 'images' | 'appearance' | 'storage' | 'diagnostics' | 'advanced';
@@ -1665,6 +1666,7 @@ function ModelsTab() {
 
       <div className="space-y-[var(--space-3)]">
         <ChatgptLoginCard onStatusChange={reloadRows} />
+        <CopilotLoginCard onStatusChange={reloadRows} />
         {cpaDetection === 'available' && (
           <LocalCpaImportCard
             onImport={() => {

@@ -1,8 +1,9 @@
 #!/usr/bin/env tsx
 /**
  * smoke-models.ts — batch-test (provider, model, prompt) combos through the
- * exact same `generate()` code path the desktop app uses. Saves each artifact
- * to /tmp/smoke/, runs lightweight quality checks, prints a colored report.
+ * shared core `generate()` path used by smoke coverage and desktop fallback.
+ * Saves each artifact to the OS temp dir, runs lightweight quality checks,
+ * and prints a colored report.
  *
  * Usage:
  *   pnpm smoke
@@ -16,10 +17,11 @@
  *   GROQ_API_KEY, CEREBRAS_API_KEY, XAI_API_KEY, MISTRAL_API_KEY.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
+import { generate } from '@atv-design/core';
 import * as TOML from '@iarna/toml';
-import { generate } from '@open-codesign/core';
 import { Parser } from 'acorn';
 
 interface SmokeModel {
@@ -66,7 +68,7 @@ const COLOR = {
   bold: '\x1b[1m',
 };
 
-const SMOKE_DIR = '/tmp/smoke';
+const SMOKE_DIR = resolve(tmpdir(), 'atv-design-smoke');
 const LAST_RESULTS = `${SMOKE_DIR}/.last-results.json`;
 
 function parseConfig(path: string): SmokeConfig {

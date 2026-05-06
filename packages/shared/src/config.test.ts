@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILTIN_PROVIDERS,
   ConfigV3Schema,
+  GITHUB_COPILOT_MODELS_HINT,
+  GITHUB_COPILOT_PROVIDER_ID,
   SUPPORTED_ONBOARDING_PROVIDERS,
   defaultProviderCapabilities,
   detectWireFromBaseUrl,
@@ -267,6 +269,23 @@ describe('provider capability helpers', () => {
       modelsHint: ['claude-sonnet-4-6'],
     });
     expect(caps.supportsModelsEndpoint).toBe(true);
+    expect(caps.modelDiscoveryMode).toBe('static-hint');
+  });
+
+  it('supports a static-hint keyless GitHub Copilot provider on the openai-chat wire', () => {
+    const caps = resolveProviderCapabilities(GITHUB_COPILOT_PROVIDER_ID, {
+      wire: 'openai-chat',
+      requiresApiKey: false,
+      modelsHint: [...GITHUB_COPILOT_MODELS_HINT],
+      capabilities: {
+        supportsModelsEndpoint: false,
+        modelDiscoveryMode: 'static-hint',
+      },
+    });
+    expect(caps.supportsKeyless).toBe(true);
+    expect(caps.supportsChatCompletions).toBe(true);
+    expect(caps.supportsModelsEndpoint).toBe(false);
+    expect(caps.supportsToolCalling).toBe(true);
     expect(caps.modelDiscoveryMode).toBe('static-hint');
   });
 

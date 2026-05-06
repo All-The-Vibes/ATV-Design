@@ -134,6 +134,7 @@ async function persistProviderMutation(
     secrets: cfg?.secrets ?? {},
     providers: nextProviders,
     ...(cfg?.designSystem !== undefined ? { designSystem: cfg.designSystem } : {}),
+    ...(cfg?.imageGeneration !== undefined ? { imageGeneration: cfg.imageGeneration } : {}),
   });
   await writeConfig(next);
   setCachedConfig(next);
@@ -156,6 +157,7 @@ async function claimActiveProviderIfUnset(): Promise<void> {
     secrets: cfg.secrets,
     providers: cfg.providers,
     ...(cfg.designSystem !== undefined ? { designSystem: cfg.designSystem } : {}),
+    ...(cfg.imageGeneration !== undefined ? { imageGeneration: cfg.imageGeneration } : {}),
   });
   await writeConfig(next);
   setCachedConfig(next);

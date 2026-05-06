@@ -100,7 +100,7 @@ export function createCopilotClient(opts: {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
+function headersToRecord(headers: RequestInit['headers'] | undefined): Record<string, string> {
   if (headers === undefined) return {};
   if (headers instanceof Headers) {
     const record: Record<string, string> = {};
@@ -111,7 +111,9 @@ function headersToRecord(headers: HeadersInit | undefined): Record<string, strin
   }
   if (Array.isArray(headers)) {
     const record: Record<string, string> = {};
-    for (const [key, value] of headers) {
+    for (const header of headers) {
+      const [key, value] = header;
+      if (key === undefined || value === undefined) continue;
       record[key] = value;
     }
     return record;

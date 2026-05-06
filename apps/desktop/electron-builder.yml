@@ -15,6 +15,9 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: ../../skills/ui-ux-pro-max
+    to: skills/ui-ux-pro-max
 asar: true
 mac:
   category: public.app-category.developer-tools

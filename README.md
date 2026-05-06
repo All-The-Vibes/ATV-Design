@@ -42,7 +42,7 @@ pnpm install
 pnpm dev
 ```
 
-On first launch, click **Sign in with GitHub** in the provider picker. The OAuth consent screen will appear in your browser; authorize, return to the app, and you're connected. See [`docs/oauth-setup.md`](./docs/oauth-setup.md) for the per-OS notes and the self-registration alternative.
+On first launch, click **Sign in with Copilot** in the provider picker. The OAuth consent screen will appear in your browser; authorize, return to the app, and you're connected. Existing `~/.config/open-codesign/` config and known auth sidecars auto-migrate into `~/.config/atv-design/` on first read. See [`docs/oauth-setup.md`](./docs/oauth-setup.md) for the per-OS notes and the self-registration alternative.
 
 ---
 
@@ -85,7 +85,6 @@ This fork's M1 milestone explicitly does not ship:
 - Hosted/SaaS deployment.
 - shadcn/ui MCP integration.
 - `uipro-cli` shim.
-- Auto-migration from `~/.config/open-codesign/` to `~/.config/atv-design/`.
 
 See [`docs/known-issues.md`](./docs/known-issues.md) for the full catalog and the M2 follow-ups.
 

@@ -4,6 +4,7 @@ import {
   CHATGPT_CODEX_PROVIDER_ID,
   CodesignError,
   ERROR_CODES,
+  GITHUB_COPILOT_PROVIDER_ID,
   type ProviderCapabilities,
   type ProviderEntry,
   type SupportedOnboardingProvider,
@@ -16,6 +17,7 @@ import {
 } from '@atv-design/shared';
 import { buildAuthHeaders, buildAuthHeadersForWire } from './auth-headers';
 import { getCodexTokenStore } from './codex-oauth-ipc';
+import { getCopilotSessionToken } from './copilot-oauth-ipc';
 import { ipcMain } from './electron-runtime';
 import { getApiKeyForProvider, getCachedConfig } from './onboarding-ipc';
 import { isKeylessProviderAllowed, resolveProviderConfig } from './provider-settings';
@@ -414,6 +416,7 @@ export function resolveCredentialsForProvider(
   }
   return resolveApiKeyWithKeylessFallback(providerId, resolved.allowKeyless, {
     getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
+    getCopilotSessionToken,
     getApiKeyForProvider,
   })
     .then((apiKey) => ({
@@ -446,14 +449,17 @@ export function resolveActiveCredentials(): Promise<
 function mapCredentialResolutionError(providerId: string, err: unknown): ConnectionTestError {
   if (err instanceof CodesignError) {
     if (
-      providerId === CHATGPT_CODEX_PROVIDER_ID &&
+      (providerId === CHATGPT_CODEX_PROVIDER_ID || providerId === GITHUB_COPILOT_PROVIDER_ID) &&
       err.code === ERROR_CODES.PROVIDER_AUTH_MISSING
     ) {
       return {
         ok: false,
         code: '401',
         message: err.message,
-        hint: 'ChatGPT subscription sign-in expired. Re-login from Settings.',
+        hint:
+          providerId === CHATGPT_CODEX_PROVIDER_ID
+            ? 'ChatGPT subscription sign-in expired. Re-login from Settings.'
+            : 'GitHub Copilot sign-in expired. Re-login from Settings.',
       };
     }
     if (

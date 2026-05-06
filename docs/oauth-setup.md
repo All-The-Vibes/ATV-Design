@@ -5,12 +5,13 @@ ATV Design uses the GitHub Copilot SDK OAuth flow with PKCE and a one-shot loopb
 ## Default path
 
 1. Open ATV Design.
-2. Click **Sign in with GitHub** in the Copilot provider flow.
+2. Click **Sign in with Copilot** in the Copilot provider flow.
 3. The app starts a local callback server on `http://127.0.0.1:<random-port>/oauth-callback` and opens your browser to GitHub.
 4. Approve the OAuth consent screen.
 5. GitHub redirects back to the local callback URL. You can close the browser tab and return to the app.
 
 Credentials are stored locally at `~/.config/atv-design/copilot-auth.json` with restrictive file permissions.
+If you already have `~/.config/open-codesign/` state from an earlier build, ATV Design copies the known config and OAuth sidecars forward on first read instead of requiring a manual re-login.
 
 ## Self-registration
 
@@ -19,7 +20,7 @@ If you do not want to use the built-in client ID, create your own GitHub OAuth a
 1. Create an OAuth app in GitHub developer settings.
 2. Register a loopback callback URL on `127.0.0.1` using the `/oauth-callback` path.
 3. Set `ATV_DESIGN_GITHUB_CLIENT_ID` to your OAuth app client ID before starting ATV Design.
-4. Launch ATV Design and use **Sign in with GitHub** normally.
+4. Launch ATV Design and use **Sign in with Copilot** normally.
 
 PowerShell:
 
