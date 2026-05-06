@@ -1,4 +1,9 @@
-import { CHATGPT_CODEX_PROVIDER_ID, CodesignError, ERROR_CODES } from '@atv-design/shared';
+import {
+  CHATGPT_CODEX_PROVIDER_ID,
+  CodesignError,
+  ERROR_CODES,
+  GITHUB_COPILOT_PROVIDER_ID,
+} from '@atv-design/shared';
 
 /**
  * Abstract dependencies of `resolveActiveApiKey` so unit tests can stub the
@@ -8,6 +13,8 @@ import { CHATGPT_CODEX_PROVIDER_ID, CodesignError, ERROR_CODES } from '@atv-desi
 export interface ResolveActiveApiKeyDeps {
   /** Returns a fresh ChatGPT OAuth bearer token. Throws when not signed in. */
   getCodexAccessToken: () => Promise<string>;
+  /** Returns a fresh GitHub Copilot session token. Throws when not signed in. */
+  getCopilotSessionToken: () => Promise<string>;
   /** Returns the stored API key for the given provider. Throws when missing. */
   getApiKeyForProvider: (providerId: string) => string;
 }
@@ -38,6 +45,17 @@ export async function resolveActiveApiKey(
     } catch (err) {
       throw new CodesignError(
         err instanceof Error ? err.message : 'ChatGPT subscription not signed in',
+        ERROR_CODES.PROVIDER_AUTH_MISSING,
+        { cause: err },
+      );
+    }
+  }
+  if (providerId === GITHUB_COPILOT_PROVIDER_ID) {
+    try {
+      return await deps.getCopilotSessionToken();
+    } catch (err) {
+      throw new CodesignError(
+        err instanceof Error ? err.message : 'GitHub Copilot not signed in',
         ERROR_CODES.PROVIDER_AUTH_MISSING,
         { cause: err },
       );
@@ -81,6 +99,7 @@ export async function resolveApiKeyWithKeylessFallback(
     if (
       allowKeyless &&
       providerId !== CHATGPT_CODEX_PROVIDER_ID &&
+      providerId !== GITHUB_COPILOT_PROVIDER_ID &&
       err instanceof CodesignError &&
       (err.code === ERROR_CODES.PROVIDER_AUTH_MISSING ||
         err.code === ERROR_CODES.PROVIDER_KEY_MISSING)

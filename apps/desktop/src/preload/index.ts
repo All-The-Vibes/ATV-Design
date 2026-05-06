@@ -40,6 +40,15 @@ export type { ClaudeCodeUserType, ExternalConfigsDetection };
 export type { CodexOAuthStatus };
 export type { ImageGenerationSettingsView };
 
+export interface CopilotOAuthStatus {
+  loggedIn: boolean;
+  username?: string | null;
+  email?: string | null;
+  accountLabel?: string | null;
+  githubScope?: string | null;
+  sessionExpiresAt?: number | null;
+}
+
 export interface ValidateKeyResult {
   ok: true;
   modelCount: number;
@@ -354,6 +363,12 @@ const api = {
     login: () => ipcRenderer.invoke('codex-oauth:v1:login') as Promise<CodexOAuthStatus>,
     cancelLogin: () => ipcRenderer.invoke('codex-oauth:v1:cancel-login') as Promise<boolean>,
     logout: () => ipcRenderer.invoke('codex-oauth:v1:logout') as Promise<CodexOAuthStatus>,
+  },
+  copilotOAuth: {
+    status: () => ipcRenderer.invoke('copilot-oauth:v1:status') as Promise<CopilotOAuthStatus>,
+    login: () => ipcRenderer.invoke('copilot-oauth:v1:login') as Promise<CopilotOAuthStatus>,
+    cancelLogin: () => ipcRenderer.invoke('copilot-oauth:v1:cancel-login') as Promise<boolean>,
+    logout: () => ipcRenderer.invoke('copilot-oauth:v1:logout') as Promise<CopilotOAuthStatus>,
   },
   connection: {
     test: (input: {

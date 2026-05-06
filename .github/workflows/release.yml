@@ -118,7 +118,9 @@ jobs:
   # ------------------------------------------------------------------
   # Build: native packaging per platform.
   # electron-builder reads publish config from electron-builder.yml.
-  # We do NOT sign in v0.1 — notarization deferred to Stage 2.
+  # Release CI signs when platform cert secrets are present and notarizes
+  # mac artifacts when Apple credentials are present. Local/package-smoke
+  # builds stay unsigned by default through the staged desktop build script.
   # ------------------------------------------------------------------
   build:
     name: Build (${{ matrix.label }})
@@ -187,27 +189,41 @@ jobs:
       - name: Build workspace
         run: pnpm --filter '!@atv-design/desktop' -r build
 
-      # Package the Electron app.
-      # CSC_IDENTITY_AUTO_DISCOVERY=false: skip ad-hoc Mac signing prompt.
-      # WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD: intentionally unset (no cert in v0.1).
-      # On macOS we force-pin the target arch to the runner's host arch
-      # (--arm64 on macos-latest, --x64 on macos-13) so each DMG is packaged
-      # natively instead of cross-built (see matrix comment + #176).
-      - name: Package desktop (non-mac)
-        if: runner.os != 'macOS'
+      # Package the Electron app through the staged desktop build script so
+      # every platform packages the same prod deploy payload.
+      - name: Package desktop (linux)
+        if: runner.os == 'Linux'
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm --filter @atv-design/desktop release
 
-      - name: Package desktop (mac, per-arch)
+      - name: Package desktop (windows)
+        if: runner.os == 'Windows'
+        env:
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ATV_REQUIRE_CODE_SIGNING: ${{ secrets.WINDOWS_CSC_LINK != '' && '1' || '0' }}
+        run: pnpm --filter @atv-design/desktop release
+
+      # On macOS we force-pin the target arch to the runner's host arch
+      # (--arm64 on macos-latest, --x64 on macos-13) so each DMG is packaged
+      # natively instead of cross-built (see matrix comment + #176).
+      - name: Package desktop (mac, per-arch staged)
         if: runner.os == 'macOS'
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+          CSC_LINK: ${{ secrets.MACOS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MACOS_CSC_KEY_PASSWORD }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          pnpm --filter @atv-design/desktop exec electron-vite build
-          pnpm --filter @atv-design/desktop exec electron-builder --mac --${{ matrix.mac_arch }} --publish never
+          ATV_REQUIRE_CODE_SIGNING: ${{ secrets.MACOS_CSC_LINK != '' && '1' || '0' }}
+        run: pnpm --filter @atv-design/desktop exec node scripts/build-staged.cjs --mac --${{ matrix.mac_arch }} --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -1,10 +1,13 @@
-import { CodesignError } from '@atv-design/shared';
+import { CodesignError, GITHUB_COPILOT_PROVIDER_ID } from '@atv-design/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveActiveApiKey, resolveApiKeyWithKeylessFallback } from './resolve-api-key';
 
-function makeDeps(overrides: Partial<Parameters<typeof resolveActiveApiKey>[1]> = {}) {
+function makeDeps(
+  overrides: Partial<Parameters<typeof resolveActiveApiKey>[1]> = {},
+): Parameters<typeof resolveActiveApiKey>[1] {
   return {
     getCodexAccessToken: vi.fn().mockResolvedValue('oauth-token'),
+    getCopilotSessionToken: vi.fn().mockResolvedValue('copilot-session-token'),
     getApiKeyForProvider: vi.fn().mockReturnValue('stored-key'),
     ...overrides,
   };
@@ -52,6 +55,25 @@ describe('resolveActiveApiKey', () => {
       name: 'CodesignError',
       code: 'PROVIDER_AUTH_MISSING',
       message: 'ChatGPT subscription not signed in',
+    });
+  });
+
+  it('copilot: returns the refreshed Copilot session token', async () => {
+    const deps = makeDeps();
+    const token = await resolveActiveApiKey(GITHUB_COPILOT_PROVIDER_ID, deps);
+    expect(token).toBe('copilot-session-token');
+    expect(deps.getCopilotSessionToken).toHaveBeenCalledTimes(1);
+    expect(deps.getApiKeyForProvider).not.toHaveBeenCalled();
+  });
+
+  it('copilot: wraps session-token refresh failure in CodesignError(PROVIDER_AUTH_MISSING)', async () => {
+    const deps = makeDeps({
+      getCopilotSessionToken: vi.fn().mockRejectedValue(new Error('Copilot token expired')),
+    });
+    await expect(resolveActiveApiKey(GITHUB_COPILOT_PROVIDER_ID, deps)).rejects.toMatchObject({
+      name: 'CodesignError',
+      code: 'PROVIDER_AUTH_MISSING',
+      message: 'Copilot token expired',
     });
   });
 
@@ -115,9 +137,12 @@ describe('resolveActiveApiKey', () => {
 });
 
 describe('resolveApiKeyWithKeylessFallback', () => {
-  function keylessDeps(overrides: Partial<Parameters<typeof resolveActiveApiKey>[1]> = {}) {
+  function keylessDeps(
+    overrides: Partial<Parameters<typeof resolveActiveApiKey>[1]> = {},
+  ): Parameters<typeof resolveActiveApiKey>[1] {
     return {
       getCodexAccessToken: vi.fn().mockResolvedValue('oauth-token'),
+      getCopilotSessionToken: vi.fn().mockResolvedValue('copilot-session-token'),
       getApiKeyForProvider: vi.fn().mockReturnValue('stored-key'),
       ...overrides,
     };
@@ -179,6 +204,15 @@ describe('resolveApiKeyWithKeylessFallback', () => {
     // hand-edit must not suppress the auth-required affordance.
     await expect(
       resolveApiKeyWithKeylessFallback('chatgpt-codex', true, deps),
+    ).rejects.toMatchObject({ code: 'PROVIDER_AUTH_MISSING' });
+  });
+
+  it('copilot: NEVER swallowed even with allowKeyless=true (the sign-in prompt must surface)', async () => {
+    const deps = keylessDeps({
+      getCopilotSessionToken: vi.fn().mockRejectedValue(new Error('not signed in')),
+    });
+    await expect(
+      resolveApiKeyWithKeylessFallback(GITHUB_COPILOT_PROVIDER_ID, true, deps),
     ).rejects.toMatchObject({ code: 'PROVIDER_AUTH_MISSING' });
   });
 

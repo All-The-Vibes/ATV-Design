@@ -1,4 +1,11 @@
-import { BUILTIN_PROVIDERS, CodesignError, type Config, hydrateConfig } from '@atv-design/shared';
+import {
+  BUILTIN_PROVIDERS,
+  CodesignError,
+  type Config,
+  GITHUB_COPILOT_MODELS_HINT,
+  GITHUB_COPILOT_PROVIDER_ID,
+  hydrateConfig,
+} from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import {
   assertProviderHasStoredSecret,
@@ -151,6 +158,47 @@ describe('toProviderRows', () => {
       maskedKey: '',
     });
   });
+
+  it('surfaces GitHub Copilot as a keyless signed-in provider row', () => {
+    const cfg = makeCfg({
+      provider: GITHUB_COPILOT_PROVIDER_ID,
+      modelPrimary: GITHUB_COPILOT_MODELS_HINT[0],
+      providers: {
+        [GITHUB_COPILOT_PROVIDER_ID]: {
+          id: GITHUB_COPILOT_PROVIDER_ID,
+          name: 'GitHub Copilot',
+          builtin: false,
+          wire: 'openai-chat',
+          baseUrl: 'https://api.githubcopilot.com',
+          defaultModel: GITHUB_COPILOT_MODELS_HINT[0],
+          modelsHint: [...GITHUB_COPILOT_MODELS_HINT],
+          httpHeaders: {
+            'Editor-Version': 'atv-design/1.2.3',
+            'Copilot-Integration-Id': 'vscode-chat',
+          },
+          requiresApiKey: false,
+          capabilities: {
+            supportsKeyless: true,
+            supportsModelsEndpoint: false,
+            modelDiscoveryMode: 'static-hint',
+          },
+        },
+      },
+    });
+
+    const rows = toProviderRows(cfg, () => 'unused');
+    const copilotRow = rows.find((row) => row.provider === GITHUB_COPILOT_PROVIDER_ID);
+
+    expect(copilotRow).toMatchObject({
+      provider: GITHUB_COPILOT_PROVIDER_ID,
+      label: 'GitHub Copilot',
+      hasKey: true,
+      maskedKey: '',
+      isActive: true,
+      wire: 'openai-chat',
+      defaultModel: GITHUB_COPILOT_MODELS_HINT[0],
+    });
+  });
 });
 
 describe('assertProviderHasStoredSecret', () => {
@@ -233,6 +281,25 @@ describe('isKeylessProviderAllowed', () => {
       },
     } as const;
     expect(isKeylessProviderAllowed('litellm-proxy', entry)).toBe(true);
+  });
+
+  it('allows GitHub Copilot through its explicit keyless capability profile', () => {
+    const entry: import('@atv-design/shared').ProviderEntry = {
+      id: GITHUB_COPILOT_PROVIDER_ID,
+      name: 'GitHub Copilot',
+      builtin: false,
+      wire: 'openai-chat',
+      baseUrl: 'https://api.githubcopilot.com',
+      defaultModel: GITHUB_COPILOT_MODELS_HINT[0],
+      modelsHint: [...GITHUB_COPILOT_MODELS_HINT],
+      requiresApiKey: false,
+      capabilities: {
+        supportsKeyless: true,
+        supportsModelsEndpoint: false,
+        modelDiscoveryMode: 'static-hint',
+      },
+    };
+    expect(isKeylessProviderAllowed(GITHUB_COPILOT_PROVIDER_ID, entry)).toBe(true);
   });
 
   it('allows codex-family providers without an envKey (legacy contract)', () => {

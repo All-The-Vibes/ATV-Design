@@ -15,13 +15,18 @@ directories:
 files:
   - out/**
   - package.json
+extraResources:
+  - from: ../../skills/ui-ux-pro-max
+    to: skills/ui-ux-pro-max
 asar: true
 mac:
   category: public.app-category.developer-tools
   icon: resources/icon.icns
   hardenedRuntime: true
   gatekeeperAssess: false
-  notarize: false
+  # Keep notarization env-driven instead of hard-disabled. electron-builder
+  # only notarizes when Apple credentials are present; local credential-free
+  # packaging stays unsigned via the staged build script's default env.
   artifactName: atv-design-${version}-${arch}.${ext}
   target:
     - target: dmg

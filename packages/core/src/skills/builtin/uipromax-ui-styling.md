@@ -9,7 +9,7 @@ trigger:
 disable_model_invocation: false
 user_invocable: true
 ---
-_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/ui-styling/SKILL.md. In source checkouts, the preserved source bundle, support data, scripts, templates, references, and font assets live under `skills/ui-ux-pro-max/`. Packaged M1 apps currently ship this flattened builtin entrypoint only, so treat repo-local file paths below as source-build helpers rather than packaged-runtime contracts._
+_Ported from https://github.com/nextlevelbuilder/ui-ux-pro-max-skill (MIT). Original path: .claude/skills/ui-styling/SKILL.md. Source checkouts keep the preserved source bundle, support data, scripts, templates, references, and font assets under `skills/ui-ux-pro-max/`. Packaged desktop builds also ship that preserved bundle in app resources. The flattened builtin entrypoint remains the stable loader-facing surface, so the repo-local file paths below are checkout-oriented examples rather than a promise about packaged-runtime paths._
 
 # UI Styling Skill
 

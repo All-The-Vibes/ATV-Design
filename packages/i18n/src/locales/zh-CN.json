@@ -237,6 +237,19 @@
         "unknownError": "未知错误",
         "unsupportedCountryRegion": "当前账号、国家、地区或区域暂不支持 ChatGPT 订阅登录。"
       },
+      "copilotLogin": {
+        "title": "用 GitHub Copilot 登录",
+        "description": "直接用你的 GitHub Copilot 订阅访问 Copilot 模型，无需 API key。",
+        "signIn": "用 Copilot 登录",
+        "inProgress": "已打开浏览器，完成登录后自动返回…",
+        "loggedInBadge": "已登录 Copilot",
+        "logout": "登出",
+        "confirmLogout": "确定登出 GitHub Copilot 吗？",
+        "loginFailedTitle": "Copilot 登录失败",
+        "logoutFailedTitle": "Copilot 登出失败",
+        "statusFailedTitle": "Copilot 登录状态读取失败",
+        "unknownError": "未知错误"
+      },
       "addProvider": "添加服务",
       "addCustom": "添加自定义",
       "empty": "还没有配置任何服务，添加一个即可开始生成。",

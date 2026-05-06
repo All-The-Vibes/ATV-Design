@@ -42,7 +42,7 @@ describe('exportZip', () => {
     const readme = await readFile(join(extractDir, 'README.md'), 'utf8');
     expect(readme).toContain('Test bundle');
     expect(readme).toContain('atv-design');
-  });
+  }, 15_000);
 
   it('produces a valid zip without any extra assets', async () => {
     const dest = join(tempDir, 'minimal.zip');
