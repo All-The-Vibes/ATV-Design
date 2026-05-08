@@ -1,6 +1,6 @@
 import { useT } from '@atv-design/i18n';
+import { Wordmark } from '@atv-design/ui';
 import { ArrowUpRight } from 'lucide-react';
-import logoWithText from '../assets/logo-with-text.png';
 
 export interface EmptyStateProps {
   onPickStarter: (prompt: string) => void;
@@ -70,15 +70,16 @@ export function EmptyState({ onPickStarter }: EmptyStateProps) {
   return (
     <div className="h-full flex flex-col items-center justify-center overflow-y-auto select-none px-[var(--space-4)] py-[var(--space-8)]">
       <div className="w-full max-w-[760px] px-[var(--space-8)] flex flex-col items-center my-auto">
-        {/* ── Logo with text ── */}
-        <div className="flex flex-col items-center mb-[12px]">
-          <img
-            src={logoWithText}
-            alt="ATV Design"
-            className="h-auto"
-            style={{ width: 'clamp(280px, 26vw, 400px)' }}
-            draggable={false}
-          />
+        <div
+          className="flex flex-col items-center mb-[20px]"
+          style={{
+            borderRadius: '28px',
+            padding: '18px 30px 20px',
+            background:
+              'radial-gradient(circle at top, color-mix(in srgb, #f3e8dc 84%, transparent) 0%, transparent 72%)',
+          }}
+        >
+          <Wordmark layout="stacked" size="lg" />
         </div>
 
         {/* ── Headline ── */}
