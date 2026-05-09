@@ -6,7 +6,7 @@ import {
   GITHUB_COPILOT_MODELS_HINT,
   GITHUB_COPILOT_PROVIDER_ID,
 } from '@atv-design/shared';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const handlers = new Map<string, (...args: unknown[]) => unknown>();
 
@@ -72,6 +72,11 @@ vi.mock('@atv-design/providers/copilot-sdk', async () => {
 });
 
 let tmpConfigDir: string;
+let copilotOAuthIpc: typeof import('./copilot-oauth-ipc');
+
+beforeAll(async () => {
+  copilotOAuthIpc = await import('./copilot-oauth-ipc');
+}, 30_000);
 
 beforeEach(() => {
   tmpConfigDir = mkdtempSync(join(tmpdir(), 'copilot-oauth-ipc-'));
@@ -83,15 +88,17 @@ beforeEach(() => {
   pollDeviceAccessTokenMock.mockReset();
 });
 
-afterEach(async () => {
-  const mod = await import('./copilot-oauth-ipc');
-  mod.__resetCopilotTokenStoreForTests();
+afterAll(() => {
+  copilotOAuthIpc.__resetCopilotTokenStoreForTests();
+});
+
+afterEach(() => {
+  copilotOAuthIpc.__resetCopilotTokenStoreForTests();
   rmSync(tmpConfigDir, { recursive: true, force: true });
 });
 
 async function register() {
-  const { registerCopilotOAuthIpc } = await import('./copilot-oauth-ipc');
-  registerCopilotOAuthIpc();
+  copilotOAuthIpc.registerCopilotOAuthIpc();
 }
 
 describe('copilot-oauth:v1:status', () => {
@@ -172,8 +179,7 @@ describe('copilot-oauth:v1:login', () => {
     expect(fakeCachedConfig?.activeProvider).toBe(GITHUB_COPILOT_PROVIDER_ID);
     expect(fakeCachedConfig?.activeModel).toBe(GITHUB_COPILOT_MODELS_HINT[0]);
 
-    const { getCopilotTokenStore } = await import('./copilot-oauth-ipc');
-    const stored = await getCopilotTokenStore().load();
+    const stored = await copilotOAuthIpc.getCopilotTokenStore().load();
     expect(stored).toMatchObject({
       githubAccessToken: 'github-access-token',
       githubTokenType: 'bearer',
@@ -218,8 +224,7 @@ describe('copilot-oauth:v1:login', () => {
 
 describe('copilot-oauth:v1:logout', () => {
   it('clears stored auth and removes github-copilot from providers', async () => {
-    const { buildCopilotProviderEntry, getCopilotTokenStore } = await import('./copilot-oauth-ipc');
-    await getCopilotTokenStore().save({
+    await copilotOAuthIpc.getCopilotTokenStore().save({
       githubAccessToken: 'github-access-token',
       githubTokenType: 'bearer',
       githubScope: 'read:user copilot',
@@ -238,7 +243,7 @@ describe('copilot-oauth:v1:logout', () => {
         [GITHUB_COPILOT_PROVIDER_ID]: { baseUrl: 'https://api.githubcopilot.com' },
       },
       providers: {
-        [GITHUB_COPILOT_PROVIDER_ID]: buildCopilotProviderEntry(),
+        [GITHUB_COPILOT_PROVIDER_ID]: copilotOAuthIpc.buildCopilotProviderEntry(),
       },
     };
 
@@ -254,6 +259,6 @@ describe('copilot-oauth:v1:logout', () => {
     expect(fakeCachedConfig?.providers[GITHUB_COPILOT_PROVIDER_ID]).toBeUndefined();
     expect(fakeCachedConfig?.activeProvider).toBe('');
     expect(fakeCachedConfig?.activeModel).toBe('');
-    await expect(getCopilotTokenStore().load()).resolves.toBeNull();
+    await expect(copilotOAuthIpc.getCopilotTokenStore().load()).resolves.toBeNull();
   });
 });
