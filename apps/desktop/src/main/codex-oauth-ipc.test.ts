@@ -26,7 +26,7 @@ vi.mock('electron', () => ({
   shell: { openExternal: vi.fn(async () => true) },
 }));
 
-vi.mock('electron-log/main', () => ({
+vi.mock('electron-log/main.js', () => ({
   default: {
     scope: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
     transports: {

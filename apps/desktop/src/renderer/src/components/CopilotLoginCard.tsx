@@ -8,6 +8,8 @@ import { useCodesignStore } from '../store';
 export interface CopilotLoginCardProps {
   /** Called after a successful login or logout so the parent can refresh its provider list. */
   onStatusChange?: () => void | Promise<void>;
+  /** When false, the renderer is running without the Electron preload bridge. */
+  bridgeAvailable?: boolean;
 }
 
 export type CopilotViewState = 'not-logged-in' | 'loading' | 'logged-in';
@@ -117,7 +119,10 @@ function resolveIdentity(status: CopilotOAuthStatus | null): string | null {
   return value !== null && value.length > 0 ? value : null;
 }
 
-export function CopilotLoginCard({ onStatusChange }: CopilotLoginCardProps) {
+export function CopilotLoginCard({
+  onStatusChange,
+  bridgeAvailable = true,
+}: CopilotLoginCardProps) {
   const t = useT();
   const pushToast = useCodesignStore((s) => s.pushToast);
   const [status, setStatus] = useState<CopilotOAuthStatus | null>(null);
@@ -132,6 +137,7 @@ export function CopilotLoginCard({ onStatusChange }: CopilotLoginCardProps) {
   }, []);
 
   useEffect(() => {
+    if (!bridgeAvailable) return;
     if (!window.codesign) return;
     void performFetchStatus({
       api: window.codesign.copilotOAuth,
@@ -143,7 +149,7 @@ export function CopilotLoginCard({ onStatusChange }: CopilotLoginCardProps) {
         unknownError: t('settings.providers.copilotLogin.unknownError'),
       },
     });
-  }, [pushToast, t]);
+  }, [bridgeAvailable, pushToast, t]);
 
   const handleLogin = useCallback(async () => {
     if (!window.codesign) return;
@@ -237,7 +243,19 @@ export function CopilotLoginCard({ onStatusChange }: CopilotLoginCardProps) {
             </Button>
           </>
         ) : (
-          <Button variant="primary" size="sm" onClick={() => void handleLogin()}>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!bridgeAvailable}
+            title={
+              !bridgeAvailable
+                ? t('settings.providers.desktopBridgeUnavailableButton', {
+                    defaultValue: 'Open the ATV Design desktop window to use OAuth',
+                  })
+                : undefined
+            }
+            onClick={() => void handleLogin()}
+          >
             <Sparkles className="w-[var(--size-icon-sm)] h-[var(--size-icon-sm)]" />
             {t('settings.providers.copilotLogin.signIn')}
           </Button>

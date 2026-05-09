@@ -28,7 +28,7 @@ import {
 import { computeFingerprint } from '@atv-design/shared/fingerprint';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { BrowserWindow as ElectronBrowserWindow } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import electronUpdater from 'electron-updater';
 import type { AgentStreamEvent } from '../preload/index';
 import { registerAppMenu } from './app-menu';
 import { showBootDialog, writeBootErrorSync } from './boot-fallback';
@@ -42,6 +42,7 @@ import {
 import { registerCommentsIpc, registerCommentsUnavailableIpc } from './comments-ipc';
 import { configDir } from './config';
 import { registerConnectionIpc } from './connection-ipc';
+import { resolveCopilotTransportForModel } from './copilot-models';
 import { getCopilotSessionToken, registerCopilotOAuthIpc } from './copilot-oauth-ipc';
 import { scanDesignSystem } from './design-system';
 import { registerDiagnosticsIpc } from './diagnostics-ipc';
@@ -91,6 +92,8 @@ import {
   registerWorkspaceIpc,
 } from './snapshots-ipc';
 import { initStorageSettings } from './storage-settings';
+
+const { autoUpdater } = electronUpdater;
 
 // ESM shim: package.json "type": "module" means the built bundle is ESM and
 // __dirname/__filename don't exist. Derive them from import.meta.url so the
@@ -230,6 +233,37 @@ function resolveApiKeyForActive(providerId: string, allowKeyless: boolean): Prom
     getCopilotSessionToken,
     getApiKeyForProvider,
   });
+}
+
+async function maybeResolveCopilotTransport(
+  active: ReturnType<typeof resolveActiveModel>,
+  apiKey: string,
+  logger?: CoreLogger,
+): Promise<ReturnType<typeof resolveActiveModel>> {
+  if (active.model.provider !== GITHUB_COPILOT_PROVIDER_ID) return active;
+
+  const transport = await resolveCopilotTransportForModel({
+    modelId: active.model.modelId,
+    apiKey,
+    baseUrl: active.baseUrl ?? 'https://api.githubcopilot.com',
+    ...(active.httpHeaders !== undefined ? { httpHeaders: active.httpHeaders } : {}),
+    explicitCapabilities: active.explicitCapabilities,
+  });
+
+  logger?.info('[copilot] step=resolve_transport.ok', {
+    provider: active.model.provider,
+    modelId: active.model.modelId,
+    wire: transport.wire,
+    source: transport.source,
+    supportedEndpoints: transport.supportedEndpoints,
+  });
+
+  return {
+    ...active,
+    wire: transport.wire,
+    capabilities: transport.capabilities,
+    explicitCapabilities: transport.explicitCapabilities,
+  };
 }
 
 function providerUsesDynamicBearer(providerId: string): boolean {
@@ -798,11 +832,12 @@ function registerIpcHandlers(db: Database | null): void {
       // Snap to the canonical active provider in cachedConfig — the SAME source
       // the Settings UI uses for the Active badge — so the actual call cannot
       // diverge from what the user sees.
-      const active = resolveActiveModel(cfg, payload.model);
+      let active = resolveActiveModel(cfg, payload.model);
       const allowKeyless = active.allowKeyless;
       let apiKey: string;
       try {
         apiKey = await resolveApiKeyForActive(active.model.provider, allowKeyless);
+        active = await maybeResolveCopilotTransport(active, apiKey, coreLogger);
       } catch (err) {
         inFlight.delete(id);
         throw err;
@@ -977,11 +1012,12 @@ function registerIpcHandlers(db: Database | null): void {
           'CONFIG_MISSING',
         );
       }
-      const active = resolveActiveModel(cfg, payload.model);
+      let active = resolveActiveModel(cfg, payload.model);
       const allowKeyless = active.allowKeyless;
       let apiKey: string;
       try {
         apiKey = await resolveApiKeyForActive(active.model.provider, allowKeyless);
+        active = await maybeResolveCopilotTransport(active, apiKey);
       } catch (err) {
         inFlight.delete(id);
         throw err;
@@ -1093,9 +1129,10 @@ function registerIpcHandlers(db: Database | null): void {
       // pinned in the original generate; resolve fresh against the canonical
       // active provider so a switch in Settings takes effect immediately.
       const hint = payload.model ?? { provider: cfg.provider, modelId: cfg.modelPrimary };
-      const active = resolveActiveModel(cfg, hint);
+      let active = resolveActiveModel(cfg, hint);
       const allowKeyless = active.allowKeyless;
       const apiKey = await resolveApiKeyForActive(active.model.provider, allowKeyless);
+      active = await maybeResolveCopilotTransport(active, apiKey);
       const baseUrl = active.baseUrl ?? undefined;
       const promptContext = await preparePromptContext({
         attachments: payload.attachments,
@@ -1167,18 +1204,19 @@ function registerIpcHandlers(db: Database | null): void {
       }
       const cfg = getCachedConfig();
       if (cfg === null) throw new CodesignError('No configuration', 'CONFIG_MISSING');
-      const active = resolveActiveModel(cfg, {
+      let active = resolveActiveModel(cfg, {
         provider: cfg.activeProvider,
         modelId: cfg.activeModel,
       });
       const allowKeyless = active.allowKeyless;
-      const apiKey = await resolveApiKeyForActive(active.model.provider, allowKeyless);
-      const baseUrl = active.baseUrl ?? undefined;
       const titleLogger: CoreLogger = {
         info: (event, data) => logIpc.info(event, data),
         warn: (event, data) => logIpc.warn(event, data),
         error: (event, data) => logIpc.error(event, data),
       };
+      const apiKey = await resolveApiKeyForActive(active.model.provider, allowKeyless);
+      active = await maybeResolveCopilotTransport(active, apiKey, titleLogger);
+      const baseUrl = active.baseUrl ?? undefined;
       try {
         return await generateTitle({
           prompt,

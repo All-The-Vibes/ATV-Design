@@ -42,6 +42,16 @@ export function stripInferenceEndpointSuffix(baseUrl: string): string {
   return out;
 }
 
+const ROOT_OPENAI_COMPAT_HOSTS = new Set(['api.githubcopilot.com']);
+
+function normalizedHost(baseUrl: string): string | null {
+  try {
+    return new URL(baseUrl).host.toLowerCase().replace(/:(?:80|443)$/, '');
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Ensure the base URL carries an API version segment.
  *
@@ -59,6 +69,7 @@ export function stripInferenceEndpointSuffix(baseUrl: string): string {
  */
 export function ensureVersionedBase(baseUrl: string): string {
   const cleaned = stripInferenceEndpointSuffix(baseUrl);
+  if (ROOT_OPENAI_COMPAT_HOSTS.has(normalizedHost(cleaned) ?? '')) return cleaned;
   if (/\/v\d+[a-z\d]*(\/|$)/i.test(cleaned)) return cleaned;
   return `${cleaned}/v1`;
 }

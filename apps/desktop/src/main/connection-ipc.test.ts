@@ -19,6 +19,14 @@ vi.mock('./onboarding-ipc', () => ({
   getApiKeyForProvider: onboardingMocks.getApiKeyForProvider,
 }));
 
+const copilotOAuthMocks = vi.hoisted(() => ({
+  getCopilotSessionToken: vi.fn(async () => 'copilot-session-token'),
+}));
+
+vi.mock('./copilot-oauth-ipc', () => ({
+  getCopilotSessionToken: copilotOAuthMocks.getCopilotSessionToken,
+}));
+
 vi.mock('./codex-oauth-ipc', () => ({
   getCodexTokenStore: () => ({
     getValidAccessToken: vi.fn(async () => 'token'),
@@ -572,6 +580,7 @@ describe('models:v1:list-for-provider discovery modes', () => {
     electronRuntimeMocks.handle.mockReset();
     onboardingMocks.getCachedConfig.mockReset();
     onboardingMocks.getApiKeyForProvider.mockReset();
+    copilotOAuthMocks.getCopilotSessionToken.mockReset();
   });
 
   it('manual providers do not hit /models and return a manual-entry hint instead', async () => {
@@ -619,6 +628,72 @@ describe('models:v1:list-for-provider discovery modes', () => {
         expect(result.hint).toContain('manual');
       }
       expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
+    }
+  });
+
+  it('GitHub Copilot uses the live /models endpoint when keyless auth is available', async () => {
+    onboardingMocks.getCachedConfig.mockReturnValue(
+      hydrateConfig({
+        version: 3,
+        activeProvider: 'github-copilot',
+        activeModel: 'gpt-5.5',
+        secrets: {},
+        providers: {
+          'github-copilot': {
+            id: 'github-copilot',
+            name: 'GitHub Copilot',
+            builtin: false,
+            wire: 'openai-chat',
+            baseUrl: 'https://api.githubcopilot.com',
+            defaultModel: 'gpt-5.5',
+            modelsHint: ['gpt-5.5', 'claude-opus-4.7', 'gemini-3.1-pro-preview'],
+            httpHeaders: {
+              'Editor-Version': 'atv-design/1.2.3',
+              'Copilot-Integration-Id': 'vscode-chat',
+            },
+            requiresApiKey: false,
+            capabilities: {
+              supportsKeyless: true,
+              supportsModelsEndpoint: true,
+              modelDiscoveryMode: 'models',
+            },
+          },
+        },
+      }),
+    );
+    copilotOAuthMocks.getCopilotSessionToken.mockResolvedValue('copilot-session-token');
+
+    const originalFetch = globalThis.fetch;
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: 'gpt-5.5' }, { id: 'claude-opus-4.7' }] }),
+    }));
+    (globalThis as { fetch: typeof fetch }).fetch = fetchSpy as unknown as typeof fetch;
+
+    try {
+      registerConnectionIpc();
+      const handler = electronRuntimeMocks.handle.mock.calls.find(
+        (call) => call[0] === 'models:v1:list-for-provider',
+      )?.[1] as ((event: unknown, raw: unknown) => Promise<ModelsListResponse>) | undefined;
+      expect(handler).toBeDefined();
+
+      const result = await handler?.({}, 'github-copilot');
+      expect(copilotOAuthMocks.getCopilotSessionToken).toHaveBeenCalledTimes(1);
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'https://api.githubcopilot.com/models',
+        expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            authorization: 'Bearer copilot-session-token',
+            'Editor-Version': 'atv-design/1.2.3',
+            'Copilot-Integration-Id': 'vscode-chat',
+          }),
+        }),
+      );
+      expect(result).toEqual({ ok: true, models: ['gpt-5.5', 'claude-opus-4.7'] });
     } finally {
       (globalThis as { fetch: typeof fetch }).fetch = originalFetch;
     }

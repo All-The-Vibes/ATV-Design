@@ -1,5 +1,7 @@
 import { Menu, app, dialog } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import electronUpdater from 'electron-updater';
+
+const { autoUpdater } = electronUpdater;
 
 export function registerAppMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [

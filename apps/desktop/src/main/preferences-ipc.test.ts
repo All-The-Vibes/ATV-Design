@@ -8,7 +8,7 @@ vi.mock('electron', () => ({
   ipcMain: { handle: vi.fn() },
 }));
 
-vi.mock('electron-log/main', () => ({
+vi.mock('electron-log/main.js', () => ({
   default: {
     scope: () => ({
       warn: vi.fn(),

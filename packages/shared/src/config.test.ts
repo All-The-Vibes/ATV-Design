@@ -272,21 +272,21 @@ describe('provider capability helpers', () => {
     expect(caps.modelDiscoveryMode).toBe('static-hint');
   });
 
-  it('supports a static-hint keyless GitHub Copilot provider on the openai-chat wire', () => {
+  it('supports a live-discovery keyless GitHub Copilot provider on the openai-chat wire', () => {
     const caps = resolveProviderCapabilities(GITHUB_COPILOT_PROVIDER_ID, {
       wire: 'openai-chat',
       requiresApiKey: false,
       modelsHint: [...GITHUB_COPILOT_MODELS_HINT],
       capabilities: {
-        supportsModelsEndpoint: false,
-        modelDiscoveryMode: 'static-hint',
+        supportsModelsEndpoint: true,
+        modelDiscoveryMode: 'models',
       },
     });
     expect(caps.supportsKeyless).toBe(true);
     expect(caps.supportsChatCompletions).toBe(true);
-    expect(caps.supportsModelsEndpoint).toBe(false);
+    expect(caps.supportsModelsEndpoint).toBe(true);
     expect(caps.supportsToolCalling).toBe(true);
-    expect(caps.modelDiscoveryMode).toBe('static-hint');
+    expect(caps.modelDiscoveryMode).toBe('models');
   });
 
   it('lets explicit capability overrides win over defaults', () => {

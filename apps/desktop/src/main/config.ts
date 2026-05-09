@@ -6,6 +6,9 @@ import {
   type Config,
   ConfigV3Schema,
   ERROR_CODES,
+  GITHUB_COPILOT_MODELS_HINT,
+  GITHUB_COPILOT_PROVIDER_ID,
+  hydrateConfig,
   parseConfigFlexible,
   toPersistedV3,
 } from '@atv-design/shared';
@@ -62,10 +65,13 @@ export async function readConfig(): Promise<Config | null> {
       { cause: validated.cause },
     );
   }
+  const refreshed = refreshManagedProviders(validated.data);
   if (legacyDir !== null) {
-    await persistLegacyMigration(validated.data, legacyDir);
+    await persistLegacyMigration(refreshed, legacyDir);
+  } else if (refreshed !== validated.data) {
+    await writeConfig(refreshed);
   }
-  return validated.data;
+  return refreshed;
 }
 
 async function locateReadableConfig(): Promise<{
@@ -143,6 +149,58 @@ function safeParseConfig(
       cause: err,
     };
   }
+}
+
+function sameStringArray(a: readonly string[] | undefined, b: readonly string[]): boolean {
+  if (a === undefined) return false;
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
+function refreshManagedProviders(config: Config): Config {
+  const current = config.providers[GITHUB_COPILOT_PROVIDER_ID];
+  if (current === undefined) return config;
+
+  const nextDefaultModel = GITHUB_COPILOT_MODELS_HINT[0];
+  const nextModelsHint = [...GITHUB_COPILOT_MODELS_HINT];
+  const nextCapabilities = {
+    ...(current.capabilities ?? {}),
+    supportsKeyless: true,
+    supportsModelsEndpoint: true,
+    modelDiscoveryMode: 'models' as const,
+  };
+
+  const defaultChanged =
+    current.defaultModel !== nextDefaultModel || current.requiresApiKey !== false;
+  const modelsHintChanged = !sameStringArray(current.modelsHint, nextModelsHint);
+  const capabilitiesChanged =
+    current.capabilities?.supportsKeyless !== true ||
+    current.capabilities?.supportsModelsEndpoint !== true ||
+    current.capabilities?.modelDiscoveryMode !== 'models';
+  const activeModelChanged =
+    config.activeProvider === GITHUB_COPILOT_PROVIDER_ID &&
+    config.activeModel === current.defaultModel
+      ? config.activeModel !== nextDefaultModel
+      : false;
+
+  if (!defaultChanged && !modelsHintChanged && !capabilitiesChanged && !activeModelChanged) {
+    return config;
+  }
+
+  return hydrateConfig({
+    ...toPersistedV3(config),
+    activeModel: activeModelChanged ? nextDefaultModel : config.activeModel,
+    providers: {
+      ...config.providers,
+      [GITHUB_COPILOT_PROVIDER_ID]: {
+        ...current,
+        defaultModel: nextDefaultModel,
+        modelsHint: nextModelsHint,
+        requiresApiKey: false,
+        capabilities: nextCapabilities,
+      },
+    },
+  });
 }
 
 export async function writeConfig(config: Config): Promise<void> {

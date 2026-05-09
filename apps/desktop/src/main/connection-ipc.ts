@@ -483,6 +483,26 @@ function mapCredentialResolutionError(providerId: string, err: unknown): Connect
   };
 }
 
+function toModelsListError(
+  providerId: string,
+  err: unknown,
+): Extract<ModelsListResponse, { ok: false }> {
+  const mapped = mapCredentialResolutionError(providerId, err);
+  return {
+    ok: false,
+    code:
+      mapped.code === 'IPC_BAD_INPUT'
+        ? 'IPC_BAD_INPUT'
+        : mapped.code === 'NETWORK' || mapped.code === 'ECONNREFUSED'
+          ? 'NETWORK'
+          : mapped.code === 'PARSE'
+            ? 'PARSE'
+            : 'HTTP',
+    message: mapped.message,
+    hint: mapped.hint,
+  };
+}
+
 function isInferenceProbeWire(
   wire: WireApi,
 ): wire is Extract<WireApi, 'openai-chat' | 'openai-responses'> {
@@ -949,13 +969,6 @@ export function registerConnectionIpc(): void {
         };
       }
 
-      // Providers that expose a static hint (e.g. chatgpt-codex, whose /models
-      // endpoint requires OAuth bearer + ChatGPT-Account-Id headers that this
-      // keyless discovery path cannot supply) short-circuit with modelsHint.
-      if (entry.modelsHint !== undefined && entry.modelsHint.length > 0) {
-        return { ok: true, models: entry.modelsHint };
-      }
-
       const capabilities = resolveProviderCapabilities(raw, entry);
       if (capabilities.modelDiscoveryMode === 'static-hint') {
         return { ok: true, models: resolveDiscoveryHintModels(entry) };
@@ -974,17 +987,13 @@ export function registerConnectionIpc(): void {
 
       let apiKey: string;
       try {
-        apiKey = getApiKeyForProvider(raw);
+        apiKey = await resolveApiKeyWithKeylessFallback(raw, isKeylessProviderAllowed(raw, entry), {
+          getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
+          getCopilotSessionToken,
+          getApiKeyForProvider,
+        });
       } catch (err) {
-        if (!isKeylessProviderAllowed(raw, entry)) {
-          return {
-            ok: false,
-            code: 'IPC_BAD_INPUT',
-            message: err instanceof Error ? err.message : `No API key stored for provider "${raw}"`,
-            hint: 'Open Settings and import Codex again, or add an API key for this provider',
-          };
-        }
-        apiKey = '';
+        return toModelsListError(raw, err);
       }
 
       const cached = getCachedModels(raw, entry.baseUrl, apiKey);

@@ -1,5 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { copilotNetworkError, mapCopilotResponseError } from './errors.js';
+import {
+  copilotNetworkError,
+  copilotOAuthConsentDeniedError,
+  mapCopilotResponseError,
+} from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Client ID
@@ -38,7 +42,9 @@ function resolveClientId(explicit?: string): string {
 // ---------------------------------------------------------------------------
 
 export const AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
+export const DEVICE_CODE_URL = 'https://github.com/login/device/code';
 export const TOKEN_URL = 'https://github.com/login/oauth/access_token';
+const DEVICE_CODE_GRANT_TYPE = 'urn:ietf:params:oauth:grant-type:device_code';
 
 /**
  * Minimum scope required for GitHub Copilot OAuth flows.
@@ -102,6 +108,201 @@ export interface TokenResponse {
   scope: string;
   /** Unix ms timestamp captured immediately after a successful exchange. */
   obtainedAt: number;
+}
+
+export interface DeviceCodeResponse {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  verificationUriComplete?: string | null;
+  expiresIn: number;
+  interval: number;
+}
+
+function deviceFlowAbortError(): Error {
+  return new Error('GitHub device flow aborted by signal');
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw deviceFlowAbortError();
+  }
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  throwIfAborted(signal);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      cleanup();
+      reject(deviceFlowAbortError());
+    };
+
+    const cleanup = () => {
+      signal?.removeEventListener('abort', onAbort);
+    };
+
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+export async function requestDeviceCode(opts?: {
+  clientId?: string;
+  scope?: string;
+  signal?: AbortSignal;
+  fetch?: typeof fetch;
+}): Promise<DeviceCodeResponse> {
+  const clientId = resolveClientId(opts?.clientId);
+  const fetchImpl = opts?.fetch ?? fetch;
+  const body = new URLSearchParams({
+    client_id: clientId,
+    scope: opts?.scope ?? SCOPE,
+  });
+
+  let response: Response;
+  try {
+    response = await fetchImpl(DEVICE_CODE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body,
+      signal: opts?.signal ?? null,
+    });
+  } catch (cause) {
+    throw copilotNetworkError(cause);
+  }
+
+  if (!response.ok) {
+    let parsed: unknown;
+    try {
+      parsed = await response.json();
+    } catch {
+      parsed = undefined;
+    }
+    throw mapCopilotResponseError(response, parsed);
+  }
+
+  const json = (await response.json()) as {
+    device_code?: string;
+    user_code?: string;
+    verification_uri?: string;
+    verification_uri_complete?: string;
+    expires_in?: number;
+    interval?: number;
+  };
+
+  return {
+    deviceCode: json.device_code ?? '',
+    userCode: json.user_code ?? '',
+    verificationUri: json.verification_uri ?? '',
+    verificationUriComplete: json.verification_uri_complete ?? null,
+    expiresIn: json.expires_in ?? 900,
+    interval: json.interval ?? 5,
+  };
+}
+
+export async function pollDeviceAccessToken(opts: {
+  deviceCode: string;
+  clientId?: string;
+  interval?: number;
+  expiresIn?: number;
+  signal?: AbortSignal;
+  fetch?: typeof fetch;
+}): Promise<TokenResponse> {
+  const clientId = resolveClientId(opts.clientId);
+  const fetchImpl = opts.fetch ?? fetch;
+  const startedAt = Date.now();
+  const expiresAt = startedAt + Math.max(1, opts.expiresIn ?? 900) * 1000;
+  let intervalMs = Math.max(1, opts.interval ?? 5) * 1000;
+
+  while (true) {
+    throwIfAborted(opts.signal);
+    if (Date.now() >= expiresAt) {
+      throw new Error('GitHub device login expired before completion');
+    }
+
+    const body = new URLSearchParams({
+      client_id: clientId,
+      device_code: opts.deviceCode,
+      grant_type: DEVICE_CODE_GRANT_TYPE,
+    });
+
+    let response: Response;
+    try {
+      response = await fetchImpl(TOKEN_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json',
+        },
+        body,
+        signal: opts.signal ?? null,
+      });
+    } catch (cause) {
+      throw copilotNetworkError(cause);
+    }
+
+    let json: {
+      access_token?: string;
+      token_type?: string;
+      scope?: string;
+      error?: string;
+      error_description?: string;
+    };
+
+    try {
+      json = (await response.json()) as typeof json;
+    } catch {
+      json = {};
+    }
+
+    if (!response.ok) {
+      throw mapCopilotResponseError(response, json);
+    }
+
+    if (typeof json.access_token === 'string' && json.access_token.length > 0) {
+      return {
+        accessToken: json.access_token,
+        tokenType: json.token_type ?? 'bearer',
+        scope: json.scope ?? '',
+        obtainedAt: Date.now(),
+      };
+    }
+
+    if (json.error === 'authorization_pending') {
+      await sleep(intervalMs, opts.signal);
+      continue;
+    }
+
+    if (json.error === 'slow_down') {
+      intervalMs += 5_000;
+      await sleep(intervalMs, opts.signal);
+      continue;
+    }
+
+    if (json.error === 'access_denied') {
+      throw copilotOAuthConsentDeniedError(new Error('GitHub device login was denied'));
+    }
+
+    if (json.error === 'expired_token') {
+      throw new Error('GitHub device login expired before completion');
+    }
+
+    const detail =
+      typeof json.error_description === 'string' && json.error_description.length > 0
+        ? json.error_description
+        : typeof json.error === 'string' && json.error.length > 0
+          ? json.error
+          : 'unknown device-flow response';
+    throw new Error(`GitHub device login failed: ${detail}`);
+  }
 }
 
 /**

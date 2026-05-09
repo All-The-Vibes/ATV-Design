@@ -33,7 +33,7 @@ vi.mock('electron', () => ({
   shell: { openPath: vi.fn() },
 }));
 
-vi.mock('electron-log/main', () => ({
+vi.mock('electron-log/main.js', () => ({
   default: {
     scope: () => ({
       warn: vi.fn(),

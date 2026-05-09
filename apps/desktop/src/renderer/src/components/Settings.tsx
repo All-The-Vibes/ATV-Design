@@ -39,6 +39,10 @@ import { DiagnosticsPanel } from './settings/DiagnosticsPanel';
 
 type Tab = 'models' | 'images' | 'appearance' | 'storage' | 'diagnostics' | 'advanced';
 
+export function hasCodesignBridge(codesign: unknown): boolean {
+  return codesign !== undefined && codesign !== null;
+}
+
 const TABS: ReadonlyArray<{ id: Tab; icon: typeof Cpu }> = [
   { id: 'models', icon: Cpu },
   { id: 'images', icon: ImageIcon },
@@ -1174,6 +1178,9 @@ function ModelsTab() {
   const setConfig = useCodesignStore((s) => s.completeOnboarding);
   const pushToast = useCodesignStore((s) => s.pushToast);
   const reportableErrorToast = useCodesignStore((s) => s.reportableErrorToast);
+  const hasDesktopBridge = hasCodesignBridge(
+    typeof window !== 'undefined' ? window.codesign : undefined,
+  );
   const [rows, setRows] = useState<ProviderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddCustom, setShowAddCustom] = useState(false);
@@ -1233,6 +1240,10 @@ function ModelsTab() {
   }
 
   useEffect(() => {
+    if (!hasDesktopBridge) {
+      setLoading(false);
+      return;
+    }
     if (!window.codesign) return;
     void window.codesign.settings
       .listProviders()
@@ -1307,7 +1318,7 @@ function ModelsTab() {
       .catch(() => {
         // non-fatal; banner just doesn't appear
       });
-  }, [pushToast, t]);
+  }, [hasDesktopBridge, pushToast, t]);
 
   useEffect(() => {
     if (!window.codesign?.config?.testEndpoint) return;
@@ -1665,8 +1676,28 @@ function ModelsTab() {
       )}
 
       <div className="space-y-[var(--space-3)]">
-        <ChatgptLoginCard onStatusChange={reloadRows} />
-        <CopilotLoginCard onStatusChange={reloadRows} />
+        {!hasDesktopBridge && (
+          <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--space-3)] py-[var(--space-2_5)]">
+            <div className="flex items-start gap-[var(--space-2)]">
+              <AlertTriangle className="mt-[2px] h-4 w-4 shrink-0 text-[var(--color-warning)]" />
+              <div className="min-w-0">
+                <div className="text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
+                  {t('settings.providers.desktopBridgeUnavailableTitle', {
+                    defaultValue: 'Desktop bridge unavailable',
+                  })}
+                </div>
+                <p className="mt-[var(--space-0_5)] text-[var(--text-xs)] leading-[var(--leading-body)] text-[var(--color-text-muted)]">
+                  {t('settings.providers.desktopBridgeUnavailableBody', {
+                    defaultValue:
+                      'This page is running without the Electron preload bridge, so OAuth and provider actions are disabled. Use the ATV Design desktop window started by pnpm --filter @atv-design/desktop dev, not the raw renderer dev-server URL.',
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        <ChatgptLoginCard onStatusChange={reloadRows} bridgeAvailable={hasDesktopBridge} />
+        <CopilotLoginCard onStatusChange={reloadRows} bridgeAvailable={hasDesktopBridge} />
         {cpaDetection === 'available' && (
           <LocalCpaImportCard
             onImport={() => {
@@ -1914,6 +1945,7 @@ function ModelsTab() {
         <div className="flex items-center justify-between gap-[var(--space-3)] min-h-[var(--size-control-sm)]">
           <SectionTitle>{t('settings.providers.sectionTitle')}</SectionTitle>
           <AddProviderMenu
+            disabled={!hasDesktopBridge}
             open={showAddMenu}
             setOpen={setShowAddMenu}
             hasClaudeCodeImported={rows.some((r) => r.provider === 'claude-code-imported')}
@@ -2594,6 +2626,7 @@ export function Settings() {
 }
 
 interface AddProviderMenuProps {
+  disabled?: boolean;
   open: boolean;
   setOpen: (v: boolean) => void;
   hasClaudeCodeImported: boolean;
@@ -2606,6 +2639,7 @@ interface AddProviderMenuProps {
 }
 
 function AddProviderMenu({
+  disabled = false,
   open,
   setOpen,
   hasClaudeCodeImported,
@@ -2691,7 +2725,21 @@ function AddProviderMenu({
 
   return (
     <div ref={rootRef} className="relative">
-      <Button variant="secondary" size="sm" onClick={() => setOpen(!open)}>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={disabled}
+        title={
+          disabled
+            ? t('settings.providers.desktopBridgeUnavailableButton', {
+                defaultValue: 'Open the ATV Design desktop window to manage providers',
+              })
+            : undefined
+        }
+        onClick={() => {
+          if (!disabled) setOpen(!open);
+        }}
+      >
         <Plus className="w-3.5 h-3.5" />
         {t('settings.providers.addProvider')}
       </Button>

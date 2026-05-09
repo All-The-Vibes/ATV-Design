@@ -48,7 +48,11 @@ export type WireApi = z.infer<typeof WireApiSchema>;
  */
 export const CHATGPT_CODEX_PROVIDER_ID = 'chatgpt-codex';
 export const GITHUB_COPILOT_PROVIDER_ID = 'github-copilot';
-export const GITHUB_COPILOT_MODELS_HINT = ['gpt-4.1', 'gpt-4o', 'gpt-4o-mini'] as const;
+export const GITHUB_COPILOT_MODELS_HINT = [
+  'gpt-5.5',
+  'claude-opus-4.7',
+  'gemini-3.1-pro-preview',
+] as const;
 
 // ── Secrets & StoredDesignSystem ─────────────────────────────────────────────
 

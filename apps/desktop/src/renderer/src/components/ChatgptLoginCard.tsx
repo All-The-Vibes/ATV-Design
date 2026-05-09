@@ -8,6 +8,8 @@ import { useCodesignStore } from '../store';
 export interface ChatgptLoginCardProps {
   /** Called after a successful login or logout so the parent can refresh its provider list. */
   onStatusChange?: () => void | Promise<void>;
+  /** When false, the renderer is running without the Electron preload bridge. */
+  bridgeAvailable?: boolean;
 }
 
 export type ChatgptViewState = 'not-logged-in' | 'loading' | 'logged-in';
@@ -130,7 +132,10 @@ export async function performFetchStatus(deps: PerformFetchStatusDeps): Promise<
   }
 }
 
-export function ChatgptLoginCard({ onStatusChange }: ChatgptLoginCardProps) {
+export function ChatgptLoginCard({
+  onStatusChange,
+  bridgeAvailable = true,
+}: ChatgptLoginCardProps) {
   const t = useT();
   const pushToast = useCodesignStore((s) => s.pushToast);
   const [status, setStatus] = useState<CodexOAuthStatus | null>(null);
@@ -145,6 +150,7 @@ export function ChatgptLoginCard({ onStatusChange }: ChatgptLoginCardProps) {
   }, []);
 
   useEffect(() => {
+    if (!bridgeAvailable) return;
     if (!window.codesign) return;
     void performFetchStatus({
       api: window.codesign.codexOAuth,
@@ -156,7 +162,7 @@ export function ChatgptLoginCard({ onStatusChange }: ChatgptLoginCardProps) {
         unknownError: t('settings.providers.chatgptLogin.unknownError'),
       },
     });
-  }, [pushToast, t]);
+  }, [bridgeAvailable, pushToast, t]);
 
   const handleLogin = useCallback(async () => {
     if (!window.codesign) return;
@@ -252,7 +258,19 @@ export function ChatgptLoginCard({ onStatusChange }: ChatgptLoginCardProps) {
             </Button>
           </>
         ) : (
-          <Button variant="primary" size="sm" onClick={() => void handleLogin()}>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!bridgeAvailable}
+            title={
+              !bridgeAvailable
+                ? t('settings.providers.desktopBridgeUnavailableButton', {
+                    defaultValue: 'Open the ATV Design desktop window to use OAuth',
+                  })
+                : undefined
+            }
+            onClick={() => void handleLogin()}
+          >
             <Sparkles className="w-[var(--size-icon-sm)] h-[var(--size-icon-sm)]" />
             {t('settings.providers.chatgptLogin.signIn')}
           </Button>

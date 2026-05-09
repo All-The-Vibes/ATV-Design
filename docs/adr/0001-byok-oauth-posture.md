@@ -1,17 +1,17 @@
 # ADR 0001 — BYOK OAuth Posture
 
-**Status:** Accepted (redirect URI method SUPERSEDED-IN-PART 2026-05-01)
+**Status:** Accepted (redirect URI method SUPERSEDED-IN-PART 2026-05-08)
 **Date:** 2026-04-30
 **Context:** Phase 0 of `.omc/plans/ralplan-fork-open-codesign-copilot-skills-final.md` (Option E)
 **Mandated-by:** Spec Principle 4 ("BYOK end-to-end with one decision committed up front") and Architect pass-1 verdict.
 
-## Status: SUPERSEDED-IN-PART (2026-05-01)
+## Status: SUPERSEDED-IN-PART (2026-05-08)
 
-**Section affected:** "Implementation Constraints" — redirect URI design.
+**Section affected:** "Implementation Constraints" — desktop sign-in interaction model.
 
-The original custom URL-scheme redirect design in Section "Implementation Constraints" is superseded by loopback HTTP. The core BYOK posture (public OAuth client ID + PKCE, no embedded secrets, optional self-registration) remains unchanged.
+The earlier custom URL-scheme design was first superseded by loopback HTTP, and the loopback HTTP design is now superseded by GitHub device flow for the desktop app. The core BYOK posture (public client ID, no embedded secrets, optional self-registration) remains unchanged.
 
-**Rationale:** Pre-mortem Scenario 2 in the ralplan identified a critical cross-platform OAuth UX hazard — Windows packaged builds (Squirrel/NSIS installer) break custom URL-scheme registration, causing OAuth to fail in production while working in dev. Loopback HTTP (`http://127.0.0.1:<random-port>/oauth-callback`) sidesteps this entirely: no OS-level registration needed, no installer integration points, works uniformly across macOS/Windows/Linux. The Codex provider (`packages/providers/src/codex/oauth-server.ts`) in this same fork already uses this pattern as battle-tested precedent.
+**Rationale:** The loopback redirect design failed against the shipped public client ID with GitHub's `redirect_uri` mismatch error. The same public client ID successfully supports GitHub's device-flow endpoints, which removes the redirect-URI registration problem entirely for ATV Design's desktop sign-in path. ATV Design now opens GitHub's device-login page, copies the one-time user code to the clipboard, and polls the token endpoint until approval, denial, or expiry. Self-registration still works, but the user's GitHub OAuth app must have device flow enabled.
 
 ## Decision
 

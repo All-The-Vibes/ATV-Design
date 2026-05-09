@@ -22,12 +22,16 @@ vi.mock('electron', () => ({
   },
 }));
 
-vi.mock('electron-updater', () => ({
-  autoUpdater: {
+vi.mock('electron-updater', () => {
+  const autoUpdater = {
     on: vi.fn(),
     checkForUpdates: vi.fn(),
-  },
-}));
+  };
+  return {
+    autoUpdater,
+    default: { autoUpdater },
+  };
+});
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 function BrowserWindowMock() {}

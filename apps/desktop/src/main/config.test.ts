@@ -1,7 +1,11 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { BUILTIN_PROVIDERS } from '@atv-design/shared';
+import {
+  BUILTIN_PROVIDERS,
+  GITHUB_COPILOT_MODELS_HINT,
+  GITHUB_COPILOT_PROVIDER_ID,
+} from '@atv-design/shared';
 import { parse as parseToml, stringify as stringifyToml } from 'smol-toml';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -201,5 +205,77 @@ describe('readConfig new-path precedence', () => {
     expect(migrated.version).toBe(3);
     expect(migrated.activeProvider).toBe('openai');
     expect(migrated.activeModel).toBe('gpt-4o');
+  });
+
+  it('refreshes stored GitHub Copilot providers to live model discovery defaults', async () => {
+    const root = await makeTempRoot();
+    setXdgConfigHome(root);
+    await writeTomlConfig(join(root, 'atv-design', 'config.toml'), {
+      version: 3,
+      activeProvider: GITHUB_COPILOT_PROVIDER_ID,
+      activeModel: 'gpt-4.1',
+      secrets: {},
+      providers: {
+        [GITHUB_COPILOT_PROVIDER_ID]: {
+          id: GITHUB_COPILOT_PROVIDER_ID,
+          name: 'GitHub Copilot',
+          builtin: false,
+          wire: 'openai-chat',
+          baseUrl: 'https://api.githubcopilot.com',
+          defaultModel: 'gpt-4.1',
+          modelsHint: ['gpt-4.1', 'gpt-4o', 'gpt-4o-mini'],
+          requiresApiKey: false,
+          capabilities: {
+            supportsKeyless: true,
+            supportsModelsEndpoint: false,
+            modelDiscoveryMode: 'static-hint',
+          },
+        },
+      },
+    });
+
+    const { readConfig } = await loadConfigModule();
+    const config = await readConfig();
+
+    expect(config?.activeModel).toBe(GITHUB_COPILOT_MODELS_HINT[0]);
+    expect(config?.providers[GITHUB_COPILOT_PROVIDER_ID]).toMatchObject({
+      defaultModel: GITHUB_COPILOT_MODELS_HINT[0],
+      modelsHint: [...GITHUB_COPILOT_MODELS_HINT],
+      capabilities: {
+        supportsKeyless: true,
+        supportsModelsEndpoint: true,
+        modelDiscoveryMode: 'models',
+      },
+    });
+
+    const persisted = parseToml(
+      await readFile(join(root, 'atv-design', 'config.toml'), 'utf8'),
+    ) as {
+      activeModel?: string;
+      providers?: Record<
+        string,
+        {
+          defaultModel?: string;
+          modelsHint?: string[];
+          capabilities?: {
+            supportsModelsEndpoint?: boolean;
+            modelDiscoveryMode?: string;
+          };
+        }
+      >;
+    };
+    expect(persisted.activeModel).toBe(GITHUB_COPILOT_MODELS_HINT[0]);
+    expect(persisted.providers?.[GITHUB_COPILOT_PROVIDER_ID]?.defaultModel).toBe(
+      GITHUB_COPILOT_MODELS_HINT[0],
+    );
+    expect(persisted.providers?.[GITHUB_COPILOT_PROVIDER_ID]?.modelsHint).toEqual([
+      ...GITHUB_COPILOT_MODELS_HINT,
+    ]);
+    expect(
+      persisted.providers?.[GITHUB_COPILOT_PROVIDER_ID]?.capabilities?.supportsModelsEndpoint,
+    ).toBe(true);
+    expect(
+      persisted.providers?.[GITHUB_COPILOT_PROVIDER_ID]?.capabilities?.modelDiscoveryMode,
+    ).toBe('models');
   });
 });

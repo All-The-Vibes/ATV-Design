@@ -1,13 +1,10 @@
-import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
 import {
   CopilotTokenStore,
   type StoredCopilotAuth,
-  buildAuthorizeUrl,
-  exchangeCode,
   exchangeForSessionToken,
-  generatePkce,
-  startCallbackServer,
+  pollDeviceAccessToken,
+  requestDeviceCode,
 } from '@atv-design/providers/copilot-sdk';
 import {
   CodesignError,
@@ -19,7 +16,7 @@ import {
   hydrateConfig,
 } from '@atv-design/shared';
 import { configDir, writeConfig } from './config';
-import { app, ipcMain, shell } from './electron-runtime';
+import { app, clipboard, dialog, ipcMain, shell } from './electron-runtime';
 import { getLogger } from './logger';
 import { getCachedConfig, setCachedConfig } from './onboarding-ipc';
 
@@ -58,8 +55,8 @@ export function buildCopilotProviderEntry(): ProviderEntry {
     requiresApiKey: false,
     capabilities: {
       supportsKeyless: true,
-      supportsModelsEndpoint: false,
-      modelDiscoveryMode: 'static-hint',
+      supportsModelsEndpoint: true,
+      modelDiscoveryMode: 'models',
     },
   };
 }
@@ -185,24 +182,52 @@ async function claimActiveProviderIfUnset(): Promise<void> {
   setCachedConfig(next);
 }
 
-async function runLoginFlow(abortController: AbortController): Promise<CopilotOAuthStatus> {
-  const pkce = generatePkce();
-  const state = randomBytes(16).toString('hex');
-  let server: Awaited<ReturnType<typeof startCallbackServer>> | null = null;
-  try {
-    server = await startCallbackServer();
-    const authorizeUrl = buildAuthorizeUrl({
-      redirectUri: server.redirectUri,
-      state,
-      challenge: pkce.challenge,
+function showDeviceFlowInstructions(
+  abortController: AbortController,
+  opts: { userCode: string; verificationUri: string },
+): void {
+  clipboard.writeText(opts.userCode);
+  void dialog
+    .showMessageBox({
+      type: 'info',
+      title: 'GitHub Copilot Sign-In',
+      message: 'Finish sign-in in your browser',
+      detail: [
+        `1. ATV Design copied this code to your clipboard: ${opts.userCode}`,
+        `2. If GitHub asks for a code, paste it at ${opts.verificationUri}`,
+        '3. Return to ATV Design after you approve access.',
+      ].join('\n\n'),
+      buttons: ['Got it', 'Cancel sign-in'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    })
+    .then(({ response }) => {
+      if (response === 1 && !abortController.signal.aborted) {
+        abortController.abort();
+      }
+    })
+    .catch((err: unknown) => {
+      logger.warn('copilot.oauth.device.instructions.fail', {
+        message: err instanceof Error ? err.message : String(err),
+      });
     });
-    await shell.openExternal(authorizeUrl);
-    logger.info('copilot.oauth.login.started', { redirectUri: server.redirectUri });
-    const { code } = await server.waitForCode({ state, signal: abortController.signal });
-    const token = await exchangeCode({
-      code,
-      verifier: pkce.verifier,
-      redirectUri: server.redirectUri,
+}
+
+async function runLoginFlow(abortController: AbortController): Promise<CopilotOAuthStatus> {
+  try {
+    const device = await requestDeviceCode({ signal: abortController.signal });
+    const verificationUrl = device.verificationUriComplete ?? device.verificationUri;
+    await shell.openExternal(verificationUrl);
+    logger.info('copilot.oauth.login.started', { mode: 'device-flow' });
+    showDeviceFlowInstructions(abortController, {
+      userCode: device.userCode,
+      verificationUri: device.verificationUri,
+    });
+    const token = await pollDeviceAccessToken({
+      deviceCode: device.deviceCode,
+      interval: device.interval,
+      expiresIn: device.expiresIn,
       signal: abortController.signal,
     });
     const stored = await getCopilotTokenStore().save({
@@ -240,8 +265,6 @@ async function runLoginFlow(abortController: AbortController): Promise<CopilotOA
       ERROR_CODES.PROVIDER_ERROR,
       { cause: err },
     );
-  } finally {
-    await server?.close();
   }
 }
 

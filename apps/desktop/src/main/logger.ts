@@ -1,6 +1,6 @@
 import { existsSync, renameSync, unlinkSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import log from 'electron-log/main';
+import log from 'electron-log/main.js';
 import { app } from './electron-runtime';
 import { currentRunId } from './runContext';
 import { getActiveStorageLocations } from './storage-settings';

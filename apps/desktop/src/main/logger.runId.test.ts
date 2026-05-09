@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 type Captured = { level: string; scope: string; event: string; data?: unknown };
 
-vi.mock('electron-log/main', () => {
+vi.mock('electron-log/main.js', () => {
   const capture: Captured[] = [];
   const makeScope = (scope: string) => ({
     info: (event: string, data?: unknown) => capture.push({ level: 'info', scope, event, data }),
@@ -25,7 +25,7 @@ vi.mock('./storage-settings', () => ({
   getActiveStorageLocations: () => ({ logsDir: '/tmp' }),
 }));
 
-import log from 'electron-log/main';
+import log from 'electron-log/main.js';
 import { getLogger } from './logger';
 import { withRun } from './runContext';
 

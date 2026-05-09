@@ -12,6 +12,10 @@ const handlers = new Map<string, (...args: unknown[]) => unknown>();
 
 vi.mock('./electron-runtime', () => ({
   app: { getVersion: vi.fn(() => '1.2.3') },
+  clipboard: { writeText: vi.fn() },
+  dialog: {
+    showMessageBox: vi.fn(async () => ({ response: 0 })),
+  },
   ipcMain: {
     handle: (channel: string, fn: (...args: unknown[]) => unknown) => {
       handlers.set(channel, fn);
@@ -20,7 +24,7 @@ vi.mock('./electron-runtime', () => ({
   shell: { openExternal: vi.fn(async () => true) },
 }));
 
-vi.mock('electron-log/main', () => ({
+vi.mock('electron-log/main.js', () => ({
   default: {
     scope: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn() }),
     transports: {
@@ -51,19 +55,9 @@ vi.mock('./onboarding-ipc', () => ({
   },
 }));
 
-const buildAuthorizeUrlMock = vi.fn(
-  () => 'https://github.com/login/oauth/authorize?client_id=test',
-);
-const exchangeCodeMock = vi.fn();
 const exchangeForSessionTokenMock = vi.fn();
-const generatePkceMock = vi.fn(() => ({ challenge: 'pkce-challenge', verifier: 'pkce-verifier' }));
-const waitForCodeMock = vi.fn();
-const closeMock = vi.fn(async () => {});
-const startCallbackServerMock = vi.fn(async () => ({
-  redirectUri: 'http://127.0.0.1:1455/oauth-callback',
-  waitForCode: waitForCodeMock,
-  close: closeMock,
-}));
+const requestDeviceCodeMock = vi.fn();
+const pollDeviceAccessTokenMock = vi.fn();
 
 vi.mock('@atv-design/providers/copilot-sdk', async () => {
   const actual = await vi.importActual<typeof import('@atv-design/providers/copilot-sdk')>(
@@ -71,11 +65,9 @@ vi.mock('@atv-design/providers/copilot-sdk', async () => {
   );
   return {
     ...actual,
-    buildAuthorizeUrl: buildAuthorizeUrlMock,
-    exchangeCode: exchangeCodeMock,
     exchangeForSessionToken: exchangeForSessionTokenMock,
-    generatePkce: generatePkceMock,
-    startCallbackServer: startCallbackServerMock,
+    pollDeviceAccessToken: pollDeviceAccessTokenMock,
+    requestDeviceCode: requestDeviceCodeMock,
   };
 });
 
@@ -86,13 +78,9 @@ beforeEach(() => {
   fakeCachedConfig = null;
   handlers.clear();
   writeConfigMock.mockClear();
-  buildAuthorizeUrlMock.mockClear();
-  exchangeCodeMock.mockReset();
   exchangeForSessionTokenMock.mockReset();
-  generatePkceMock.mockClear();
-  waitForCodeMock.mockReset();
-  closeMock.mockReset();
-  startCallbackServerMock.mockClear();
+  requestDeviceCodeMock.mockReset();
+  pollDeviceAccessTokenMock.mockReset();
 });
 
 afterEach(async () => {
@@ -119,16 +107,24 @@ describe('copilot-oauth:v1:status', () => {
 });
 
 describe('copilot-oauth:v1:login', () => {
-  it('runs the happy path: opens browser, stores auth, injects provider, persists config', async () => {
-    const { shell } = await import('./electron-runtime');
+  it('runs the happy path: starts device flow, stores auth, injects provider, persists config', async () => {
+    const { clipboard, dialog, shell } = await import('./electron-runtime');
+    const clipboardWrite = clipboard.writeText as ReturnType<typeof vi.fn>;
+    const showMessageBox = dialog.showMessageBox as ReturnType<typeof vi.fn>;
     const shellOpen = shell.openExternal as ReturnType<typeof vi.fn>;
+    clipboardWrite.mockClear();
+    showMessageBox.mockClear();
     shellOpen.mockClear();
 
-    waitForCodeMock.mockImplementation(async ({ state }: { state: string }) => ({
-      code: 'AUTH_CODE',
-      state,
-    }));
-    exchangeCodeMock.mockResolvedValue({
+    requestDeviceCodeMock.mockResolvedValue({
+      deviceCode: 'device-code-123',
+      userCode: 'ABCD-EFGH',
+      verificationUri: 'https://github.com/login/device',
+      verificationUriComplete: 'https://github.com/login/device?user_code=ABCD-EFGH',
+      expiresIn: 900,
+      interval: 5,
+    });
+    pollDeviceAccessTokenMock.mockResolvedValue({
       accessToken: 'github-access-token',
       tokenType: 'bearer',
       scope: 'read:user copilot',
@@ -138,18 +134,20 @@ describe('copilot-oauth:v1:login', () => {
     await register();
     const result = await handlers.get('copilot-oauth:v1:login')?.();
 
-    expect(buildAuthorizeUrlMock).toHaveBeenCalledWith({
-      redirectUri: 'http://127.0.0.1:1455/oauth-callback',
-      state: expect.any(String),
-      challenge: 'pkce-challenge',
+    expect(requestDeviceCodeMock).toHaveBeenCalledWith({
+      signal: expect.any(AbortSignal),
     });
-    expect(shellOpen).toHaveBeenCalledWith(
-      'https://github.com/login/oauth/authorize?client_id=test',
+    expect(shellOpen).toHaveBeenCalledWith('https://github.com/login/device?user_code=ABCD-EFGH');
+    expect(clipboardWrite).toHaveBeenCalledWith('ABCD-EFGH');
+    expect(showMessageBox).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'GitHub Copilot Sign-In',
+      }),
     );
-    expect(exchangeCodeMock).toHaveBeenCalledWith({
-      code: 'AUTH_CODE',
-      verifier: 'pkce-verifier',
-      redirectUri: 'http://127.0.0.1:1455/oauth-callback',
+    expect(pollDeviceAccessTokenMock).toHaveBeenCalledWith({
+      deviceCode: 'device-code-123',
+      interval: 5,
+      expiresIn: 900,
       signal: expect.any(AbortSignal),
     });
     expect(result).toMatchObject({
@@ -183,20 +181,27 @@ describe('copilot-oauth:v1:login', () => {
       copilotSessionToken: null,
       copilotSessionExpiresAt: null,
     });
-    expect(closeMock).toHaveBeenCalledTimes(1);
   });
 
   it('aborts an in-flight login when cancel-login is invoked', async () => {
-    waitForCodeMock.mockImplementation(
+    requestDeviceCodeMock.mockResolvedValue({
+      deviceCode: 'device-code-123',
+      userCode: 'ABCD-EFGH',
+      verificationUri: 'https://github.com/login/device',
+      verificationUriComplete: null,
+      expiresIn: 900,
+      interval: 5,
+    });
+    pollDeviceAccessTokenMock.mockImplementation(
       async ({ signal }: { signal?: AbortSignal }) =>
         await new Promise<never>((_resolve, reject) => {
           if (signal?.aborted) {
-            reject(new Error('GitHub OAuth callback aborted by signal'));
+            reject(new Error('GitHub device flow aborted by signal'));
             return;
           }
           signal?.addEventListener(
             'abort',
-            () => reject(new Error('GitHub OAuth callback aborted by signal')),
+            () => reject(new Error('GitHub device flow aborted by signal')),
             { once: true },
           );
         }),
@@ -207,7 +212,6 @@ describe('copilot-oauth:v1:login', () => {
 
     await expect(handlers.get('copilot-oauth:v1:cancel-login')?.()).resolves.toBe(true);
     await expect(loginPromise).rejects.toThrow(/GitHub Copilot login cancelled/);
-    expect(closeMock).toHaveBeenCalledTimes(1);
     expect(writeConfigMock).not.toHaveBeenCalled();
   });
 });

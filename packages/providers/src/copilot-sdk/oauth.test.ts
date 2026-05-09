@@ -1,7 +1,16 @@
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CopilotProviderError } from './errors.js';
-import { AUTHORIZE_URL, SCOPE, buildAuthorizeUrl, exchangeCode, generatePkce } from './oauth.js';
+import {
+  AUTHORIZE_URL,
+  DEVICE_CODE_URL,
+  SCOPE,
+  buildAuthorizeUrl,
+  exchangeCode,
+  generatePkce,
+  pollDeviceAccessToken,
+  requestDeviceCode,
+} from './oauth.js';
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -88,6 +97,50 @@ describe('buildAuthorizeUrl', () => {
       clientId: 'Iv1.explicit',
     });
     expect(new URL(url).searchParams.get('client_id')).toBe('Iv1.explicit');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// requestDeviceCode
+// ---------------------------------------------------------------------------
+
+describe('requestDeviceCode', () => {
+  it('POSTs to DEVICE_CODE_URL and parses the device-code payload', async () => {
+    let capturedUrl = '';
+    let capturedInit: RequestInit | undefined;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        capturedUrl = url;
+        capturedInit = init;
+        return new Response(
+          JSON.stringify({
+            device_code: 'device_code_123',
+            user_code: 'ABCD-EFGH',
+            verification_uri: 'https://github.com/login/device',
+            verification_uri_complete: 'https://github.com/login/device?user_code=ABCD-EFGH',
+            expires_in: 900,
+            interval: 5,
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        );
+      }),
+    );
+
+    const result = await requestDeviceCode();
+
+    expect(capturedUrl).toBe(DEVICE_CODE_URL);
+    const body = new URLSearchParams(capturedInit?.body as string);
+    expect(body.get('client_id')).toBeTruthy();
+    expect(body.get('scope')).toBe(SCOPE);
+    expect(result).toMatchObject({
+      deviceCode: 'device_code_123',
+      userCode: 'ABCD-EFGH',
+      verificationUri: 'https://github.com/login/device',
+      verificationUriComplete: 'https://github.com/login/device?user_code=ABCD-EFGH',
+      expiresIn: 900,
+      interval: 5,
+    });
   });
 });
 
@@ -291,5 +344,80 @@ describe('exchangeCode', () => {
         process.env['OPEN_CODESIGN_GITHUB_CLIENT_ID'] = originalLegacy;
       }
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// pollDeviceAccessToken
+// ---------------------------------------------------------------------------
+
+describe('pollDeviceAccessToken', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  it('retries after authorization_pending and eventually returns the token', async () => {
+    const now = 1_700_000_000_000;
+    vi.setSystemTime(now);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: 'authorization_pending',
+            error_description: 'Still waiting for approval.',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: 'ghu_device_token',
+            token_type: 'bearer',
+            scope: 'read:user',
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        ),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pending = pollDeviceAccessToken({
+      deviceCode: 'device_code_123',
+      interval: 1,
+      expiresIn: 30,
+    });
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    const result = await pending;
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({
+      accessToken: 'ghu_device_token',
+      tokenType: 'bearer',
+      scope: 'read:user',
+      obtainedAt: now + 1_000,
+    });
+  });
+
+  it('throws CopilotProviderError when the user denies the device flow', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: 'access_denied',
+              error_description: 'The user denied access to your application',
+            }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+      ),
+    );
+
+    await expect(
+      pollDeviceAccessToken({ deviceCode: 'device_code_123', interval: 1, expiresIn: 30 }),
+    ).rejects.toBeInstanceOf(CopilotProviderError);
   });
 });

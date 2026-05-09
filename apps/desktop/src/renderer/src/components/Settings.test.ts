@@ -3,6 +3,7 @@ import {
   TIMEOUT_OPTION_SECONDS,
   applyLocaleChange,
   computeModelOptions,
+  hasCodesignBridge,
   resolveTimeoutOptions,
 } from './Settings';
 
@@ -78,6 +79,17 @@ describe('CPA detection localStorage dismissal', () => {
 
     // Verify we can read it back
     expect(storage.getItem(KEY)).toBe('1');
+  });
+});
+
+describe('hasCodesignBridge', () => {
+  it('returns false when the Electron preload bridge is missing', () => {
+    expect(hasCodesignBridge(undefined)).toBe(false);
+    expect(hasCodesignBridge(null)).toBe(false);
+  });
+
+  it('returns true when a bridge object is present', () => {
+    expect(hasCodesignBridge({ settings: {} })).toBe(true);
   });
 });
 

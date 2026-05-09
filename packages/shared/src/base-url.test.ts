@@ -237,6 +237,12 @@ describe('ensureVersionedBase', () => {
     ).toBe('https://generativelanguage.googleapis.com/v1beta/openai');
   });
 
+  it('GitHub Copilot: root stays unversioned', () => {
+    expect(ensureVersionedBase('https://api.githubcopilot.com')).toBe(
+      'https://api.githubcopilot.com',
+    );
+  });
+
   // ── DashScope compatible-mode (already /v1, no surprise) ─────────────────
   it('DashScope: /compatible-mode/v1 preserved', () => {
     expect(ensureVersionedBase('https://dashscope.aliyuncs.com/compatible-mode/v1')).toBe(
@@ -352,6 +358,12 @@ describe('canonicalBaseUrl', () => {
     ).toBe('https://generativelanguage.googleapis.com/v1beta/openai');
   });
 
+  it('openai-chat: GitHub Copilot stays on the root path', () => {
+    expect(canonicalBaseUrl('https://api.githubcopilot.com/chat/completions', 'openai-chat')).toBe(
+      'https://api.githubcopilot.com',
+    );
+  });
+
   // ── openai-responses wire behaves identically to openai-chat ─────────────
   it('openai-responses: /v1/responses → /v1', () => {
     expect(canonicalBaseUrl('https://api.openai.com/v1/responses', 'openai-responses')).toBe(
@@ -433,6 +445,12 @@ describe('modelsEndpointUrl', () => {
         'openai-chat',
       ),
     ).toBe('https://generativelanguage.googleapis.com/v1beta/openai/models');
+  });
+
+  it('openai-chat: GitHub Copilot uses the root /models endpoint', () => {
+    expect(modelsEndpointUrl('https://api.githubcopilot.com/chat/completions', 'openai-chat')).toBe(
+      'https://api.githubcopilot.com/models',
+    );
   });
 
   // ── openai-codex-responses: no discoverable /models endpoint ─────────────
