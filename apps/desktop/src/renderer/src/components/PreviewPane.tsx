@@ -494,7 +494,7 @@ export function PreviewPane({ onPickStarter }: PreviewPaneProps) {
         onDismiss={clearError}
       />
     );
-  } else if (activeTab?.kind === 'files' && previewHtml) {
+  } else if (activeTab?.kind === 'files') {
     body = <FilesTabView />;
   } else {
     // Pool slots stay mounted even when the current design has no preview —
@@ -534,21 +534,19 @@ export function PreviewPane({ onPickStarter }: PreviewPaneProps) {
   }
 
   const hasTabs = canvasTabs.length > 0;
-  const isWelcome = !errorMessage && !previewHtml && !designHasContent;
+  const showPreviewToolbar = activeTab?.kind !== 'files';
 
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex flex-col min-h-0 flex-1">
-        {isWelcome ? null : (
-          <div className="flex items-stretch justify-between gap-[var(--space-2)] border-b border-[var(--color-border-muted)] bg-[var(--color-background-secondary)] pl-[var(--space-2)]">
-            {hasTabs ? <CanvasTabBar /> : <div />}
-            <PreviewToolbar />
-          </div>
-        )}
+        <div className="flex items-stretch justify-between gap-[var(--space-2)] border-b border-[var(--color-border-muted)] bg-[var(--color-background-secondary)] pl-[var(--space-2)]">
+          {hasTabs ? <CanvasTabBar /> : <div />}
+          {showPreviewToolbar ? <PreviewToolbar /> : <div />}
+        </div>
         <CanvasErrorBar />
         <div className="relative flex-1 overflow-hidden">
           {body}
-          {previewHtml ? <TweakPanel iframeRef={iframeRef} /> : null}
+          {previewHtml && activeTab?.kind !== 'files' ? <TweakPanel iframeRef={iframeRef} /> : null}
         </div>
         {commentBubble && interactionMode === 'comment'
           ? (() => {

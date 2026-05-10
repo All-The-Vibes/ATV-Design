@@ -5,14 +5,20 @@
  * calls the registered handlers directly with an in-memory DB.
  */
 
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { CodesignError } from '@atv-design/shared';
 import type { Design } from '@atv-design/shared';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Collect registered handlers so tests can invoke them directly.
 const handlers = new Map<string, (e: unknown, raw: unknown) => unknown>();
 
 vi.mock('./electron-runtime', () => ({
+  app: {
+    getPath: vi.fn(),
+  },
   ipcMain: {
     handle: (channel: string, fn: (e: unknown, raw: unknown) => unknown) => {
       handlers.set(channel, fn);
@@ -38,10 +44,11 @@ vi.mock('./design-workspace', () => ({
 }));
 
 import { bindWorkspace, checkWorkspaceFolderExists, openWorkspaceFolder } from './design-workspace';
-import { dialog } from './electron-runtime';
+import { app, dialog } from './electron-runtime';
 import {
   createDesign,
   createSnapshot,
+  getDesign,
   initInMemoryDb,
   updateDesignWorkspace,
 } from './snapshots-db';
@@ -71,13 +78,33 @@ function v1<T extends object>(payload: T): T & { schemaVersion: 1 } {
 }
 
 let db: ReturnType<typeof initInMemoryDb>;
+const tempDirs: string[] = [];
+
+async function makeTempDir(prefix: string): Promise<string> {
+  const dir = await mkdtemp(path.join(os.tmpdir(), prefix));
+  tempDirs.push(dir);
+  return dir;
+}
 
 beforeEach(() => {
   handlers.clear();
   db = initInMemoryDb();
+  vi.mocked(app.getPath).mockReturnValue(path.join(os.tmpdir(), 'atv-design-test-userdata'));
+  vi.mocked(bindWorkspace).mockReset();
+  vi.mocked(bindWorkspace).mockImplementation(async (_dbArg, designId, workspacePath) => {
+    const design = getDesign(db, designId);
+    if (!design) throw new Error(`Design not found: ${designId}`);
+    return { ...design, workspacePath };
+  });
+  vi.mocked(openWorkspaceFolder).mockReset();
+  vi.mocked(checkWorkspaceFolderExists).mockReset();
   registerSnapshotsIpc(db);
   // biome-ignore lint/suspicious/noExplicitAny: test mock
   registerWorkspaceIpc(db, () => ({}) as any);
+});
+
+afterEach(async () => {
+  await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
 
 // ---------------------------------------------------------------------------
@@ -266,40 +293,72 @@ describe('snapshots:v1:create', () => {
 // ---------------------------------------------------------------------------
 
 describe('snapshots:v1:create-design', () => {
-  it('creates a design with the trimmed name', () => {
-    const result = call('snapshots:v1:create-design', v1({ name: '  My design  ' })) as Record<
-      string,
-      unknown
-    >;
+  it('creates a design with the trimmed name and auto-binds a default workspace', async () => {
+    const userDataDir = await makeTempDir('atv-design-userdata-');
+    vi.mocked(app.getPath).mockReturnValue(userDataDir);
+
+    const result = (await callAsync(
+      'snapshots:v1:create-design',
+      v1({ name: '  My design  ' }),
+    )) as Record<string, unknown>;
     expect(result['name']).toBe('My design');
     expect(typeof result['id']).toBe('string');
+    expect(vi.mocked(bindWorkspace)).toHaveBeenCalledTimes(1);
+    const workspacePath = vi.mocked(bindWorkspace).mock.calls[0]?.[2];
+    expect(workspacePath).toMatch(/workspaces[\\/]my-design$/);
   });
 
-  it('rejects undefined with IPC_BAD_INPUT (no silent default)', () => {
-    expect(() => call('snapshots:v1:create-design', undefined)).toThrow(CodesignError);
+  it('forwards an explicit workspacePath to bindWorkspace instead of auto-allocating one', async () => {
+    const explicitPath = 'C:/Users/test/code/workspaces/custom';
+
+    await callAsync(
+      'snapshots:v1:create-design',
+      v1({ name: 'My design', workspacePath: explicitPath }),
+    );
+
+    expect(vi.mocked(bindWorkspace)).toHaveBeenCalledWith(
+      db,
+      expect.any(String),
+      explicitPath,
+      false,
+    );
+  });
+
+  it('rejects undefined with IPC_BAD_INPUT (no silent default)', async () => {
+    await expect(callAsync('snapshots:v1:create-design', undefined)).rejects.toThrow(CodesignError);
     try {
-      call('snapshots:v1:create-design', undefined);
+      await callAsync('snapshots:v1:create-design', undefined);
     } catch (err) {
       expect((err as CodesignError).code).toBe('IPC_BAD_INPUT');
     }
   });
 
-  it('rejects an empty / whitespace-only name with IPC_BAD_INPUT', () => {
-    expect(() => call('snapshots:v1:create-design', v1({ name: '   ' }))).toThrow(CodesignError);
+  it('rejects an empty / whitespace-only name with IPC_BAD_INPUT', async () => {
+    await expect(callAsync('snapshots:v1:create-design', v1({ name: '   ' }))).rejects.toThrow(
+      CodesignError,
+    );
     try {
-      call('snapshots:v1:create-design', v1({ name: '' }));
+      await callAsync('snapshots:v1:create-design', v1({ name: '' }));
     } catch (err) {
       expect((err as CodesignError).code).toBe('IPC_BAD_INPUT');
     }
   });
 
-  it('rejects a non-string name with IPC_BAD_INPUT', () => {
-    expect(() => call('snapshots:v1:create-design', v1({ name: 42 }))).toThrow(CodesignError);
+  it('rejects a non-string name with IPC_BAD_INPUT', async () => {
+    await expect(callAsync('snapshots:v1:create-design', v1({ name: 42 }))).rejects.toThrow(
+      CodesignError,
+    );
     try {
-      call('snapshots:v1:create-design', v1({ name: { wrong: true } }));
+      await callAsync('snapshots:v1:create-design', v1({ name: { wrong: true } }));
     } catch (err) {
       expect((err as CodesignError).code).toBe('IPC_BAD_INPUT');
     }
+  });
+
+  it('rejects an empty workspacePath with IPC_BAD_INPUT', async () => {
+    await expect(
+      callAsync('snapshots:v1:create-design', v1({ name: 'My design', workspacePath: '   ' })),
+    ).rejects.toThrow(CodesignError);
   });
 });
 

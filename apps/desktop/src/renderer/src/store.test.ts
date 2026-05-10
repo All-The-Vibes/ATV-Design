@@ -2,9 +2,13 @@ import { initI18n } from '@atv-design/i18n';
 import type { OnboardingState, SelectedElement } from '@atv-design/shared';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CANVAS_TAB,
+  FILES_TAB,
+  closeTabAt,
   coerceUsageSnapshot,
   extractCodesignErrorCode,
   extractUpstreamContext,
+  openFileTab,
   useCodesignStore,
 } from './store';
 
@@ -476,7 +480,7 @@ describe('useCodesignStore design management', () => {
     expect(useCodesignStore.getState().currentDesignId).toBe('design-a');
   });
 
-  it('createNewDesign resets messages + preview and stores the new id as current', async () => {
+  it('createNewDesign resets messages + preview, stores the new id as current, and defaults to the canvas tab', async () => {
     const created = {
       schemaVersion: 1 as const,
       id: 'fresh',
@@ -485,12 +489,14 @@ describe('useCodesignStore design management', () => {
       updatedAt: '2024-01-01T00:00:00.000Z',
       thumbnailText: null,
       deletedAt: null,
+      workspacePath: 'C:/Users/test/AppData/Roaming/ATV/workspaces/untitled-design-1',
     };
+    const createDesign = vi.fn(() => Promise.resolve(created));
 
     vi.stubGlobal('window', {
       codesign: {
         snapshots: {
-          createDesign: vi.fn(() => Promise.resolve(created)),
+          createDesign,
           listDesigns: vi.fn(() => Promise.resolve([created])),
         },
       },
@@ -504,9 +510,40 @@ describe('useCodesignStore design management', () => {
 
     const result = await useCodesignStore.getState().createNewDesign();
     expect(result?.id).toBe('fresh');
+    expect(createDesign).toHaveBeenCalledWith('Untitled design 1', null);
     const state = useCodesignStore.getState();
     expect(state.currentDesignId).toBe('fresh');
     expect(state.previewHtml).toBeNull();
+    expect(state.canvasTabs).toEqual([FILES_TAB, CANVAS_TAB]);
+    expect(state.activeCanvasTab).toBe(1);
+  });
+
+  it('createNewDesign forwards an explicit workspacePath to snapshots.createDesign', async () => {
+    const created = {
+      schemaVersion: 1 as const,
+      id: 'fresh',
+      name: 'Untitled design 1',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-01-01T00:00:00.000Z',
+      thumbnailText: null,
+      deletedAt: null,
+      workspacePath: 'C:/custom/workspace',
+    };
+    const createDesign = vi.fn(() => Promise.resolve(created));
+
+    vi.stubGlobal('window', {
+      codesign: {
+        snapshots: {
+          createDesign,
+          listDesigns: vi.fn(() => Promise.resolve([created])),
+        },
+      },
+      setTimeout,
+    });
+
+    await useCodesignStore.getState().createNewDesign('C:/custom/workspace');
+
+    expect(createDesign).toHaveBeenCalledWith('Untitled design 1', 'C:/custom/workspace');
   });
 
   it('allows switchDesign while another design is generating (generation stays bound to its origin)', async () => {
@@ -1214,5 +1251,52 @@ describe('useCodesignStore generation-blocking workspace guards', () => {
       design: mockDesign,
       newPath: '/new/path',
     });
+  });
+});
+
+describe('canvas tab reducers', () => {
+  it('openFileTab appends file tabs after the pinned files + canvas tabs', () => {
+    const result = openFileTab([FILES_TAB, CANVAS_TAB], 'index.html');
+
+    expect(result.tabs).toEqual([FILES_TAB, CANVAS_TAB, { kind: 'file', path: 'index.html' }]);
+    expect(result.index).toBe(2);
+  });
+
+  it('openFileTab reuses an existing file tab instead of duplicating it', () => {
+    const tabs = [FILES_TAB, CANVAS_TAB, { kind: 'file', path: 'index.html' }] as const;
+
+    const result = openFileTab([...tabs], 'index.html');
+
+    expect(result.tabs).toEqual([...tabs]);
+    expect(result.index).toBe(2);
+  });
+
+  it('closeTabAt keeps the pinned files and canvas tabs open', () => {
+    const tabs = [FILES_TAB, CANVAS_TAB, { kind: 'file' as const, path: 'index.html' }];
+
+    expect(closeTabAt(tabs, 1, 0)).toEqual({ tabs, activeIndex: 1 });
+    expect(closeTabAt(tabs, 1, 1)).toEqual({ tabs, activeIndex: 1 });
+  });
+});
+
+describe('prompt expansion state', () => {
+  it('setPromptExpanded toggles the inline composer expansion flag', () => {
+    useCodesignStore.getState().setPromptExpanded(true);
+    expect(useCodesignStore.getState().isPromptExpanded).toBe(true);
+
+    useCodesignStore.getState().setPromptExpanded(false);
+    expect(useCodesignStore.getState().isPromptExpanded).toBe(false);
+  });
+
+  it('resetCanvasTabs restores the pinned files + canvas tabs and focuses canvas', () => {
+    useCodesignStore.setState({
+      canvasTabs: [FILES_TAB, CANVAS_TAB, { kind: 'file', path: 'index.html' }],
+      activeCanvasTab: 2,
+    });
+
+    useCodesignStore.getState().resetCanvasTabs();
+
+    expect(useCodesignStore.getState().canvasTabs).toEqual([FILES_TAB, CANVAS_TAB]);
+    expect(useCodesignStore.getState().activeCanvasTab).toBe(1);
   });
 });

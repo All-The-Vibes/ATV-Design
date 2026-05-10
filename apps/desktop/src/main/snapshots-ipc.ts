@@ -9,12 +9,14 @@
  * initSnapshotsDb().
  */
 
+import { mkdir, rm } from 'node:fs/promises';
+import path from 'node:path';
 import type { Design, DesignSnapshot, SnapshotCreateInput } from '@atv-design/shared';
 import { CodesignError } from '@atv-design/shared';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { BrowserWindow } from 'electron';
 import { bindWorkspace, checkWorkspaceFolderExists, openWorkspaceFolder } from './design-workspace';
-import { dialog, ipcMain } from './electron-runtime';
+import { app, dialog, ipcMain } from './electron-runtime';
 import { getLogger } from './logger';
 import {
   createDesign,
@@ -33,6 +35,9 @@ import {
 type Database = BetterSqlite3.Database;
 
 const logger = getLogger('snapshots-ipc');
+const DEFAULT_WORKSPACES_DIR = 'workspaces';
+const DEFAULT_WORKSPACE_SLUG_MAX = 48;
+const MAX_DEFAULT_WORKSPACE_ATTEMPTS = 1000;
 
 /**
  * Translate a raw better-sqlite3 SqliteError into a typed CodesignError so the
@@ -113,6 +118,41 @@ function requireSchemaV1(r: Record<string, unknown>, channel: string): void {
   if (r['schemaVersion'] !== 1) {
     throw new CodesignError(`${channel} requires schemaVersion: 1`, 'IPC_BAD_INPUT');
   }
+}
+
+function defaultWorkspaceSlug(name: string): string {
+  const ascii = name
+    .normalize('NFKD')
+    .replace(/[^\p{ASCII}]/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const trimmed = ascii.slice(0, DEFAULT_WORKSPACE_SLUG_MAX).replace(/-+$/g, '');
+  return trimmed.length > 0 ? trimmed : 'untitled-design';
+}
+
+async function allocateDefaultWorkspacePath(name: string): Promise<string> {
+  const root = path.join(app.getPath('userData'), DEFAULT_WORKSPACES_DIR);
+  await mkdir(root, { recursive: true });
+  const slug = defaultWorkspaceSlug(name);
+  for (let attempt = 0; attempt < MAX_DEFAULT_WORKSPACE_ATTEMPTS; attempt += 1) {
+    const folderName = attempt === 0 ? slug : `${slug}-${attempt}`;
+    const workspacePath = path.join(root, folderName);
+    try {
+      await mkdir(workspacePath);
+      return workspacePath;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException | undefined)?.code === 'EEXIST') {
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`Could not find a unique workspace path under ${root}`);
+}
+
+function rollbackCreateDesign(db: Database, designId: string): void {
+  db.prepare('DELETE FROM designs WHERE id = ?').run(designId);
 }
 
 function parseSnapshotCreateInput(raw: unknown): SnapshotCreateInput {
@@ -238,20 +278,60 @@ export function registerSnapshotsIpc(db: Database): void {
     logger.info('snapshot.deleted', { id: r['id'] });
   });
 
-  ipcMain.handle('snapshots:v1:create-design', (_e: unknown, raw: unknown): Design => {
-    if (typeof raw !== 'object' || raw === null) {
-      throw new CodesignError(
-        'snapshots:v1:create-design expects an object with name',
-        'IPC_BAD_INPUT',
-      );
-    }
-    const r = raw as Record<string, unknown>;
-    requireSchemaV1(r, 'snapshots:v1:create-design');
-    if (typeof r['name'] !== 'string' || r['name'].trim().length === 0) {
-      throw new CodesignError('name must be a non-empty string', 'IPC_BAD_INPUT');
-    }
-    return runDb('create-design', () => createDesign(db, (r['name'] as string).trim()));
-  });
+  ipcMain.handle(
+    'snapshots:v1:create-design',
+    async (_e: unknown, raw: unknown): Promise<Design> => {
+      if (typeof raw !== 'object' || raw === null) {
+        throw new CodesignError(
+          'snapshots:v1:create-design expects an object with name',
+          'IPC_BAD_INPUT',
+        );
+      }
+      const r = raw as Record<string, unknown>;
+      requireSchemaV1(r, 'snapshots:v1:create-design');
+      if (typeof r['name'] !== 'string' || r['name'].trim().length === 0) {
+        throw new CodesignError('name must be a non-empty string', 'IPC_BAD_INPUT');
+      }
+      const workspacePathRaw = r['workspacePath'];
+      if (
+        workspacePathRaw !== undefined &&
+        workspacePathRaw !== null &&
+        (typeof workspacePathRaw !== 'string' || workspacePathRaw.trim().length === 0)
+      ) {
+        throw new CodesignError(
+          'workspacePath must be a non-empty string when provided',
+          'IPC_BAD_INPUT',
+        );
+      }
+      const name = (r['name'] as string).trim();
+      const requestedWorkspacePath =
+        typeof workspacePathRaw === 'string' ? workspacePathRaw.trim() : null;
+      const design = runDb('create-design', () => createDesign(db, name));
+      let autoWorkspacePath: string | null = null;
+      try {
+        const workspacePath =
+          requestedWorkspacePath ?? (autoWorkspacePath = await allocateDefaultWorkspacePath(name));
+        return await bindWorkspace(db, design.id, workspacePath, false);
+      } catch (err) {
+        if (autoWorkspacePath !== null) {
+          await rm(autoWorkspacePath, { recursive: true, force: true }).catch(() => {});
+        }
+        try {
+          runDb('create-design.rollback', () => rollbackCreateDesign(db, design.id));
+        } catch (rollbackErr) {
+          logger.warn('create-design.rollback_failed', {
+            designId: design.id,
+            message: rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr),
+          });
+        }
+        if (err instanceof CodesignError) throw err;
+        if (err instanceof Error && err.message.includes('already bound')) {
+          throw new CodesignError(err.message, 'IPC_CONFLICT', { cause: err });
+        }
+        throw new CodesignError('Workspace creation failed', 'IPC_DB_ERROR', { cause: err });
+      }
+    },
+  );
 
   ipcMain.handle('snapshots:v1:get-design', (_e: unknown, raw: unknown): Design | null => {
     const id = parseIdPayload(raw, 'get-design');

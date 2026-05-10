@@ -39,10 +39,11 @@
   },
   "canvas": {
     "filesTab": "Arquivos",
+    "canvasTab": "Canvas",
     "filesTabEmpty": "Nenhum arquivo ainda",
     "openInTab": "Abrir em nova aba",
     "previewHint": "Pré-visualização em miniatura · clique duas vezes no arquivo ou use Abrir em nova aba para ver em tela cheia",
-    "tabsAriaLabel": "Arquivos abertos",
+    "tabsAriaLabel": "Abas do workspace",
     "closeTab": "Fechar {{name}}",
     "files": {
       "sectionTitle": "Arquivos de design",
@@ -51,9 +52,9 @@
     },
     "newDesignDialog": {
       "title": "Novo design",
-      "subtitle": "Opcionalmente escolha uma pasta local para sincronizar seus arquivos de design.",
-      "noWorkspace": "Nenhuma pasta selecionada",
-      "skip": "Pular",
+      "subtitle": "Opcionalmente escolha uma pasta local. Caso contrário, o ATV Design criará um workspace padrão para você.",
+      "noWorkspace": "Nenhuma pasta selecionada — o ATV Design criará um workspace padrão",
+      "skip": "Usar workspace padrão",
       "confirm": "Criar"
     },
     "workspace": {
@@ -124,7 +125,9 @@
     "sendAnywhere": "em qualquer lugar",
     "send": "Enviar prompt",
     "stop": "Parar geração",
-    "placeholderRich": "Descreva um design… tente 'Pitch deck para uma startup fintech'"
+    "placeholderRich": "Descreva um design… tente 'Pitch deck para uma startup fintech'",
+    "expand": "Expandir prompt",
+    "collapse": "Recolher prompt"
   },
   "sidebar": {
     "localContext": "Contexto local",

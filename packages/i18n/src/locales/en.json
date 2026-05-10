@@ -39,10 +39,11 @@
   },
   "canvas": {
     "filesTab": "Files",
+    "canvasTab": "Canvas",
     "filesTabEmpty": "No files yet",
     "openInTab": "Open in tab",
     "previewHint": "Thumbnail preview · double-click the file or use Open in tab for full view",
-    "tabsAriaLabel": "Open files",
+    "tabsAriaLabel": "Workspace tabs",
     "closeTab": "Close {{name}}",
     "files": {
       "sectionTitle": "Design files",
@@ -51,9 +52,9 @@
     },
     "newDesignDialog": {
       "title": "New design",
-      "subtitle": "Optionally choose a local folder to sync your design files.",
-      "noWorkspace": "No folder selected",
-      "skip": "Skip",
+      "subtitle": "Optionally choose a local folder. Otherwise ATV Design will create a default workspace for you.",
+      "noWorkspace": "No folder selected — ATV Design will create a default workspace",
+      "skip": "Use default workspace",
       "confirm": "Create"
     },
     "workspace": {
@@ -124,7 +125,9 @@
     "sendAnywhere": "anywhere",
     "send": "Send prompt",
     "stop": "Stop generation",
-    "placeholderRich": "Describe a design… try 'Pitch deck for a fintech startup'"
+    "placeholderRich": "Describe a design… try 'Pitch deck for a fintech startup'",
+    "expand": "Expand prompt",
+    "collapse": "Collapse prompt"
   },
   "sidebar": {
     "localContext": "Local context",

@@ -120,12 +120,28 @@ export type InteractionMode = 'default' | 'comment';
 export type PreviewViewport = 'desktop' | 'tablet' | 'mobile';
 
 // Workstream G — canvas tabs.
-// 'files' is the pinned tab that hosts the file list + inline preview; 'file'
-// tabs wrap a single file preview opened by double-clicking the list. Closing
-// a 'file' tab is purely UI state — it does NOT delete anything.
-export type CanvasTab = { kind: 'files' } | { kind: 'file'; path: string };
+// 'files' and 'canvas' are pinned tabs; 'file' tabs wrap a single file preview
+// opened by double-clicking the list. Closing a 'file' tab is purely UI state
+// — it does NOT delete anything.
+export type CanvasTab = { kind: 'files' } | { kind: 'canvas' } | { kind: 'file'; path: string };
 
 export const FILES_TAB: CanvasTab = { kind: 'files' };
+export const CANVAS_TAB: CanvasTab = { kind: 'canvas' };
+
+function defaultCanvasTabs(): CanvasTab[] {
+  return [FILES_TAB, CANVAS_TAB];
+}
+
+function defaultCanvasTabState(): { canvasTabs: CanvasTab[]; activeCanvasTab: number } {
+  return { canvasTabs: defaultCanvasTabs(), activeCanvasTab: 1 };
+}
+
+function canvasTabStateWithIndexFile(): { canvasTabs: CanvasTab[]; activeCanvasTab: number } {
+  return {
+    canvasTabs: [...defaultCanvasTabs(), { kind: 'file', path: 'index.html' }],
+    activeCanvasTab: 1,
+  };
+}
 
 // Pure reducers, exported for unit tests so we don't need RTL for slice logic.
 export function openFileTab(tabs: CanvasTab[], path: string): { tabs: CanvasTab[]; index: number } {
@@ -142,8 +158,8 @@ export function closeTabAt(
 ): { tabs: CanvasTab[]; activeIndex: number } {
   const tab = tabs[target];
   if (!tab) return { tabs, activeIndex };
-  // The pinned 'files' tab cannot be closed — it always anchors index 0.
-  if (tab.kind === 'files') return { tabs, activeIndex };
+  // Pinned tabs cannot be closed.
+  if (tab.kind === 'files' || tab.kind === 'canvas') return { tabs, activeIndex };
   const next = tabs.filter((_, i) => i !== target);
   let nextActive = activeIndex;
   if (activeIndex === target) {
@@ -229,6 +245,7 @@ interface CodesignState {
    *  only persisted to SQLite when the result arrives (done/error). */
   pendingToolCalls: ChatToolCallPayload[];
   sidebarCollapsed: boolean;
+  isPromptExpanded: boolean;
 
   // Workstream D — comments
   comments: CommentRow[];
@@ -415,6 +432,7 @@ interface CodesignState {
    *  panel to write a re-serialized EDITMODE block back into the artifact. */
   setPreviewHtml: (content: string) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
+  setPromptExpanded: (expanded: boolean) => void;
 
   // Workstream D — comments
   loadCommentsForCurrentDesign: () => Promise<void>;
@@ -1383,6 +1401,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
   chatMessages: [],
   chatLoaded: false,
   sidebarCollapsed: false,
+  isPromptExpanded: false,
 
   comments: [],
   commentsLoaded: false,
@@ -1390,8 +1409,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
   currentSnapshotId: null,
   liveRects: {},
 
-  canvasTabs: [FILES_TAB],
-  activeCanvasTab: 0,
+  ...defaultCanvasTabState(),
 
   recentEvents: [],
   unreadErrorCount: 0,
@@ -1944,7 +1962,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
     while (existingNames.has(`Untitled design ${n}`)) n += 1;
     const name = `Untitled design ${n}`;
     try {
-      const design = await window.codesign.snapshots.createDesign(name);
+      const design = await window.codesign.snapshots.createDesign(name, workspacePath ?? null);
       set({
         currentDesignId: design.id,
         previewHtml: null,
@@ -1960,25 +1978,11 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
         commentsLoaded: false,
         commentBubble: null,
         currentSnapshotId: null,
-        canvasTabs: [FILES_TAB],
-        activeCanvasTab: 0,
+        ...defaultCanvasTabState(),
       });
       await get().loadDesigns();
       void get().loadChatForCurrentDesign();
       void get().loadCommentsForCurrentDesign();
-      if (workspacePath) {
-        try {
-          await window.codesign.snapshots.updateWorkspace(design.id, workspacePath, false);
-          await get().loadDesigns();
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : tr('errors.unknown');
-          get().pushToast({
-            variant: 'error',
-            title: tr('canvas.workspace.updateFailed'),
-            description: msg,
-          });
-        }
-      }
       return design;
     } catch (err) {
       const msg = err instanceof Error ? err.message : tr('errors.unknown');
@@ -2041,8 +2045,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
         commentsLoaded: false,
         commentBubble: null,
         currentSnapshotId: null,
-        canvasTabs: [FILES_TAB, { kind: 'file', path: 'index.html' }],
-        activeCanvasTab: 1,
+        ...canvasTabStateWithIndexFile(),
       });
       void get().loadChatForCurrentDesign();
       void get().loadCommentsForCurrentDesign();
@@ -2095,8 +2098,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
         commentsLoaded: false,
         commentBubble: null,
         currentSnapshotId: null,
-        canvasTabs: latest ? [FILES_TAB, { kind: 'file', path: 'index.html' }] : [FILES_TAB],
-        activeCanvasTab: latest ? 1 : 0,
+        ...(latest ? canvasTabStateWithIndexFile() : defaultCanvasTabState()),
       });
       void get().loadChatForCurrentDesign();
       void get().loadCommentsForCurrentDesign();
@@ -2181,8 +2183,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
         set({
           currentDesignId: null,
           previewHtml: null,
-          canvasTabs: [FILES_TAB],
-          activeCanvasTab: 0,
+          ...defaultCanvasTabState(),
         });
         if (remaining.length > 0 && remaining[0]) {
           await get().switchDesign(remaining[0].id);
@@ -2548,6 +2549,10 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
     set({ sidebarCollapsed: collapsed });
   },
 
+  setPromptExpanded(expanded: boolean) {
+    set({ isPromptExpanded: expanded });
+  },
+
   async loadCommentsForCurrentDesign() {
     if (!window.codesign) return;
     const designId = get().currentDesignId;
@@ -2725,7 +2730,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
   },
 
   resetCanvasTabs() {
-    set({ canvasTabs: [FILES_TAB], activeCanvasTab: 0 });
+    set(defaultCanvasTabState());
   },
 
   async refreshDiagnosticEvents() {
