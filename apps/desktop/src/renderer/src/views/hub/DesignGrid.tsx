@@ -107,7 +107,7 @@ export function DesignGrid({ designs, emptyLabel, prefixTile }: DesignGridProps)
                   <span className="sr-only">{d.name}</span>
                 </button>
 
-                <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-background-secondary)] transition-[transform,border-color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:-translate-y-[2px] group-hover:border-[var(--color-border)] group-hover:shadow-[var(--shadow-card)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)]">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border-subtle)] bg-[var(--color-background-secondary)] transition-[transform,border-color,box-shadow] duration-[var(--duration-fast)] ease-[var(--ease-out)] group-hover:-translate-y-[2px] group-hover:border-[var(--color-border)] group-hover:shadow-[var(--shadow-card)] focus-within:ring-2 focus-within:ring-[var(--color-focus-ring)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.4)] dark:border-[var(--color-border)] dark:bg-[var(--color-surface)]">
                   <DesignCardPreview design={d} />
                 </div>
 

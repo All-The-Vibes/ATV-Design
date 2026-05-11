@@ -154,9 +154,10 @@ Do not hide blocked tool calls. Show the command, path, tier, and reason.
 pnpm i
 pnpm dev
 pnpm test
-pnpm test:e2e
 pnpm lint
 pnpm typecheck
 pnpm build
 pnpm changeset
 ```
+
+Note: E2E tests are manual for now. Playwright setup (`.playwright-cli/`) is in progress.

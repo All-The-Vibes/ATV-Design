@@ -1,6 +1,9 @@
 {
   "name": "@atv-design/desktop",
   "version": "0.1.4",
+  "productName": "ATV Design",
+  "appId": "com.atv-design.desktop",
+  "author": "ATV Design Contributors",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",

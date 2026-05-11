@@ -885,7 +885,8 @@ function ImageGenerationPanel() {
   const [baseUrl, setBaseUrl] = useState('');
 
   useEffect(() => {
-    if (!window.codesign?.imageGeneration) return;
+    if (!window.codesign) return;
+    if (!window.codesign.imageGeneration) return;
     void window.codesign.imageGeneration
       .get()
       .then((next) => {
@@ -928,6 +929,14 @@ function ImageGenerationPanel() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (!window.codesign) {
+    return (
+      <div className="rounded-[var(--radius-md)] border border-[var(--color-border-muted)] bg-[var(--color-surface)] p-[var(--space-4)] text-[var(--text-sm)] text-[var(--color-text-muted)]">
+        {t('settings.common.bridgeUnavailable')}
+      </div>
+    );
   }
 
   if (settings === null) {
@@ -1682,15 +1691,10 @@ function ModelsTab() {
               <AlertTriangle className="mt-[2px] h-4 w-4 shrink-0 text-[var(--color-warning)]" />
               <div className="min-w-0">
                 <div className="text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
-                  {t('settings.providers.desktopBridgeUnavailableTitle', {
-                    defaultValue: 'Desktop bridge unavailable',
-                  })}
+                  {t('settings.providers.desktopBridgeUnavailableTitle')}
                 </div>
                 <p className="mt-[var(--space-0_5)] text-[var(--text-xs)] leading-[var(--leading-body)] text-[var(--color-text-muted)]">
-                  {t('settings.providers.desktopBridgeUnavailableBody', {
-                    defaultValue:
-                      'This page is running without the Electron preload bridge, so OAuth and provider actions are disabled. Use the ATV Design desktop window started by pnpm --filter @atv-design/desktop dev, not the raw renderer dev-server URL.',
-                  })}
+                  {t('settings.providers.desktopBridgeUnavailableBody')}
                 </p>
               </div>
             </div>
@@ -2367,8 +2371,17 @@ function StorageTab() {
 
       {paths === null ? (
         <div className="flex items-center gap-2 py-4 text-[var(--text-sm)] text-[var(--color-text-muted)]">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          {t('settings.common.loading')}
+          {window.codesign ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t('settings.common.loading')}
+            </>
+          ) : (
+            t('settings.common.bridgeUnavailable', {
+              defaultValue:
+                'Desktop bridge unavailable — open the installed app to use this feature.',
+            })
+          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -2401,15 +2414,16 @@ function StorageTab() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            disabled={!window.codesign}
             onClick={() => void handleOpenLogFolder()}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <FolderOpen className="w-3.5 h-3.5" />
             {t('settings.storage.openLogFolder')}
           </button>
           <button
             type="button"
-            disabled={exporting}
+            disabled={exporting || !window.codesign}
             onClick={() => void handleExportDiagnostics()}
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >

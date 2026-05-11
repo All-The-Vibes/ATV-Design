@@ -186,7 +186,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
           {showSearch && (
             <div className="relative p-[var(--space-2)] border-b border-[var(--color-border-muted)]">
               <Search
-                className="absolute left-[calc(var(--space-2)+var(--space-2))] top-1/2 -translate-y-1/2 w-[var(--size-icon-xs)] h-[var(--size-icon-xs)] text-[var(--color-text-muted)] pointer-events-none"
+                className="absolute left-[calc(var(--space-2) + var(--space-2))] top-1/2 -translate-y-1/2 w-[var(--size-icon-xs)] h-[var(--size-icon-xs)] text-[var(--color-text-muted)] pointer-events-none"
                 aria-hidden
               />
               <input
@@ -200,7 +200,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
                 aria-label={t('topbar.modelSwitcher.searchAriaLabel', {
                   defaultValue: 'Filter models by name',
                 })}
-                className="w-full h-[var(--size-control-xs)] pl-[calc(var(--space-2)+var(--size-icon-xs)+var(--space-1_5))] pr-[calc(var(--space-2)+var(--size-icon-sm))] rounded-[var(--radius-sm)] bg-transparent border-0 text-[var(--text-xs)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)]"
+                className="w-full h-[var(--size-control-xs)] pl-[calc(var(--space-2) + var(--size-icon-xs) + var(--space-1_5))] pr-[calc(var(--space-2) + var(--size-icon-sm))] rounded-[var(--radius-sm)] bg-transparent border-0 text-[var(--text-xs)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)]"
                 style={{ fontFamily: 'var(--font-mono)' }}
               />
               {query.length > 0 && (
@@ -213,7 +213,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
                   aria-label={t('topbar.modelSwitcher.clearSearch', {
                     defaultValue: 'Clear search',
                   })}
-                  className="absolute right-[calc(var(--space-2)+var(--space-1))] top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-[var(--size-icon-sm)] h-[var(--size-icon-sm)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                  className="absolute right-[calc(var(--space-2) + var(--space-1))] top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-[var(--size-icon-sm)] h-[var(--size-icon-sm)] rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors"
                 >
                   <X className="w-[var(--size-icon-xs)] h-[var(--size-icon-xs)]" aria-hidden />
                 </button>

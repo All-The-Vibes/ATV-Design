@@ -222,7 +222,8 @@
       "copy": "Copy",
       "copied": "Copied!",
       "open": "Open",
-      "unknownError": "Unknown error"
+      "unknownError": "Unknown error",
+      "bridgeUnavailable": "Desktop bridge unavailable — open the installed app to use this feature."
     },
     "providers": {
       "sectionTitle": "API Providers",
@@ -399,7 +400,10 @@
         "medium": "Medium",
         "high": "High",
         "xhigh": "Extra high"
-      }
+      },
+      "noModel": "No model selected",
+      "desktopBridgeUnavailableTitle": "Desktop bridge unavailable",
+      "desktopBridgeUnavailableBody": "This page is running without the Electron preload bridge, so OAuth and provider actions are disabled. Use the ATV Design desktop window started by pnpm --filter @atv-design/desktop dev, not the raw renderer dev-server URL."
     },
     "appearance": {
       "themeTitle": "Theme",
@@ -980,7 +984,7 @@
   "examples": {
     "tab": "Examples",
     "title": "Examples",
-    "subtitle": "Hand-picked starting points. Hover to preview, then drop the prompt into the composer.",
+    "subtitle": "Hand-picked starting points. Click any example to open a new design with that prompt pre-filled.",
     "empty": "No examples match your filter.",
     "useThisPrompt": "Use this prompt",
     "categories": {
@@ -1058,7 +1062,13 @@
     },
     "designSystems": {
       "title": "Design systems",
-      "comingSoon": "Reusable brand systems and templates are on the way."
+      "comingSoon": "Reusable brand systems and templates are on the way.",
+      "add": "Add design system",
+      "linked": "Linked",
+      "remove": "Remove",
+      "rootPath": "Path: {{path}}",
+      "noDesignSystem": "No design system linked yet.",
+      "unavailable": "Requires the desktop app."
     },
     "card": {
       "type": {

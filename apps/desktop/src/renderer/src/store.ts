@@ -1945,7 +1945,10 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
   },
 
   async createNewDesign(workspacePath?: string | null) {
-    if (!window.codesign) return null;
+    if (!window.codesign) {
+      get().pushToast({ variant: 'error', title: tr('errors.rendererDisconnected') });
+      return null;
+    }
     if (get().isGenerating) {
       // Don't silently drop the request — callers like the Examples flow
       // assume "clicked = new design". A hidden no-op makes the prompt appear

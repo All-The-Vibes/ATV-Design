@@ -196,15 +196,16 @@ export function DiagnosticsPanel() {
       <div className="flex items-center gap-2">
         <button
           type="button"
+          disabled={!window.codesign}
           onClick={() => void onOpenLogFolder()}
-          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <FolderOpen className="w-3.5 h-3.5" />
           {t('settings.diagnostics.openLogFolder')}
         </button>
         <button
           type="button"
-          disabled={exporting}
+          disabled={exporting || !window.codesign}
           onClick={() => void onExport()}
           className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] border border-[var(--color-border)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >

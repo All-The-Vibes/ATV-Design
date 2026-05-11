@@ -102,3 +102,4 @@ website/public/demos/_speedup/
 
 # Per-session memory buffer (not source)
 .remember/
+.omc/prd.json

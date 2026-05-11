@@ -42,7 +42,7 @@ pnpm install
 pnpm dev
 ```
 
-On first launch, click **Sign in with Copilot** in the provider picker. The OAuth consent screen will appear in your browser; authorize, return to the app, and you're connected. Existing `~/.config/open-codesign/` config and known auth sidecars auto-migrate into `~/.config/atv-design/` on first read. See [`docs/oauth-setup.md`](./docs/oauth-setup.md) for the per-OS notes and the self-registration alternative.
+On first launch, open **Settings** (gear icon) and configure your provider. Paste your API key — credentials stay local. See [`docs/oauth-setup.md`](./docs/oauth-setup.md) for OAuth providers and per-OS notes. Existing `~/.config/open-codesign/` config and known auth sidecars auto-migrate into `~/.config/atv-design/` on first read.
 
 ---
 
