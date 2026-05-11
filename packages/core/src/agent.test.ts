@@ -17,6 +17,30 @@ const agentCalls: AgentCall[] = [];
 
 /** Scripted per-test: what the Agent should emit via its subscribe listener
  *  and what assistant content should end up in state.messages after prompt(). */
+interface AgentPromptRun {
+  events?: AgentEvent[];
+  assistantText?: string;
+  usage?: {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    totalTokens: number;
+    cost: {
+      input: number;
+      output: number;
+      cacheRead: number;
+      cacheWrite: number;
+      total: number;
+    };
+  };
+  stopReason?: 'stop' | 'error' | 'aborted';
+  errorMessage?: string;
+  promptThrows?: Error;
+  promptPushesAssistantBeforeThrow?: boolean;
+  invokeGetApiKey?: boolean;
+}
+
 interface AgentScript {
   events?: AgentEvent[];
   assistantText: string;
@@ -58,6 +82,8 @@ interface AgentScript {
    * behavior that flattens getApiKey throws into `errorMessage: string`).
    */
   invokeGetApiKey?: boolean;
+  /** Optional per-prompt overrides for multi-prompt agent runs. */
+  promptRuns?: AgentPromptRun[];
 }
 
 let scriptedAgent: AgentScript = { assistantText: '' };
@@ -78,10 +104,21 @@ vi.mock('@mariozechner/pi-agent-core', () => {
     }
     async prompt(message: unknown): Promise<void> {
       this.call.prompts.push({ message });
-      if (scriptedAgent.promptThrows) {
+      const run = scriptedAgent.promptRuns?.[this.call.prompts.length - 1];
+      const assistantText = run?.assistantText ?? scriptedAgent.assistantText;
+      const usage = run?.usage ?? scriptedAgent.usage;
+      const stopReason = run?.stopReason ?? scriptedAgent.stopReason;
+      const errorMessage = run?.errorMessage ?? scriptedAgent.errorMessage;
+      const promptThrows = run?.promptThrows ?? scriptedAgent.promptThrows;
+      const promptPushesAssistantBeforeThrow =
+        run?.promptPushesAssistantBeforeThrow ?? scriptedAgent.promptPushesAssistantBeforeThrow;
+      const invokeGetApiKey = run?.invokeGetApiKey ?? scriptedAgent.invokeGetApiKey;
+      const events = run?.events ?? scriptedAgent.events;
+
+      if (promptThrows) {
         const limit = scriptedAgent.promptThrowsTimes ?? Number.POSITIVE_INFINITY;
         if (this.call.prompts.length <= limit) {
-          if (scriptedAgent.promptPushesAssistantBeforeThrow) {
+          if (promptPushesAssistantBeforeThrow) {
             const partial: AgentMessage = {
               role: 'assistant',
               // biome-ignore lint/suspicious/noExplicitAny: same.
@@ -103,7 +140,7 @@ vi.mock('@mariozechner/pi-agent-core', () => {
             };
             this.state.messages.push(partial);
           }
-          throw scriptedAgent.promptThrows;
+          throw promptThrows;
         }
       }
 
@@ -112,7 +149,7 @@ vi.mock('@mariozechner/pi-agent-core', () => {
       // agent-loop.js); if that rejects, `runWithLifecycle` catches it and
       // emits a failure AgentMessage with just `errorMessage: string` —
       // which is why our code captures the original throw in a closure.
-      if (scriptedAgent.invokeGetApiKey && this.call.options.getApiKey) {
+      if (invokeGetApiKey && this.call.options.getApiKey) {
         try {
           await this.call.options.getApiKey('test-provider');
         } catch (err) {
@@ -160,8 +197,8 @@ vi.mock('@mariozechner/pi-agent-core', () => {
         // biome-ignore lint/suspicious/noExplicitAny: same.
         provider: 'anthropic' as any,
         model: 'mock-model',
-        content: [{ type: 'text', text: scriptedAgent.assistantText }],
-        usage: scriptedAgent.usage ?? {
+        content: [{ type: 'text', text: assistantText }],
+        usage: usage ?? {
           input: 0,
           output: 0,
           cacheRead: 0,
@@ -169,18 +206,18 @@ vi.mock('@mariozechner/pi-agent-core', () => {
           totalTokens: 0,
           cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
         },
-        stopReason: scriptedAgent.stopReason ?? 'stop',
-        ...(scriptedAgent.errorMessage ? { errorMessage: scriptedAgent.errorMessage } : {}),
+        stopReason: stopReason ?? 'stop',
+        ...(errorMessage ? { errorMessage } : {}),
         timestamp: Date.now(),
       };
       this.state.messages.push(assistantMsg);
 
-      for (const e of scriptedAgent.events ?? []) this.emit(e);
+      for (const e of events ?? []) this.emit(e);
       this.emit({
         type: 'message_update',
         message: assistantMsg,
         // biome-ignore lint/suspicious/noExplicitAny: AssistantMessageEvent shape not re-exported.
-        assistantMessageEvent: { type: 'text_delta', delta: scriptedAgent.assistantText } as any,
+        assistantMessageEvent: { type: 'text_delta', delta: assistantText } as any,
       });
       this.emit({ type: 'message_end', message: assistantMsg });
       this.emit({ type: 'turn_end', message: assistantMsg, toolResults: [] });
@@ -604,6 +641,216 @@ describe('generateViaAgent() — Phase 1 pass-through', () => {
       { tools: [] },
     );
     expect(result.artifacts).toHaveLength(0);
+  });
+
+  it('re-prompts once when the model stops after planning without creating index.html', async () => {
+    scriptedAgent = {
+      assistantText: 'Initial planning response.',
+      promptRuns: [
+        { assistantText: 'I’ll map the work first and then build.' },
+        { assistantText: 'Scaffold created; moving into the file now.' },
+      ],
+    };
+    const fs = {
+      view: (path: string) => {
+        if (path !== 'index.html') return null;
+        return (agentCalls[0]?.prompts.length ?? 0) >= 2
+          ? { content: SAMPLE_HTML, numLines: 1 }
+          : null;
+      },
+      create: async () => ({ path: 'index.html' }),
+      strReplace: async () => ({ path: 'index.html' }),
+      insert: async () => ({ path: 'index.html' }),
+      listDir: () => [],
+    };
+
+    const result = await generateViaAgent(
+      {
+        prompt: 'design a landing page',
+        history: [],
+        model: MODEL,
+        apiKey: 'sk-test',
+      },
+      { fs },
+    );
+
+    expect(agentCalls[0]?.prompts).toHaveLength(2);
+    expect(String(agentCalls[0]?.prompts[1]?.message)).toContain(
+      'You stopped before creating the required design artifact.',
+    );
+    expect(result.artifacts).toHaveLength(1);
+    expect(result.artifacts[0]?.content.trim()).toBe(SAMPLE_HTML);
+  });
+
+  it('throws a clear error when the model never creates index.html', async () => {
+    scriptedAgent = {
+      assistantText: 'Still planning.',
+      promptRuns: [
+        { assistantText: 'I’ll outline the sections first.' },
+        { assistantText: 'I still need to think through the layout.' },
+      ],
+    };
+    const fs = {
+      view: () => null,
+      create: async () => ({ path: 'index.html' }),
+      strReplace: async () => ({ path: 'index.html' }),
+      insert: async () => ({ path: 'index.html' }),
+      listDir: () => [],
+    };
+
+    await expect(
+      generateViaAgent(
+        {
+          prompt: 'design a landing page',
+          history: [],
+          model: MODEL,
+          apiKey: 'sk-test',
+        },
+        { fs },
+      ),
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.PROVIDER_ERROR,
+      message: expect.stringContaining('did not create index.html'),
+    });
+    expect(agentCalls[0]?.prompts).toHaveLength(2);
+  });
+
+  it('continues when unchecked todos remain after scaffolding index.html', async () => {
+    scriptedAgent = {
+      assistantText: 'Scaffold is in place.',
+      promptRuns: [
+        {
+          assistantText: 'Scaffold is in place with the header and tweak tokens.',
+          events: [
+            {
+              type: 'tool_execution_end',
+              toolName: 'set_todos',
+              toolCallId: 'todos-1',
+              result: {
+                details: {
+                  items: [
+                    { text: 'Skeleton scaffold', checked: true },
+                    { text: 'Hero section', checked: false },
+                    { text: 'Final verification', checked: false },
+                  ],
+                },
+              },
+              isError: false,
+            } as AgentEvent,
+          ],
+        },
+        {
+          assistantText: 'Hero is added and verification passed.',
+          events: [
+            {
+              type: 'tool_execution_end',
+              toolName: 'set_todos',
+              toolCallId: 'todos-2',
+              result: {
+                details: {
+                  items: [
+                    { text: 'Skeleton scaffold', checked: true },
+                    { text: 'Hero section', checked: true },
+                    { text: 'Final verification', checked: true },
+                  ],
+                },
+              },
+              isError: false,
+            } as AgentEvent,
+            {
+              type: 'tool_execution_end',
+              toolName: 'done',
+              toolCallId: 'done-1',
+              result: {
+                details: {
+                  status: 'ok',
+                  path: 'index.html',
+                  errors: [],
+                },
+              },
+              isError: false,
+            } as AgentEvent,
+          ],
+        },
+      ],
+    };
+    const fs = {
+      view: (path: string) =>
+        path === 'index.html' ? { content: SAMPLE_HTML, numLines: 1 } : null,
+      create: async () => ({ path: 'index.html' }),
+      strReplace: async () => ({ path: 'index.html' }),
+      insert: async () => ({ path: 'index.html' }),
+      listDir: () => [],
+    };
+
+    const result = await generateViaAgent(
+      {
+        prompt: 'design a landing page',
+        history: [],
+        model: MODEL,
+        apiKey: 'sk-test',
+      },
+      { fs },
+    );
+
+    expect(agentCalls[0]?.prompts).toHaveLength(2);
+    expect(String(agentCalls[0]?.prompts[1]?.message)).toContain(
+      'Unchecked checklist items still remain: Hero section, Final verification.',
+    );
+    expect(String(agentCalls[0]?.prompts[1]?.message)).toContain(
+      'Only stop when the artifact is complete and `done` returns ok.',
+    );
+    expect(result.artifacts).toHaveLength(1);
+  });
+
+  it('throws when the model keeps stopping with unchecked todos', async () => {
+    const unfinishedEvents = [
+      {
+        type: 'tool_execution_end',
+        toolName: 'set_todos',
+        toolCallId: 'todos-loop',
+        result: {
+          details: {
+            items: [
+              { text: 'Skeleton scaffold', checked: true },
+              { text: 'Hero section', checked: false },
+            ],
+          },
+        },
+        isError: false,
+      } as AgentEvent,
+    ];
+    scriptedAgent = {
+      assistantText: 'Still incomplete.',
+      promptRuns: Array.from({ length: 13 }, () => ({
+        assistantText: 'I will continue later.',
+        events: unfinishedEvents,
+      })),
+    };
+    const fs = {
+      view: (path: string) =>
+        path === 'index.html' ? { content: SAMPLE_HTML, numLines: 1 } : null,
+      create: async () => ({ path: 'index.html' }),
+      strReplace: async () => ({ path: 'index.html' }),
+      insert: async () => ({ path: 'index.html' }),
+      listDir: () => [],
+    };
+
+    await expect(
+      generateViaAgent(
+        {
+          prompt: 'design a landing page',
+          history: [],
+          model: MODEL,
+          apiKey: 'sk-test',
+        },
+        { fs },
+      ),
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.PROVIDER_ERROR,
+      message: expect.stringContaining('unfinished checklist items'),
+    });
+    expect(agentCalls[0]?.prompts).toHaveLength(13);
   });
 
   it('augments the system prompt with the file-output policy when tools are active', async () => {

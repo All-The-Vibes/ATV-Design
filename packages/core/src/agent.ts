@@ -615,6 +615,20 @@ const AGENTIC_TOOL_GUIDANCE = [
   'italic serif numbers visually collide and feel low-quality.',
 ].join('\n');
 
+const NO_ARTIFACT_RECOVERY_PROMPT = [
+  'You stopped before creating the required design artifact.',
+  'Continue the SAME design task from the current state.',
+  'Hard requirements for your next turn(s):',
+  '- Use `str_replace_based_edit_tool` now.',
+  '- If `index.html` does not exist yet, create it in THIS turn.',
+  '- Do not stop after only `set_todos` or prose.',
+  '- Keep going until `index.html` exists and contains real artifact content.',
+  '- After making concrete file progress, continue the normal workflow.',
+].join('\n');
+
+const NO_ARTIFACT_RECOVERY_ATTEMPTS = 1;
+const INCOMPLETE_RUN_CONTINUATION_ATTEMPTS = 12;
+
 const IMAGE_ASSET_TOOL_GUIDANCE = [
   '## Bitmap asset generation',
   '',
@@ -842,6 +856,8 @@ export async function generateViaAgent(
   // original lets the post-agent branch rethrow it as-is, so the renderer
   // sees the same code the initial IPC-level resolution would emit.
   let capturedGetApiKeyError: unknown = null;
+  let latestTodos: CompletionTodoItem[] | null = null;
+  let doneStatus: CompletionState['doneStatus'] = 'not_called';
   const agent = new Agent({
     initialState: {
       systemPrompt: augmentedSystemPrompt,
@@ -882,12 +898,18 @@ export async function generateViaAgent(
       : () => input.apiKey || 'atv-design-keyless',
   });
 
-  if (deps.onEvent) {
-    const listener = deps.onEvent;
-    agent.subscribe((event) => {
-      listener(event);
-    });
-  }
+  agent.subscribe((event) => {
+    if (event.type === 'tool_execution_end') {
+      if (event.toolName === 'set_todos') {
+        const items = extractTodoItemsFromToolResult(event.result);
+        if (items !== null) latestTodos = items;
+      } else if (event.toolName === 'done') {
+        const status = extractDoneStatusFromToolResult(event.result);
+        if (status !== null) doneStatus = status;
+      }
+    }
+    deps.onEvent?.(event);
+  });
 
   if (input.signal) {
     if (input.signal.aborted) {
@@ -961,7 +983,7 @@ export async function generateViaAgent(
     throw remapProviderError(err, input.model.provider, input.wire);
   }
 
-  const finalAssistant = findFinalAssistantMessage(agent.state.messages);
+  let finalAssistant = findFinalAssistantMessage(agent.state.messages);
   if (!finalAssistant) {
     throw new CodesignError('Agent produced no assistant message', ERROR_CODES.PROVIDER_ERROR);
   }
@@ -993,42 +1015,153 @@ export async function generateViaAgent(
   }
   log.info('[generate] step=send_request.ok', { ...ctx, ms: Date.now() - sendStart });
 
-  log.info('[generate] step=parse_response', ctx);
-  const parseStart = Date.now();
-  const fullText = finalAssistant.content
-    .filter(
-      (c): c is { type: 'text'; text: string } =>
-        c.type === 'text' && typeof (c as { text?: unknown }).text === 'string',
-    )
-    .map((c) => c.text)
-    .join('');
+  let collected: Collected = { text: '', artifacts: [] };
+  let missingIndexRecoveryAttempts = 0;
+  let incompleteRunContinuationAttempts = 0;
+  while (true) {
+    log.info('[generate] step=parse_response', {
+      ...ctx,
+      missingIndexRecoveryAttempts,
+      incompleteRunContinuationAttempts,
+    });
+    const parseStart = Date.now();
+    const fullText = finalAssistant.content
+      .filter(
+        (c): c is { type: 'text'; text: string } =>
+          c.type === 'text' && typeof (c as { text?: unknown }).text === 'string',
+      )
+      .map((c) => c.text)
+      .join('');
 
-  const parser = createArtifactParser();
-  const collected: Collected = { text: '', artifacts: [] };
-  collect(parser.feed(fullText), collected);
-  collect(parser.flush(), collected);
+    const parser = createArtifactParser();
+    collected = { text: '', artifacts: [] };
+    collect(parser.feed(fullText), collected);
+    collect(parser.flush(), collected);
 
-  if (collected.artifacts.length === 0) {
-    // Prose `<artifact>` fallback (fenced ```html / bare <html>) was deliberately
-    // removed: the agent owns artifacts via the text_editor tool, and tolerating
-    // inline source encouraged the model to double-emit (tool + prose), spamming
-    // the user's chat view. The fs path below is the only supported recovery
-    // when the parser produced nothing.
-  }
+    if (collected.artifacts.length === 0) {
+      // Prose `<artifact>` fallback (fenced ```html / bare <html>) was
+      // deliberately removed: the agent owns artifacts via the text_editor
+      // tool, and tolerating inline source encouraged the model to double-emit
+      // (tool + prose), spamming the user's chat view. The fs path below is the
+      // only supported recovery when the parser produced nothing.
+    }
 
-  // When the agent used the text_editor tool to write index.html, the final
-  // assistant text is just prose. Pull the artifact out of the virtual FS.
-  if (collected.artifacts.length === 0 && deps.fs) {
-    const file = deps.fs.view('index.html');
-    if (file !== null && file.content.trim().length > 0) {
-      collected.artifacts.push(createHtmlArtifact(file.content, 0));
+    // When the agent used the text_editor tool to write index.html, the final
+    // assistant text is just prose. Pull the artifact out of the virtual FS.
+    const generatedIndexHtml = readGeneratedIndexHtml(deps.fs);
+    if (collected.artifacts.length === 0 && generatedIndexHtml !== null) {
+      collected.artifacts.push(createHtmlArtifact(generatedIndexHtml, 0));
+    }
+    const todoSnapshot: CompletionTodoItem[] = Array.isArray(latestTodos) ? latestTodos : [];
+    const uncheckedTodoCount = todoSnapshot.filter((item) => item.checked === false).length;
+    log.info('[generate] step=parse_response.ok', {
+      ...ctx,
+      ms: Date.now() - parseStart,
+      artifacts: collected.artifacts.length,
+      missingIndexRecoveryAttempts,
+      incompleteRunContinuationAttempts,
+      uncheckedTodos: uncheckedTodoCount,
+      doneStatus,
+    });
+
+    const completionState = assessCompletionState({
+      fs: deps.fs,
+      latestTodos,
+      doneStatus,
+    });
+
+    if (!completionState.needsContinuation) {
+      break;
+    }
+
+    if (completionState.missingIndexHtml) {
+      if (missingIndexRecoveryAttempts >= NO_ARTIFACT_RECOVERY_ATTEMPTS) {
+        log.error('[generate] step=parse_response.fail', {
+          ...ctx,
+          reason: 'missing_index_html',
+          recoveryAttempts: missingIndexRecoveryAttempts,
+        });
+        throw new CodesignError(
+          'The model stopped after planning and did not create index.html. Retry the prompt or switch models.',
+          ERROR_CODES.PROVIDER_ERROR,
+        );
+      }
+      missingIndexRecoveryAttempts += 1;
+    } else {
+      if (incompleteRunContinuationAttempts >= INCOMPLETE_RUN_CONTINUATION_ATTEMPTS) {
+        log.error('[generate] step=parse_response.fail', {
+          ...ctx,
+          reason: 'incomplete_run',
+          continuationAttempts: incompleteRunContinuationAttempts,
+          uncheckedTodos: completionState.uncheckedTodos,
+          doneStatus: completionState.doneStatus,
+        });
+        throw new CodesignError(
+          completionState.doneStatus === 'has_errors'
+            ? 'The model stopped after a failing done check. Retry the prompt to continue fixing the artifact.'
+            : completionState.uncheckedTodos.length > 0
+              ? `The model stopped early with unfinished checklist items: ${completionState.uncheckedTodos.join(', ')}.`
+              : 'The model stopped before finishing the design. Retry the prompt to continue.',
+          ERROR_CODES.PROVIDER_ERROR,
+        );
+      }
+      incompleteRunContinuationAttempts += 1;
+    }
+
+    log.warn('[generate] step=parse_response.retry', {
+      ...ctx,
+      reason: completionState.missingIndexHtml
+        ? 'missing_index_html'
+        : completionState.doneStatus === 'has_errors'
+          ? 'done_has_errors'
+          : 'unchecked_todos',
+      missingIndexRecoveryAttempts,
+      incompleteRunContinuationAttempts,
+      uncheckedTodos: completionState.uncheckedTodos,
+      doneStatus: completionState.doneStatus,
+    });
+    try {
+      await agent.prompt(buildContinuationPrompt(completionState));
+      await agent.waitForIdle();
+    } catch (err) {
+      log.error('[generate] step=parse_response.retry.fail', {
+        ...ctx,
+        missingIndexRecoveryAttempts,
+        incompleteRunContinuationAttempts,
+        errorClass: err instanceof Error ? err.constructor.name : typeof err,
+      });
+      throw remapProviderError(err, input.model.provider, input.wire);
+    }
+
+    finalAssistant = findFinalAssistantMessage(agent.state.messages);
+    if (!finalAssistant) {
+      throw new CodesignError('Agent produced no assistant message', ERROR_CODES.PROVIDER_ERROR);
+    }
+    if (finalAssistant.stopReason === 'error' || finalAssistant.stopReason === 'aborted') {
+      if (capturedGetApiKeyError !== null) {
+        log.error('[generate] step=parse_response.retry.fail', {
+          ...ctx,
+          missingIndexRecoveryAttempts,
+          incompleteRunContinuationAttempts,
+          stopReason: finalAssistant.stopReason,
+          reason: 'getApiKey_threw',
+        });
+        throw capturedGetApiKeyError;
+      }
+      const message = finalAssistant.errorMessage ?? 'Provider returned an error';
+      log.error('[generate] step=parse_response.fail', {
+        ...ctx,
+        missingIndexRecoveryAttempts,
+        incompleteRunContinuationAttempts,
+        stopReason: finalAssistant.stopReason,
+      });
+      throw remapProviderError(
+        new CodesignError(message, ERROR_CODES.PROVIDER_ERROR),
+        input.model.provider,
+        input.wire,
+      );
     }
   }
-  log.info('[generate] step=parse_response.ok', {
-    ...ctx,
-    ms: Date.now() - parseStart,
-    artifacts: collected.artifacts.length,
-  });
 
   const usage = finalAssistant.usage;
   const output: GenerateOutput = {
@@ -1086,4 +1219,99 @@ function findFinalAssistantMessage(messages: AgentMessage[]): PiAssistantMessage
     }
   }
   return undefined;
+}
+
+function readGeneratedIndexHtml(fs: TextEditorFsCallbacks | undefined): string | null {
+  if (!fs) return null;
+  const file = fs.view('index.html');
+  if (file === null) return null;
+  const content = file.content.trim();
+  return content.length > 0 ? file.content : null;
+}
+
+type CompletionTodoItem = {
+  text: string;
+  checked: boolean;
+};
+
+interface CompletionState {
+  needsContinuation: boolean;
+  missingIndexHtml: boolean;
+  uncheckedTodos: string[];
+  doneStatus: 'not_called' | 'ok' | 'has_errors';
+}
+
+function extractTodoItemsFromToolResult(result: unknown): CompletionTodoItem[] | null {
+  if (result === null || typeof result !== 'object') return null;
+  const details = (result as { details?: unknown }).details;
+  if (details === null || typeof details !== 'object') return null;
+  const items = (details as { items?: unknown }).items;
+  if (!Array.isArray(items)) return null;
+  const out: CompletionTodoItem[] = [];
+  for (const item of items) {
+    if (item === null || typeof item !== 'object') continue;
+    const text = (item as { text?: unknown }).text;
+    const checked = (item as { checked?: unknown }).checked;
+    if (typeof text !== 'string' || typeof checked !== 'boolean') continue;
+    out.push({ text, checked });
+  }
+  return out;
+}
+
+function extractDoneStatusFromToolResult(result: unknown): CompletionState['doneStatus'] | null {
+  if (result === null || typeof result !== 'object') return null;
+  const details = (result as { details?: unknown }).details;
+  if (details === null || typeof details !== 'object') return null;
+  const status = (details as { status?: unknown }).status;
+  return status === 'ok' || status === 'has_errors' ? status : null;
+}
+
+function assessCompletionState(input: {
+  fs: TextEditorFsCallbacks | undefined;
+  latestTodos: CompletionTodoItem[] | null;
+  doneStatus: CompletionState['doneStatus'];
+}): CompletionState {
+  if (input.doneStatus === 'ok') {
+    return {
+      needsContinuation: false,
+      missingIndexHtml: false,
+      uncheckedTodos: [],
+      doneStatus: input.doneStatus,
+    };
+  }
+  const missingIndexHtml = readGeneratedIndexHtml(input.fs) === null;
+  const uncheckedTodos = (input.latestTodos ?? [])
+    .filter((item) => item.checked === false)
+    .map((item) => item.text)
+    .filter((text, index, values) => values.indexOf(text) === index);
+  const needsContinuation =
+    input.fs !== undefined &&
+    (missingIndexHtml || input.doneStatus === 'has_errors' || uncheckedTodos.length > 0);
+  return {
+    needsContinuation,
+    missingIndexHtml,
+    uncheckedTodos,
+    doneStatus: input.doneStatus,
+  };
+}
+
+function buildContinuationPrompt(state: CompletionState): string {
+  if (state.missingIndexHtml) return NO_ARTIFACT_RECOVERY_PROMPT;
+  const lines = ['Continue the SAME design task from the current state.'];
+  if (state.uncheckedTodos.length > 0) {
+    lines.push(`Unchecked checklist items still remain: ${state.uncheckedTodos.join(', ')}.`);
+    lines.push('Work on the next unchecked item now by editing `index.html`.');
+  }
+  if (state.doneStatus === 'has_errors') {
+    lines.push(
+      'The last `done` check reported errors. Fix them in `index.html`, then call `done` again.',
+    );
+  } else {
+    lines.push('Do not stop after prose or only updating todos.');
+    lines.push('Keep editing `index.html` until the remaining checklist items are actually built.');
+    lines.push('Only stop when the artifact is complete and `done` returns ok.');
+  }
+  lines.push('- Keep the existing progress; extend it rather than restarting.');
+  lines.push('- Use the file tools again now.');
+  return lines.join('\n');
 }
