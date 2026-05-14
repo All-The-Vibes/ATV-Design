@@ -19,12 +19,12 @@
     "react-i18next": "^15.1.3"
   },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "react": "^19.2.6"
   },
   "devDependencies": {
     "@atv-design/shared": "workspace:*",
     "@types/react": "^19.0.0",
-    "react": "^19.0.0",
+    "react": "^19.2.6",
     "typescript": "^5.7.2",
     "vitest": "^4.1.5"
   }
