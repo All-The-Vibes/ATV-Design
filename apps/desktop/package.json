@@ -19,7 +19,11 @@
     "build:dir": "node scripts/build-staged.cjs --dir --x64",
     "release": "node scripts/build-staged.cjs --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:e2e": "pnpm build && node scripts/e2e-run.cjs",
+    "test:e2e:norebuild": "node scripts/e2e-run.cjs",
+    "test:e2e:headed": "node scripts/e2e-run.cjs --headed",
+    "test:e2e:ui": "node scripts/e2e-run.cjs --ui"
   },
   "dependencies": {
     "better-sqlite3": "^12.9.0",
@@ -43,6 +47,7 @@
     "@atv-design/shared": "workspace:*",
     "@atv-design/templates": "workspace:*",
     "@atv-design/ui": "workspace:*",
+    "@playwright/test": "1.52.0",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.10.2",
@@ -54,6 +59,8 @@
     "electron-builder": "^26.8.1",
     "electron-builder-squirrel-windows": "26.8.1",
     "electron-vite": "^5.0.0",
+    "playwright": "1.52.0",
+    "playwright-core": "1.52.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
     "tailwindcss": "^4.2.4",

@@ -69,6 +69,7 @@ import {
   makeGenerateImageAssetTool,
 } from './tools/generate-image-asset.js';
 import { makeListFilesTool } from './tools/list-files.js';
+import { makeReadBrandTool } from './tools/read-brand.js';
 import { makeReadDesignSystemTool } from './tools/read-design-system.js';
 import { makeReadUrlTool } from './tools/read-url.js';
 import { makeSetTodosTool } from './tools/set-todos.js';
@@ -431,6 +432,13 @@ const AGENTIC_TOOL_GUIDANCE = [
   '- Prefer small, specific `old_str` values so each edit is unambiguous.',
   '- Minimum 6 tool calls per design; 10–15 is typical.',
   '',
+  '### Living design system discipline',
+  '- If `read_design_system` reports a `DESIGN.md` source file, treat it as the living system for this workspace, not just a token dump.',
+  '- Before choosing palette, type, spacing, or component rules, call `read_design_system` once and use its tokens as constraints.',
+  '- When the artifact establishes or changes reusable decisions (palette, type scale, component rules, motion, accessibility constraints), update `DESIGN.md` with `str_replace_based_edit_tool` before `done`.',
+  '- Do not let `DESIGN.md` drift behind the artifact. A polished artifact with stale system rules is incomplete.',
+  '- If no workspace `DESIGN.md` exists, use the default design-system summary as a starting point; do not invent third-party brand values from memory.',
+  '',
   '### Token-budget discipline (CRITICAL)',
   '- `view("index.html")` WITHOUT `view_range` returns the ENTIRE file — each call accumulates in your context window.',
   '- **Full-file view at most ONCE per generation run**: right before your first `str_replace`, for initial orientation. After that the file WILL grow with every edit, so a second full-file view becomes very expensive.',
@@ -628,6 +636,7 @@ const NO_ARTIFACT_RECOVERY_PROMPT = [
 
 const NO_ARTIFACT_RECOVERY_ATTEMPTS = 1;
 const INCOMPLETE_RUN_CONTINUATION_ATTEMPTS = 12;
+const DONE_ERROR_CONTINUATION_ATTEMPTS = 5;
 
 const IMAGE_ASSET_TOOL_GUIDANCE = [
   '## Bitmap asset generation',
@@ -706,6 +715,12 @@ export interface GenerateViaAgentDeps {
    * poster/background asset is worth generating.
    */
   generateImageAsset?: GenerateImageAssetFn | undefined;
+  /**
+   * Workspace root path for the active design session. When provided together
+   * with `fs`, the default toolset includes `read_brand` (brand ingest from
+   * URL / repo / image that writes/updates DESIGN.md in the workspace).
+   */
+  workspacePath?: string | null | undefined;
 }
 
 /**
@@ -803,6 +818,35 @@ export async function generateViaAgent(
         TSchema,
         unknown
       >,
+    );
+  }
+  if (deps.fs && deps.workspacePath != null) {
+    // Build a minimal fs adapter compatible with ReadBrandDeps from the
+    // TextEditorFsCallbacks shape already provided by the caller.
+    const brandFs = {
+      readFile: async (path: string): Promise<string> => {
+        const result = deps.fs?.view(path);
+        return result?.content ?? '';
+      },
+      writeFile: async (path: string, content: string): Promise<void> => {
+        const exists = deps.fs?.view(path) !== null;
+        if (exists) {
+          // Replace entire file content via strReplace-like create
+          await deps.fs?.create(path, content);
+        } else {
+          await deps.fs?.create(path, content);
+        }
+      },
+      exists: async (path: string): Promise<boolean> => {
+        return deps.fs?.view(path) !== null;
+      },
+    };
+    defaultTools.push(
+      makeReadBrandTool({
+        workspacePath: deps.workspacePath,
+        fs: brandFs,
+        log,
+      }) as unknown as AgentTool<TSchema, unknown>,
     );
   }
   const tools = deps.tools ?? defaultTools;
@@ -1018,11 +1062,13 @@ export async function generateViaAgent(
   let collected: Collected = { text: '', artifacts: [] };
   let missingIndexRecoveryAttempts = 0;
   let incompleteRunContinuationAttempts = 0;
+  let doneErrorContinuationAttempts = 0;
   while (true) {
     log.info('[generate] step=parse_response', {
       ...ctx,
       missingIndexRecoveryAttempts,
       incompleteRunContinuationAttempts,
+      doneErrorContinuationAttempts,
     });
     const parseStart = Date.now();
     const fullText = finalAssistant.content
@@ -1060,6 +1106,7 @@ export async function generateViaAgent(
       artifacts: collected.artifacts.length,
       missingIndexRecoveryAttempts,
       incompleteRunContinuationAttempts,
+      doneErrorContinuationAttempts,
       uncheckedTodos: uncheckedTodoCount,
       doneStatus,
     });
@@ -1088,7 +1135,22 @@ export async function generateViaAgent(
       }
       missingIndexRecoveryAttempts += 1;
     } else {
-      if (incompleteRunContinuationAttempts >= INCOMPLETE_RUN_CONTINUATION_ATTEMPTS) {
+      if (completionState.doneStatus === 'has_errors') {
+        if (doneErrorContinuationAttempts >= DONE_ERROR_CONTINUATION_ATTEMPTS) {
+          log.error('[generate] step=parse_response.fail', {
+            ...ctx,
+            reason: 'done_has_errors',
+            continuationAttempts: doneErrorContinuationAttempts,
+            uncheckedTodos: completionState.uncheckedTodos,
+            doneStatus: completionState.doneStatus,
+          });
+          throw new CodesignError(
+            `The model failed the done check ${DONE_ERROR_CONTINUATION_ATTEMPTS} times. Last artifact is saved; retry after manual edits or simplify the prompt.`,
+            ERROR_CODES.PROVIDER_ERROR,
+          );
+        }
+        doneErrorContinuationAttempts += 1;
+      } else if (incompleteRunContinuationAttempts >= INCOMPLETE_RUN_CONTINUATION_ATTEMPTS) {
         log.error('[generate] step=parse_response.fail', {
           ...ctx,
           reason: 'incomplete_run',
@@ -1097,15 +1159,14 @@ export async function generateViaAgent(
           doneStatus: completionState.doneStatus,
         });
         throw new CodesignError(
-          completionState.doneStatus === 'has_errors'
-            ? 'The model stopped after a failing done check. Retry the prompt to continue fixing the artifact.'
-            : completionState.uncheckedTodos.length > 0
-              ? `The model stopped early with unfinished checklist items: ${completionState.uncheckedTodos.join(', ')}.`
-              : 'The model stopped before finishing the design. Retry the prompt to continue.',
+          completionState.uncheckedTodos.length > 0
+            ? `The model stopped early with unfinished checklist items: ${completionState.uncheckedTodos.join(', ')}.`
+            : 'The model stopped before finishing the design. Retry the prompt to continue.',
           ERROR_CODES.PROVIDER_ERROR,
         );
+      } else {
+        incompleteRunContinuationAttempts += 1;
       }
-      incompleteRunContinuationAttempts += 1;
     }
 
     log.warn('[generate] step=parse_response.retry', {
@@ -1117,6 +1178,7 @@ export async function generateViaAgent(
           : 'unchecked_todos',
       missingIndexRecoveryAttempts,
       incompleteRunContinuationAttempts,
+      doneErrorContinuationAttempts,
       uncheckedTodos: completionState.uncheckedTodos,
       doneStatus: completionState.doneStatus,
     });

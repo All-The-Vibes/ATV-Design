@@ -29,6 +29,7 @@
     "docs:build": "pnpm --filter atv-design-website build",
     "docs:preview": "pnpm --filter atv-design-website preview",
     "smoke": "tsx scripts/smoke-models.ts",
+    "test:e2e": "pnpm --filter @atv-design/desktop test:e2e",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo run build && changeset publish"
@@ -38,7 +39,8 @@
     "overrides": {
       "@xmldom/xmldom": "^0.9.10",
       "ip-address": "^10.2.0",
-      "vite": "^6.4.2"
+      "vite": "^6.4.2",
+      "playwright-core": "1.52.0"
     }
   },
   "devDependencies": {

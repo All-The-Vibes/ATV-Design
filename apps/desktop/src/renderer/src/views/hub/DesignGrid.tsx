@@ -90,7 +90,7 @@ export function DesignGrid({ designs, emptyLabel, prefixTile }: DesignGridProps)
         {designs.map((d) => {
           const updated = formatRelativeTime(d.updatedAt);
           return (
-            <li key={d.id}>
+            <li key={d.id} data-testid={`hub-design-card-${d.id}`}>
               <div
                 className="group relative flex flex-col gap-[var(--space-3)]"
                 onContextMenu={(e) => onCardContextMenu(e, d)}

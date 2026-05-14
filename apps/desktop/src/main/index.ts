@@ -45,6 +45,7 @@ import { registerConnectionIpc } from './connection-ipc';
 import { resolveCopilotTransportForModel } from './copilot-models';
 import { getCopilotSessionToken, registerCopilotOAuthIpc } from './copilot-oauth-ipc';
 import { scanDesignSystem } from './design-system';
+import { resolveDesignSystemForDesign } from './design-system-resolver';
 import { registerDiagnosticsIpc } from './diagnostics-ipc';
 import { makeRuntimeVerifier } from './done-verify';
 import { BrowserWindow, app, clipboard, dialog, ipcMain, shell } from './electron-runtime';
@@ -62,6 +63,7 @@ import {
 import { maybeAbortIfRunningFromDmg } from './install-check';
 import { registerLocaleIpc } from './locale-ipc';
 import { getLogPath, getLogger, initLogger } from './logger';
+import { runBackfillIfNeeded } from './migration/backfill';
 import {
   getApiKeyForProvider,
   getCachedConfig,
@@ -106,6 +108,12 @@ let mainWindow: ElectronBrowserWindow | null = null;
 // shows the banner. Cleared only on app quit (matching the one-shot nature
 // of autoUpdater — a new check will re-emit if still applicable).
 let pendingUpdateAvailable: unknown = null;
+
+// E2E test hook: allow overriding userData path before any path resolution.
+// Must run before configDir() or any app.getPath('userData') call.
+if (process.env['ELECTRON_USER_DATA_DIR']) {
+  app.setPath('userData', process.env['ELECTRON_USER_DATA_DIR']);
+}
 
 const defaultUserDataDir = app.getPath('userData');
 const storageLocations = initStorageSettings(defaultUserDataDir);
@@ -614,9 +622,15 @@ function registerIpcHandlers(db: Database | null): void {
     let deltaCount = 0;
     let toolCount = 0;
 
+    // Resolve workspace path so the `read_brand` tool can write to <workspace>/DESIGN.md.
+    // Tool registration in packages/core gates on this dep; if absent, read_brand is silently skipped.
+    const designWorkspacePath =
+      db !== null && designId !== null ? (getDesign(db, designId)?.workspacePath ?? null) : null;
+
     return generateViaAgent(input, {
       fs,
       runtimeVerify,
+      ...(designWorkspacePath !== null ? { workspacePath: designWorkspacePath } : {}),
       ...(generateImageAsset !== undefined ? { generateImageAsset } : {}),
       onEvent: (event: AgentEvent) => {
         // High-signal only. Skip per-token deltas and inner message_*
@@ -886,10 +900,15 @@ function registerIpcHandlers(db: Database | null): void {
       }
       coreLogger.info('[generate] step=validate_provider.ok', { provider: active.model.provider });
 
+      const designSystem = await resolveDesignSystemForDesign(
+        db,
+        payload.designId ?? null,
+        cfg.designSystem ?? null,
+      );
       const promptContext = await preparePromptContext({
         attachments: payload.attachments,
         referenceUrl: payload.referenceUrl,
-        designSystem: cfg.designSystem ?? null,
+        designSystem,
       });
 
       logIpc.info('generate', {
@@ -1027,10 +1046,15 @@ function registerIpcHandlers(db: Database | null): void {
       if (active.overridden) {
         payload.baseUrl = baseUrl;
       }
+      const designSystem = await resolveDesignSystemForDesign(
+        db,
+        payload.designId ?? null,
+        cfg.designSystem ?? null,
+      );
       const promptContext = await preparePromptContext({
         attachments: payload.attachments,
         referenceUrl: payload.referenceUrl,
-        designSystem: cfg.designSystem ?? null,
+        designSystem,
       });
 
       logIpc.info('generate', {
@@ -1134,10 +1158,15 @@ function registerIpcHandlers(db: Database | null): void {
       const apiKey = await resolveApiKeyForActive(active.model.provider, allowKeyless);
       active = await maybeResolveCopilotTransport(active, apiKey);
       const baseUrl = active.baseUrl ?? undefined;
+      const designSystem = await resolveDesignSystemForDesign(
+        db,
+        payload.designId ?? null,
+        cfg.designSystem ?? null,
+      );
       const promptContext = await preparePromptContext({
         attachments: payload.attachments,
         referenceUrl: payload.referenceUrl,
-        designSystem: cfg.designSystem ?? null,
+        designSystem,
       });
 
       logIpc.info('applyComment', {
@@ -1377,6 +1406,15 @@ if (!IS_VITEST) {
             message: err instanceof Error ? err.message : String(err),
           });
         }
+        // Phase A: backfill v0.1 SQLite data into workspace-file substrate.
+        // Only runs when there is a known workspace path. Best-effort — errors
+        // are logged but do not block app startup.
+        const storageData = storageLocations.dataDir ?? app.getPath('userData');
+        runBackfillIfNeeded(storageData, dbResult.db).catch((err: unknown) => {
+          getLogger('main:boot').warn('migration.backfill.fail', {
+            message: err instanceof Error ? err.message : String(err),
+          });
+        });
       } else {
         const bootLog = getLogger('main:boot');
         bootLog.error('snapshotsDb.init.fail', {

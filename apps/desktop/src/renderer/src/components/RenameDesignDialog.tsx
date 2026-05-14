@@ -38,6 +38,7 @@ export function RenameDesignDialog() {
       role="dialog"
       aria-modal="true"
       aria-label={t('projects.rename.title')}
+      data-testid="rename-design-dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay)] animate-[overlay-in_120ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) close(null);
@@ -63,6 +64,7 @@ export function RenameDesignDialog() {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={t('projects.rename.placeholder')}
+            data-testid="rename-design-dialog-input-name"
             className="w-full h-10 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--text-sm)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-focus-ring)] transition-[box-shadow,border-color] duration-150"
           />
         </label>

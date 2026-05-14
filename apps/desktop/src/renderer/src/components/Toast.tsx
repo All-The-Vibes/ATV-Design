@@ -67,6 +67,7 @@ function ToastItem({ toast }: { toast: ToastModel }) {
     <div
       role={isError ? 'alert' : 'status'}
       aria-live={isError ? 'assertive' : 'polite'}
+      data-testid={`toast-${toast.id}`}
       className="relative overflow-hidden flex items-start gap-3 min-w-72 max-w-96 px-4 py-3 rounded-[var(--radius-lg)] bg-[var(--color-surface)] border border-[var(--color-border)] shadow-[var(--shadow-elevated)] animate-[toast-in_180ms_ease-out] motion-reduce:animate-none"
     >
       <Icon className="w-5 h-5 mt-0.5 shrink-0" style={{ color: accentFor[toast.variant] }} />

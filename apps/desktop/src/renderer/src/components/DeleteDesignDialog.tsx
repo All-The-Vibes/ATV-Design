@@ -14,6 +14,7 @@ export function DeleteDesignDialog() {
       role="dialog"
       aria-modal="true"
       aria-label={t('projects.delete.title')}
+      data-testid="delete-design-dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay)] animate-[overlay-in_120ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) close(null);
@@ -36,6 +37,7 @@ export function DeleteDesignDialog() {
           <button
             type="button"
             onClick={() => close(null)}
+            data-testid="delete-design-dialog-button-cancel"
             className="h-9 px-3 rounded-[var(--radius-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] transition-colors"
           >
             {t('projects.delete.cancel')}
@@ -43,6 +45,7 @@ export function DeleteDesignDialog() {
           <button
             type="button"
             onClick={() => void softDeleteDesign(target.id)}
+            data-testid="delete-design-dialog-button-confirm"
             className="h-9 px-3 rounded-[var(--radius-md)] bg-[var(--color-error)] text-[var(--color-on-accent)] text-[var(--text-sm)] font-medium hover:opacity-90 transition-opacity"
           >
             {t('projects.delete.confirm')}

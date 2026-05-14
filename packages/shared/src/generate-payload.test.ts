@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GeneratePayload, GeneratePayloadV1 } from './index';
+import { ApplyCommentPayload, GeneratePayload, GeneratePayloadV1 } from './index';
 
 const BASE_VALID = {
   schemaVersion: 1 as const,
@@ -69,5 +69,24 @@ describe('GeneratePayload (legacy — no schemaVersion)', () => {
     const v1 = GeneratePayloadV1.parse({ schemaVersion: 1, ...legacy, generationId: id });
     expect(v1.schemaVersion).toBe(1);
     expect(v1.generationId).toMatch(/^gen-/);
+  });
+});
+
+describe('ApplyCommentPayload', () => {
+  it('accepts an optional designId for per-design design-system resolution', () => {
+    const result = ApplyCommentPayload.parse({
+      html: '<main><button>Buy</button></main>',
+      comment: 'Make the button match the system',
+      selection: {
+        selector: 'button',
+        outerHTML: '<button>Buy</button>',
+        tag: 'button',
+        rect: { top: 0, left: 0, width: 120, height: 40 },
+      },
+      designId: 'design-123',
+    });
+
+    expect(result.designId).toBe('design-123');
+    expect(result.attachments).toEqual([]);
   });
 });

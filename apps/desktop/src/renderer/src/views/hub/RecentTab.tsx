@@ -27,6 +27,7 @@ export function RecentTab() {
       onClick={() => void handleNewDesign()}
       disabled={isGenerating}
       aria-label={t('hub.newDesign')}
+      data-testid="sidebar-button-new-design"
       className="group relative flex w-full text-left disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <div className="relative w-full aspect-[4/3] flex flex-col items-center justify-center gap-[var(--space-4)] rounded-[var(--radius-lg)] border-[1.5px] border-dashed border-[var(--color-border)] bg-[linear-gradient(135deg,var(--color-background-secondary)_0%,var(--color-accent-soft)_100%)] transition-[transform,border-color] duration-[var(--duration-base)] ease-[var(--ease-out)] group-hover:-translate-y-[2px] group-hover:border-[var(--color-accent)] group-disabled:translate-y-0 group-disabled:border-[var(--color-border)] overflow-hidden">

@@ -331,7 +331,11 @@ export function makeDoneTool(
             ? 'ok — no syntactic or runtime issues detected.'
             : 'ok — no syntactic issues detected. (Runtime verification not configured in this host.)'
           : `has_errors\n${errors.map((e) => `- ${e.message}${e.lineno ? ` (line ${e.lineno})` : ''}`).join('\n')}`;
-      return { content: [{ type: 'text', text }], details };
+      return {
+        content: [{ type: 'text', text }],
+        details,
+        ...(status === 'ok' ? { terminate: true } : {}),
+      };
     },
   };
 }

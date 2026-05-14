@@ -32,6 +32,8 @@ import type {
 } from '@atv-design/shared';
 import type BetterSqlite3 from 'better-sqlite3';
 import { getLogger } from './logger';
+import { appendComment } from './stores/comments-store';
+import { appendDiagnosticEvent } from './stores/diagnostics-store';
 
 // better-sqlite3 is a native module — require() instead of import.
 const require = createRequire(import.meta.url);
@@ -842,7 +844,18 @@ export function createComment(db: Database, input: CommentCreateInput): CommentR
     parentOuterHTML,
   );
   const row = db.prepare('SELECT * FROM comments WHERE id = ?').get(id) as CommentRowDb;
-  return rowToComment(row);
+  const comment = rowToComment(row);
+  // Phase A dual-write: mirror to workspace-file substrate.
+  const design = getDesign(db, input.designId);
+  if (design?.workspacePath !== null && design !== null) {
+    appendComment(design.workspacePath, input.designId, comment).catch((err: unknown) => {
+      getLogger('snapshots-db').warn('dualWrite.comment.fail', {
+        designId: input.designId,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
+  return comment;
 }
 
 export function listComments(db: Database, designId: string, snapshotId?: string): CommentRow[] {
@@ -1161,6 +1174,7 @@ export function recordDiagnosticEvent(
   db: Database,
   input: DiagnosticEventInput,
   now: () => number = Date.now,
+  workspacePath?: string,
 ): number {
   const ts = now();
   const recent = db
@@ -1197,7 +1211,21 @@ export function recordDiagnosticEvent(
       input.transient ? 1 : 0,
       input.context !== undefined ? JSON.stringify(input.context) : null,
     );
-  return Number(result.lastInsertRowid);
+  const eventId = Number(result.lastInsertRowid);
+
+  // Phase A dual-write: mirror to workspace-file substrate.
+  if (workspacePath !== undefined) {
+    const eventRow = getDiagnosticEventById(db, eventId);
+    if (eventRow !== undefined) {
+      appendDiagnosticEvent(workspacePath, eventRow).catch((err: unknown) => {
+        getLogger('snapshots-db').warn('dualWrite.diagnostic.fail', {
+          message: err instanceof Error ? err.message : String(err),
+        });
+      });
+    }
+  }
+
+  return eventId;
 }
 
 export function getDiagnosticEventById(db: Database, id: number): DiagnosticEventRow | undefined {

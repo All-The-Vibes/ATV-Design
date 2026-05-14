@@ -30,6 +30,7 @@ const CANDIDATE_EXTS = new Set([
 ]);
 
 const PRIORITY_PATTERNS = [
+  /^DESIGN\.md$/i,
   /tailwind\.config/i,
   /tokens?/i,
   /theme/i,
@@ -65,6 +66,7 @@ function cleanValue(value: string): string {
 function scoreCandidate(relativePath: string): number {
   const fileName = basename(relativePath);
   let score = 1;
+  if (/^DESIGN\.md$/i.test(fileName)) score += 80;
   for (const pattern of PRIORITY_PATTERNS) {
     if (pattern.test(relativePath) || pattern.test(fileName)) score += 20;
   }

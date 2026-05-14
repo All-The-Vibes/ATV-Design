@@ -11,6 +11,14 @@ import { CommentChipBar } from './chat/CommentChipBar';
 import { EmptyState } from './chat/EmptyState';
 import { PromptInput, type PromptInputHandle } from './chat/PromptInput';
 
+export const SIDEBAR_TEST_IDS = {
+  root: 'sidebar',
+  buttonNewDesign: 'sidebar-button-new-design',
+  buttonCollapse: 'sidebar-button-collapse',
+  designList: 'sidebar-design-list',
+  // dynamic items: `design-list-item-${id}`
+} as const;
+
 export interface SidebarProps {
   prompt: string;
   setPrompt: (value: string) => void;
@@ -127,12 +135,35 @@ export function Sidebar({ prompt, setPrompt, onSubmit }: SidebarProps) {
 
   return (
     <aside
+      data-testid={SIDEBAR_TEST_IDS.root}
       className="flex flex-col h-full overflow-x-hidden border-r border-[var(--color-border)] bg-[var(--color-background-secondary)]"
       style={{ minHeight: 0, minWidth: 0 }}
       aria-label={t('sidebar.ariaLabel')}
     >
       {/* Header — clean, no collapse */}
       <div className="h-[var(--space-3)] shrink-0" />
+
+      {/* Design list — one entry per design, enables sidebar navigation and testid assertions */}
+      {designs.length > 0 ? (
+        <ul
+          data-testid={SIDEBAR_TEST_IDS.designList}
+          className="shrink-0 px-[var(--space-2)] pb-[var(--space-1)] space-y-[1px]"
+        >
+          {designs.map((design) => (
+            <li key={design.id} data-testid={`design-list-item-${design.id}`}>
+              <span
+                className={`block w-full truncate rounded px-[var(--space-2)] py-[4px] text-[var(--text-xs)] ${
+                  design.id === currentDesignId
+                    ? 'bg-[var(--color-accent-soft)] text-[var(--color-text-primary)] font-medium'
+                    : 'text-[var(--color-text-secondary)]'
+                }`}
+              >
+                {design.name}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       <>
         {/* Chat scroll area */}

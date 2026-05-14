@@ -7,6 +7,15 @@ import { LanguageToggle } from './LanguageToggle';
 import { ModelSwitcher } from './ModelSwitcher';
 import { ThemeToggle } from './ThemeToggle';
 
+export const TOPBAR_TEST_IDS = {
+  root: 'topbar',
+  buttonSettings: 'topbar-button-settings',
+  buttonErrorBadge: 'topbar-button-error-badge',
+  buttonBackToHub: 'topbar-button-back-hub',
+  buttonCloseSettings: 'topbar-button-close-settings',
+  hubTabButton: (tab: string) => `topbar-hub-tab-${tab}`,
+} as const;
+
 const dragStyle = { WebkitAppRegion: 'drag' } as CSSProperties;
 const noDragStyle = { WebkitAppRegion: 'no-drag' } as CSSProperties;
 
@@ -35,6 +44,7 @@ export function TopBar() {
 
   return (
     <header
+      data-testid={TOPBAR_TEST_IDS.root}
       className="h-[var(--size-titlebar-height)] shrink-0 flex items-center justify-between pr-[var(--space-6)] select-none"
       style={{
         ...dragStyle,
@@ -53,6 +63,7 @@ export function TopBar() {
               type="button"
               onClick={() => setView(previousView === 'settings' ? 'hub' : previousView)}
               aria-label={t('topbar.closeSettings')}
+              data-testid={TOPBAR_TEST_IDS.buttonCloseSettings}
               className="inline-flex items-center gap-[6px] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] transition-colors duration-[var(--duration-faster)]"
               style={{
                 fontFamily: 'var(--font-display)',
@@ -112,6 +123,7 @@ export function TopBar() {
               type="button"
               onClick={() => setView('hub')}
               aria-label={t('topbar.openMyDesigns')}
+              data-testid={TOPBAR_TEST_IDS.buttonBackToHub}
               className="inline-flex items-center gap-[6px] rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] transition-colors duration-[var(--duration-faster)] max-w-[520px]"
               style={{
                 fontFamily: 'var(--font-display)',
@@ -145,6 +157,7 @@ export function TopBar() {
             onClick={() => openSettingsTab('diagnostics')}
             aria-label={t('topbar.unreadErrors', { count: unreadErrorCount })}
             title={t('topbar.unreadErrors', { count: unreadErrorCount })}
+            data-testid={TOPBAR_TEST_IDS.buttonErrorBadge}
             className="inline-flex items-center gap-1 h-7 px-2 rounded-[var(--radius-sm)] border border-[var(--color-error)]/30 text-[var(--color-error)] hover:bg-[var(--color-error)]/10 transition-colors"
           >
             <AlertCircle className="w-3.5 h-3.5" aria-hidden />

@@ -38,8 +38,9 @@
  *
  * Safety net: after per-block stubbing, if the grand total still exceeds
  * `HARD_CAP_BYTES`, we shrink caps further (including within the window)
- * and re-run. Catches pathological runs with many just-under-threshold
- * blocks.
+ * and re-run. If that still exceeds the cap because the run has accumulated
+ * too many messages, keep a compact tail instead of sending a giant history.
+ * Catches pathological runs with many just-under-threshold blocks.
  */
 
 import type { AgentMessage } from '@mariozechner/pi-agent-core';
@@ -50,6 +51,7 @@ const TOOL_INPUT_LIMIT = 24 * 1024;
 const TOOL_RESULT_LIMIT = 8 * 1024;
 const HARD_CAP_BYTES = 200_000;
 const AGGRESSIVE_BLOCK_LIMIT = 2 * 1024;
+const EMERGENCY_BLOCK_LIMIT = 160;
 
 /**
  * Number of most-recent non-user messages whose tool payloads (toolCall.input
@@ -190,6 +192,28 @@ function applyCaps(messages: AgentMessage[], cfg: CapConfig): AgentMessage[] {
   });
 }
 
+function dropLeadingToolResults(messages: AgentMessage[]): AgentMessage[] {
+  let start = 0;
+  while (messages[start]?.role === 'toolResult') start += 1;
+  return messages.slice(start);
+}
+
+function tailPruneToHardCap(messages: AgentMessage[], maxBytes: number): AgentMessage[] {
+  if (estimateBytes(messages) <= maxBytes) return messages;
+
+  const kept: AgentMessage[] = [];
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const message = messages[i];
+    if (!message) continue;
+    const candidate = dropLeadingToolResults([message, ...kept]);
+    if (estimateBytes(candidate) > maxBytes) break;
+    kept.unshift(message);
+  }
+
+  const safeKept = dropLeadingToolResults(kept);
+  return safeKept.length > 0 ? safeKept : kept;
+}
+
 export function buildTransformContext(
   log: CoreLogger = NOOP_LOGGER,
 ): (messages: AgentMessage[], signal?: AbortSignal) => Promise<AgentMessage[]> {
@@ -235,6 +259,36 @@ export function buildTransformContext(
       after: aggressiveSize,
       blockLimit: AGGRESSIVE_BLOCK_LIMIT,
     });
-    return aggressive;
+    if (aggressiveSize <= HARD_CAP_BYTES) return aggressive;
+
+    const emergency = applyCaps(messages, {
+      textLimit: EMERGENCY_BLOCK_LIMIT,
+      toolInputLimitOld: EMERGENCY_BLOCK_LIMIT,
+      toolResultLimitOld: EMERGENCY_BLOCK_LIMIT,
+      toolInputLimitRecent: EMERGENCY_BLOCK_LIMIT,
+      toolResultLimitRecent: EMERGENCY_BLOCK_LIMIT,
+      windowTurns: 0,
+    });
+    const emergencySize = estimateBytes(emergency);
+    log.info('[context-prune] step=emergency', {
+      messages: messages.length,
+      before,
+      aggressive: aggressiveSize,
+      after: emergencySize,
+      blockLimit: EMERGENCY_BLOCK_LIMIT,
+    });
+    if (emergencySize <= HARD_CAP_BYTES) return emergency;
+
+    const tailPruned = tailPruneToHardCap(emergency, HARD_CAP_BYTES);
+    const tailPrunedSize = estimateBytes(tailPruned);
+    log.info('[context-prune] step=tail_prune', {
+      messages: messages.length,
+      before,
+      emergency: emergencySize,
+      after: tailPrunedSize,
+      keptMessages: tailPruned.length,
+      droppedMessages: messages.length - tailPruned.length,
+    });
+    return tailPruned;
   };
 }

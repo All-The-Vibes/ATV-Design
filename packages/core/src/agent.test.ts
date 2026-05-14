@@ -853,6 +853,53 @@ describe('generateViaAgent() — Phase 1 pass-through', () => {
     expect(agentCalls[0]?.prompts).toHaveLength(13);
   });
 
+  it('stops after five failed done repairs instead of looping until the global timeout', async () => {
+    const doneHasErrorsEvent = {
+      type: 'tool_execution_end',
+      toolName: 'done',
+      toolCallId: 'done-loop',
+      result: {
+        details: {
+          status: 'has_errors',
+          path: 'index.html',
+          errors: [{ message: 'React runtime warning', source: 'runtime' }],
+        },
+      },
+      isError: false,
+    } as AgentEvent;
+    scriptedAgent = {
+      assistantText: 'Still repairing runtime errors.',
+      promptRuns: Array.from({ length: 13 }, () => ({
+        assistantText: 'Patched another warning and reran done.',
+        events: [doneHasErrorsEvent],
+      })),
+    };
+    const fs = {
+      view: (path: string) =>
+        path === 'index.html' ? { content: SAMPLE_HTML, numLines: 1 } : null,
+      create: async () => ({ path: 'index.html' }),
+      strReplace: async () => ({ path: 'index.html' }),
+      insert: async () => ({ path: 'index.html' }),
+      listDir: () => [],
+    };
+
+    await expect(
+      generateViaAgent(
+        {
+          prompt: 'design a dashboard',
+          history: [],
+          model: MODEL,
+          apiKey: 'sk-test',
+        },
+        { fs },
+      ),
+    ).rejects.toMatchObject({
+      code: ERROR_CODES.PROVIDER_ERROR,
+      message: expect.stringContaining('failed the done check 5 times'),
+    });
+    expect(agentCalls[0]?.prompts).toHaveLength(6);
+  });
+
   it('augments the system prompt with the file-output policy when tools are active', async () => {
     scriptedAgent = { assistantText: RESPONSE_WITH_ARTIFACT };
     await generateViaAgent({

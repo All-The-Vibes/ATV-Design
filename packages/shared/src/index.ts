@@ -158,6 +158,8 @@ export const ApplyCommentPayload = z.object({
   model: ModelRef.optional(),
   referenceUrl: z.string().url().optional(),
   attachments: z.array(LocalInputFile).max(12).default([]),
+  /** Optional design binding so edit flows can reuse that design's workspace DESIGN.md. */
+  designId: z.string().min(1).optional(),
 });
 export type ApplyCommentPayload = z.infer<typeof ApplyCommentPayload>;
 

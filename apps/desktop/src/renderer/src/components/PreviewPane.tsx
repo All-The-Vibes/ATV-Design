@@ -21,6 +21,11 @@ import { TweakPanel } from './TweakPanel';
 import { CommentBubble } from './comment/CommentBubble';
 import { PinOverlay } from './comment/PinOverlay';
 
+export const PREVIEW_PANE_TEST_IDS = {
+  root: 'preview-pane',
+  toolbar: 'preview-pane-toolbar',
+} as const;
+
 export interface PreviewPaneProps {
   onPickStarter: (prompt: string) => void;
 }
@@ -537,7 +542,7 @@ export function PreviewPane({ onPickStarter }: PreviewPaneProps) {
   const showPreviewToolbar = activeTab?.kind !== 'files';
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div data-testid={PREVIEW_PANE_TEST_IDS.root} className="flex min-h-0 flex-1">
       <div className="flex flex-col min-h-0 flex-1">
         <div className="flex items-stretch justify-between gap-[var(--space-2)] border-b border-[var(--color-border-muted)] bg-[var(--color-background-secondary)] pl-[var(--space-2)]">
           {hasTabs ? <CanvasTabBar /> : <div />}

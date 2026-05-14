@@ -18,7 +18,8 @@
     "@atv-design/shared": "workspace:*",
     "@mariozechner/pi-agent-core": "^0.73.0",
     "@mariozechner/pi-ai": "^0.73.0",
-    "@sinclair/typebox": "^0.34.49"
+    "@sinclair/typebox": "^0.34.49",
+    "puppeteer-core": "^24.42.0"
   },
   "devDependencies": {
     "typescript": "^5.7.2",

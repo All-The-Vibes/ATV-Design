@@ -1067,7 +1067,7 @@
       "linked": "Linked",
       "remove": "Remove",
       "rootPath": "Path: {{path}}",
-      "noDesignSystem": "No design system linked yet.",
+      "noDesignSystem": "No global design system linked. New designs create a workspace DESIGN.md from the ATV default.",
       "unavailable": "Requires the desktop app."
     },
     "card": {

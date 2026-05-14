@@ -242,7 +242,11 @@ export function App() {
           </div>
         ) : null}
         {workspaceMounted ? (
-          <div hidden={view !== 'workspace'} className="h-full flex flex-col">
+          <div
+            hidden={view !== 'workspace'}
+            data-testid="workspace-view"
+            className="h-full flex flex-col"
+          >
             <div className="flex-1 min-h-0 flex relative">
               {isResizing && <div className="absolute inset-0 z-20 cursor-col-resize" />}
               <div

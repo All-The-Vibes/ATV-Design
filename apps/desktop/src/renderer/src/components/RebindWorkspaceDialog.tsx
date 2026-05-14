@@ -36,6 +36,7 @@ export function RebindWorkspaceDialog() {
       role="dialog"
       aria-modal="true"
       aria-label={t('canvas.workspace.rebindTitle')}
+      data-testid="rebind-workspace-dialog"
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay)] animate-[overlay-in_120ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) cancelRebind();

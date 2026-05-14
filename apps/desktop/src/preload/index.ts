@@ -209,6 +209,7 @@ const api = {
     model?: ModelRef;
     referenceUrl?: string;
     attachments?: LocalInputFile[];
+    designId?: string;
   }) => ipcRenderer.invoke('codesign:apply-comment', payload) as Promise<GenerateResponse>,
   pickInputFiles: () =>
     ipcRenderer.invoke('codesign:pick-input-files') as Promise<LocalInputFile[]>,
@@ -590,6 +591,8 @@ const api = {
     ipcRenderer.invoke('codesign:v1:open-external', url) as Promise<void>,
 };
 
-contextBridge.exposeInMainWorld('codesign', api);
+const isE2E = process.env['CODESIGN_E2E'] === '1';
 
-export type CodesignApi = typeof api;
+contextBridge.exposeInMainWorld('codesign', { ...api, isE2E });
+
+export type CodesignApi = typeof api & { isE2E: boolean };

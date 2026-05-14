@@ -43,6 +43,11 @@ vi.mock('./design-workspace', () => ({
   checkWorkspaceFolderExists: vi.fn(),
 }));
 
+vi.mock('./default-design-system', () => ({
+  ensureWorkspaceDesignSystem: vi.fn(),
+}));
+
+import { ensureWorkspaceDesignSystem } from './default-design-system';
 import { bindWorkspace, checkWorkspaceFolderExists, openWorkspaceFolder } from './design-workspace';
 import { app, dialog } from './electron-runtime';
 import {
@@ -96,6 +101,8 @@ beforeEach(() => {
     if (!design) throw new Error(`Design not found: ${designId}`);
     return { ...design, workspacePath };
   });
+  vi.mocked(ensureWorkspaceDesignSystem).mockReset();
+  vi.mocked(ensureWorkspaceDesignSystem).mockResolvedValue('DESIGN.md');
   vi.mocked(openWorkspaceFolder).mockReset();
   vi.mocked(checkWorkspaceFolderExists).mockReset();
   registerSnapshotsIpc(db);
@@ -306,6 +313,16 @@ describe('snapshots:v1:create-design', () => {
     expect(vi.mocked(bindWorkspace)).toHaveBeenCalledTimes(1);
     const workspacePath = vi.mocked(bindWorkspace).mock.calls[0]?.[2];
     expect(workspacePath).toMatch(/workspaces[\\/]my-design$/);
+  });
+
+  it('creates a default DESIGN.md in the bound workspace', async () => {
+    const userDataDir = await makeTempDir('atv-design-userdata-');
+    vi.mocked(app.getPath).mockReturnValue(userDataDir);
+
+    await callAsync('snapshots:v1:create-design', v1({ name: '  My design  ' }));
+
+    const workspacePath = vi.mocked(bindWorkspace).mock.calls[0]?.[2];
+    expect(ensureWorkspaceDesignSystem).toHaveBeenCalledWith(workspacePath, 'My design');
   });
 
   it('forwards an explicit workspacePath to bindWorkspace instead of auto-allocating one', async () => {

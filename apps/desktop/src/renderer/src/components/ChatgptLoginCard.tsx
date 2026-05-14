@@ -5,6 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CodexOAuthStatus } from '../../../preload/index';
 import { useCodesignStore } from '../store';
 
+export const CHATGPT_LOGIN_CARD_TEST_IDS = {
+  root: 'chatgpt-login-card',
+  buttonSignIn: 'chatgpt-login-card-button-sign-in',
+  buttonLogout: 'chatgpt-login-card-button-logout',
+  buttonCancel: 'chatgpt-login-card-button-cancel',
+} as const;
+
 export interface ChatgptLoginCardProps {
   /** Called after a successful login or logout so the parent can refresh its provider list. */
   onStatusChange?: () => void | Promise<void>;
@@ -214,7 +221,10 @@ export function ChatgptLoginCard({
 
   if (viewState === 'logged-in' && status) {
     return (
-      <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] border-l-[var(--size-accent-stripe)] border-l-[var(--color-accent)] bg-[var(--color-accent-tint)] px-[var(--space-3)] py-[var(--space-2_5)] flex items-center gap-[var(--space-3)]">
+      <div
+        data-testid={CHATGPT_LOGIN_CARD_TEST_IDS.root}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-border)] border-l-[var(--size-accent-stripe)] border-l-[var(--color-accent)] bg-[var(--color-accent-tint)] px-[var(--space-3)] py-[var(--space-2_5)] flex items-center gap-[var(--space-3)]"
+      >
         <div className="min-w-0 flex-1 flex items-center gap-[var(--space-2)] flex-wrap">
           <span className="inline-flex items-center gap-[var(--space-1)] px-[var(--space-1_5)] py-[var(--space-0_5)] rounded-full border border-[var(--color-accent)] text-[var(--color-accent)] bg-transparent text-[var(--font-size-badge)] font-medium leading-none">
             <Sparkles className="w-[var(--size-icon-xs)] h-[var(--size-icon-xs)]" />
@@ -237,7 +247,10 @@ export function ChatgptLoginCard({
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--space-3)] py-[var(--space-2_5)] flex items-start gap-[var(--space-3)]">
+    <div
+      data-testid={CHATGPT_LOGIN_CARD_TEST_IDS.root}
+      className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-[var(--space-3)] py-[var(--space-2_5)] flex items-start gap-[var(--space-3)]"
+    >
       <div className="min-w-0 flex-1">
         <div className="text-[var(--text-sm)] font-medium text-[var(--color-text-primary)]">
           {t('settings.providers.chatgptLogin.title')}

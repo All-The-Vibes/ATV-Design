@@ -57,6 +57,7 @@ The v0.2 tool surface is pi's seven built-ins plus Open CoDesign design tools:
 - `skill(name)` lazy-loads skill text from a manifest.
 - `preview(path)` renders artifacts and returns console errors, asset errors, DOM outline, metrics, and screenshots for vision models.
 - `gen_image(prompt, path)` writes generated images to disk when capability and provider config allow it.
+- `read_brand(source)` ingests brand identity from a live URL, Git repo, or screenshot image and writes/updates the workspace DESIGN.md with extracted color, font, and spacing tokens.
 - `tweaks(blocks)` declares editable controls across files.
 - `todos(items)` shows task state for complex turns.
 - `done(path)` ends a turn after preview self-check.

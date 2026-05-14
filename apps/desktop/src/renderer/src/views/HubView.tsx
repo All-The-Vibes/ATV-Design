@@ -5,6 +5,11 @@ import { ExamplesTab } from './hub/ExamplesTab';
 import { RecentTab } from './hub/RecentTab';
 import { YourDesignsTab } from './hub/YourDesignsTab';
 
+export const HUB_VIEW_TEST_IDS = {
+  root: 'hub-view',
+  designCardById: (id: string) => `hub-design-card-${id}`,
+} as const;
+
 export interface HubViewProps {
   onUseExamplePrompt?: (prompt: string) => void;
 }
@@ -22,7 +27,10 @@ export function HubView({ onUseExamplePrompt }: HubViewProps = {}) {
   }, [hubTab]);
 
   return (
-    <div className="h-full flex flex-col bg-[var(--color-background)] overflow-hidden">
+    <div
+      data-testid={HUB_VIEW_TEST_IDS.root}
+      className="h-full flex flex-col bg-[var(--color-background)] overflow-hidden"
+    >
       <main className="flex-1 min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-[1600px] px-[var(--space-8)] py-[var(--space-8)]">
           {mounted.has('recent') ? (

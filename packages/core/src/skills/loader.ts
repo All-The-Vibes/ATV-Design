@@ -1,5 +1,5 @@
 import { readFile, readdir } from 'node:fs/promises';
-import { basename, extname, join } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import { type LoadedSkill, SkillFrontmatterV1 } from './types.js';
@@ -289,13 +289,75 @@ export async function loadAllSkills(opts: LoadAllSkillsOptions): Promise<LoadedS
   return [...map.values()];
 }
 
-/**
- * Load the four builtin skills shipped inside this package
- * (`packages/core/src/skills/builtin/*.md`). Resolved relative to this file via
- * `import.meta.url` so it works in ESM, Vite, and Electron main without
- * hard-coded paths.
- */
+// Builtin skills ship as markdown assets, not bundled JavaScript. Try the
+// source-package path first, then Electron packaged resources, then workspace
+// source fallbacks for electron-vite dev bundles.
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function ancestorsOf(start: string): string[] {
+  const out: string[] = [];
+  let current = resolve(start);
+  while (!out.includes(current)) {
+    out.push(current);
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return out;
+}
+
+function electronResourcesPath(): string | null {
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: unknown }).resourcesPath;
+  return typeof resourcesPath === 'string' && resourcesPath.length > 0 ? resourcesPath : null;
+}
+
+export function builtinSkillDirCandidates(): string[] {
+  const moduleDir = dirname(fileURLToPath(import.meta.url));
+  const candidates: string[] = [
+    // Source package / unbundled ESM.
+    join(moduleDir, 'builtin'),
+    // Electron/Vite bundled main can resolve import.meta.url to out/main.
+    join(moduleDir, 'skills', 'builtin'),
+  ];
+
+  const resourcesPath = electronResourcesPath();
+  if (resourcesPath !== null) {
+    // Packaged Electron extraResources target.
+    candidates.push(join(resourcesPath, 'skills', 'builtin'));
+  }
+
+  for (const root of unique([...ancestorsOf(process.cwd()), ...ancestorsOf(moduleDir)])) {
+    // Dev fallback when @atv-design/core is bundled into apps/desktop/out/main
+    // but markdown assets remain in the workspace source tree.
+    candidates.push(join(root, 'packages', 'core', 'src', 'skills', 'builtin'));
+  }
+
+  return unique(candidates);
+}
+
+async function containsMarkdownFiles(dir: string): Promise<boolean> {
+  try {
+    const entries = await readdir(dir);
+    return entries.some((entry) => extname(entry) === '.md');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return false;
+    throw err;
+  }
+}
+
+export async function loadBuiltinSkillsFromDirs(
+  candidates: readonly string[],
+): Promise<LoadedSkill[]> {
+  for (const candidate of candidates) {
+    if (await containsMarkdownFiles(candidate)) {
+      return loadSkillsFromDir(candidate, 'builtin');
+    }
+  }
+  return [];
+}
+
 export async function loadBuiltinSkills(): Promise<LoadedSkill[]> {
-  const builtinDir = fileURLToPath(new URL('./builtin/', import.meta.url));
-  return loadSkillsFromDir(builtinDir, 'builtin');
+  return loadBuiltinSkillsFromDirs(builtinSkillDirCandidates());
 }

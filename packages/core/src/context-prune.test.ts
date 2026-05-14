@@ -39,6 +39,10 @@ function assistantText(text: string): AgentMessage {
   } as unknown as AgentMessage;
 }
 
+function estimateJsonBytes(messages: AgentMessage[]): number {
+  return messages.reduce((total, message) => total + JSON.stringify(message).length, 0);
+}
+
 describe('buildTransformContext — size-based block compaction with recent-turn window', () => {
   it('is a no-op when every block is under its cap', async () => {
     const transform = buildTransformContext();
@@ -179,5 +183,18 @@ describe('buildTransformContext — size-based block compaction with recent-turn
       }
     }
     expect(droppedTextCount).toBeGreaterThanOrEqual(35);
+  });
+
+  it('enforces the aggregate hard cap when many blocks sit just under the aggressive limit', async () => {
+    const transform = buildTransformContext();
+    const messages: AgentMessage[] = [userMsg('go')];
+    for (let i = 0; i < 180; i += 1) {
+      messages.push(assistantText('p'.repeat(1_900)));
+    }
+
+    const out = await transform(messages);
+
+    expect(estimateJsonBytes(messages)).toBeGreaterThan(300_000);
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(200_000);
   });
 });

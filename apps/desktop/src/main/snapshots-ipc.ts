@@ -15,6 +15,7 @@ import type { Design, DesignSnapshot, SnapshotCreateInput } from '@atv-design/sh
 import { CodesignError } from '@atv-design/shared';
 import type BetterSqlite3 from 'better-sqlite3';
 import type { BrowserWindow } from 'electron';
+import { ensureWorkspaceDesignSystem } from './default-design-system';
 import { bindWorkspace, checkWorkspaceFolderExists, openWorkspaceFolder } from './design-workspace';
 import { app, dialog, ipcMain } from './electron-runtime';
 import { getLogger } from './logger';
@@ -311,7 +312,11 @@ export function registerSnapshotsIpc(db: Database): void {
       try {
         const workspacePath =
           requestedWorkspacePath ?? (autoWorkspacePath = await allocateDefaultWorkspacePath(name));
-        return await bindWorkspace(db, design.id, workspacePath, false);
+        const bound = await bindWorkspace(db, design.id, workspacePath, false);
+        if (bound.workspacePath !== null) {
+          await ensureWorkspaceDesignSystem(bound.workspacePath, bound.name);
+        }
+        return bound;
       } catch (err) {
         if (autoWorkspacePath !== null) {
           await rm(autoWorkspacePath, { recursive: true, force: true }).catch(() => {});
@@ -481,6 +486,9 @@ export function registerWorkspaceIpc(db: Database, getWin: () => BrowserWindow |
         );
         if (design === null) {
           throw new CodesignError('Design not found', 'IPC_NOT_FOUND');
+        }
+        if (design.workspacePath !== null) {
+          await ensureWorkspaceDesignSystem(design.workspacePath, design.name);
         }
         logger.info('design.workspace_updated', {
           id: design.id,

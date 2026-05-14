@@ -51,6 +51,7 @@ export function DesignsView() {
       role="dialog"
       aria-modal="true"
       aria-label={t('projects.view.title')}
+      data-testid="designs-view-dialog"
       className="fixed inset-0 z-40 flex items-stretch justify-center bg-[var(--color-overlay)] animate-[overlay-in_120ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget) close();
@@ -88,11 +89,13 @@ export function DesignsView() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('projects.view.search')}
+            data-testid="designs-view-input-search"
             className="flex-1 h-9 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--text-sm)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-focus-ring)] transition-[box-shadow,border-color] duration-150"
           />
           <button
             type="button"
             onClick={() => openNewDesignDialog()}
+            data-testid="designs-view-button-new-design"
             className="inline-flex items-center gap-2 h-9 px-3 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-on-accent)] text-[var(--text-sm)] font-medium hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -145,7 +148,10 @@ function DesignCard({
 }) {
   const t = useT();
   return (
-    <li className="group rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden hover:shadow-[var(--shadow-card)] hover:border-[var(--color-border-strong)] transition-[box-shadow,border-color] duration-150 ease-[var(--ease-out)] flex flex-col">
+    <li
+      data-testid={`design-list-item-${design.id}`}
+      className="group rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden hover:shadow-[var(--shadow-card)] hover:border-[var(--color-border-strong)] transition-[box-shadow,border-color] duration-150 ease-[var(--ease-out)] flex flex-col"
+    >
       <button
         type="button"
         onClick={onOpen}

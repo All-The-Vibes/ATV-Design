@@ -43,6 +43,7 @@ export function UpdateBanner({ store }: { store: StoreApi<UpdateState> }) {
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      data-testid="update-banner"
       className="flex items-center justify-between gap-3 border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-muted)] px-4 py-2 text-[var(--text-sm)] text-[var(--color-text-secondary)]"
     >
       <span>

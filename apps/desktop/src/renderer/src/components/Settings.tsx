@@ -37,6 +37,12 @@ import { ChatgptLoginCard } from './ChatgptLoginCard';
 import { CopilotLoginCard } from './CopilotLoginCard';
 import { DiagnosticsPanel } from './settings/DiagnosticsPanel';
 
+export const SETTINGS_TEST_IDS = {
+  root: 'settings-panel',
+  tabBar: 'settings-tab-bar',
+  tabById: (id: string) => `settings-tab-${id}`,
+} as const;
+
 type Tab = 'models' | 'images' | 'appearance' | 'storage' | 'diagnostics' | 'advanced';
 
 export function hasCodesignBridge(codesign: unknown): boolean {

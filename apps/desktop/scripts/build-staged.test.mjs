@@ -10,15 +10,19 @@ describe('rewriteBuilderConfigText', () => {
 extraResources:
   - from: ../../skills/ui-ux-pro-max
     to: skills/ui-ux-pro-max
+  - from: ../../packages/core/src/skills/builtin
+    to: skills/builtin
 `;
 
     const next = rewriteBuilderConfigText(original, {
       releaseOutput: 'C:/tmp/release',
       skillBundle: 'C:/tmp/ui-ux-pro-max',
+      builtinSkills: 'C:/tmp/core-builtin-skills',
     });
 
     expect(next).toContain('output: "C:/tmp/release"');
     expect(next).toContain('- from: "C:/tmp/ui-ux-pro-max"');
+    expect(next).toContain('- from: "C:/tmp/core-builtin-skills"');
   });
 });
 

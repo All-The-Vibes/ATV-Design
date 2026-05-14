@@ -4,7 +4,12 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CodesignError } from '@atv-design/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadAllSkills, loadSkillsFromDir } from './loader.js';
+import {
+  loadAllSkills,
+  loadBuiltinSkills,
+  loadBuiltinSkillsFromDirs,
+  loadSkillsFromDir,
+} from './loader.js';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -55,10 +60,26 @@ Full skill body here.
 // ---------------------------------------------------------------------------
 
 describe('loadSkillsFromDir()', () => {
-  it('loads 12 builtin skills from the real builtin directory (atv-design fork)', async () => {
+  it('loads builtin skills through the production builtin resolver', async () => {
+    const skills = await loadBuiltinSkills();
+    expect(skills.length).toBe(13);
+    expect(skills.map((s) => s.id)).toContain('uipromax-core');
+  });
+
+  it('falls back to the next builtin candidate when the primary bundled dir is missing', async () => {
+    const fallbackDir = join(testDir, 'fallback-builtin');
+    await writeSkill(fallbackDir, 'fallback.md', MINIMAL_SKILL);
+
+    const skills = await loadBuiltinSkillsFromDirs([join(testDir, 'missing-builtin'), fallbackDir]);
+
+    expect(skills).toHaveLength(1);
+    expect(skills[0]?.id).toBe('fallback');
+  });
+
+  it('loads 13 builtin skills from the real builtin directory (atv-design fork)', async () => {
     const builtinDir = fileURLToPath(new URL('./builtin', import.meta.url));
     const skills = await loadSkillsFromDir(builtinDir, 'builtin');
-    expect(skills.length).toBe(12);
+    expect(skills.length).toBe(13);
     const ids = skills.map((s) => s.id).sort();
     // 5 upstream skills retained from atv-design
     expect(ids).toContain('frontend-design-anti-slop');
@@ -75,6 +96,8 @@ describe('loadSkillsFromDir()', () => {
     expect(ids).toContain('uipromax-ui-styling');
     expect(ids).toContain('uipromax-slides');
     expect(ids).toContain('uipromax-banner-design');
+    // Brand ingest skill (parity track addition)
+    expect(ids).toContain('brand-ingest');
   });
 
   it('ships the preserved ui-ux-pro-max bundle alongside the flattened builtin entrypoints', async () => {

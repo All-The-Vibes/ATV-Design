@@ -39,6 +39,7 @@ describe('done tool', () => {
     expect(res.details.status).toBe('ok');
     expect(res.details.errors).toHaveLength(0);
     expect(res.details.summary).toBe('shipped');
+    expect(res.terminate).toBe(true);
   });
 
   it('reports has_errors with line numbers when tags are unbalanced', async () => {
@@ -49,6 +50,7 @@ describe('done tool', () => {
     const res = await tool.execute('id2', {});
     expect(res.details.status).toBe('has_errors');
     expect(res.details.errors.some((e) => /Unclosed/.test(e.message))).toBe(true);
+    expect(res.terminate).not.toBe(true);
   });
 
   it('reports has_errors when target file is missing', async () => {

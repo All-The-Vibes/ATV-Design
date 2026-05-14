@@ -208,6 +208,10 @@ interface CodesignState {
   lastError: string | null;
   config: OnboardingState | null;
   configLoaded: boolean;
+  /** True once the first loadConfig() call has settled (success OR error).
+   *  E2E tests and keyboard-shortcut guards poll this to know the renderer
+   *  is past the initial IPC round-trip, regardless of whether a key exists. */
+  configHydrated: boolean;
   toastMessage: string | null;
 
   designs: Design[];
@@ -369,7 +373,7 @@ interface CodesignState {
   ensureCurrentDesign: () => Promise<void>;
   openNewDesignDialog: () => void;
   closeNewDesignDialog: () => void;
-  createNewDesign: (workspacePath?: string | null) => Promise<Design | null>;
+  createNewDesign: (workspacePath?: string | null, name?: string) => Promise<Design | null>;
   switchDesign: (id: string) => Promise<void>;
   renameCurrentDesign: (name: string) => Promise<void>;
   renameDesign: (id: string, name: string) => Promise<void>;
@@ -1335,6 +1339,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
   lastError: null,
   config: null,
   configLoaded: false,
+  configHydrated: false,
   toastMessage: null,
   autoPolishEnabled: false,
   autoPolishFired: new Set<string>(),
@@ -1435,14 +1440,22 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
     if (!window.codesign) {
       set({
         configLoaded: true,
+        configHydrated: true,
         errorMessage: tr('errors.rendererDisconnected'),
       });
       return;
     }
-    const state = await window.codesign.onboarding.getState();
-    set({ config: state, configLoaded: true });
-    if (state.hasKey) {
-      await get().ensureCurrentDesign();
+    try {
+      const state = await window.codesign.onboarding.getState();
+      set({ config: state, configLoaded: true, configHydrated: true });
+      if (state.hasKey) {
+        await get().ensureCurrentDesign();
+      }
+    } catch (err) {
+      // loadConfig failure still marks hydration complete so the rest of the
+      // app (and E2E tests) are not blocked waiting for a result that won't come.
+      set({ configLoaded: true, configHydrated: true });
+      throw err;
     }
   },
 
@@ -1761,6 +1774,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
         selection,
         ...(referenceUrl ? { referenceUrl } : {}),
         attachments,
+        ...(designIdAtStart ? { designId: designIdAtStart } : {}),
       });
       const firstArtifact = result.artifacts[0];
       const assistantText = result.message || tr('common.applied');
@@ -1944,7 +1958,7 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
     await get().createNewDesign();
   },
 
-  async createNewDesign(workspacePath?: string | null) {
+  async createNewDesign(workspacePath?: string | null, name?: string) {
     if (!window.codesign) {
       get().pushToast({ variant: 'error', title: tr('errors.rendererDisconnected') });
       return null;
@@ -1960,12 +1974,22 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
       });
       return null;
     }
-    const existingNames = new Set(get().designs.map((d) => d.name));
-    let n = 1;
-    while (existingNames.has(`Untitled design ${n}`)) n += 1;
-    const name = `Untitled design ${n}`;
+    // Honor the caller-supplied name when present; otherwise fall back to
+    // the next available "Untitled design N" slot. This lets E2E specs and
+    // the NewDesignDialog drive the name explicitly while keeping the silent
+    // first-design path unchanged.
+    let resolvedName = name;
+    if (!resolvedName) {
+      const existingNames = new Set(get().designs.map((d) => d.name));
+      let n = 1;
+      while (existingNames.has(`Untitled design ${n}`)) n += 1;
+      resolvedName = `Untitled design ${n}`;
+    }
     try {
-      const design = await window.codesign.snapshots.createDesign(name, workspacePath ?? null);
+      const design = await window.codesign.snapshots.createDesign(
+        resolvedName,
+        workspacePath ?? null,
+      );
       set({
         currentDesignId: design.id,
         previewHtml: null,

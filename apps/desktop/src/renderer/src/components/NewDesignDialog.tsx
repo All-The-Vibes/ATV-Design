@@ -3,6 +3,13 @@ import { FolderOpen } from 'lucide-react';
 import { useState } from 'react';
 import { useCodesignStore } from '../store';
 
+export const NEW_DESIGN_DIALOG_TEST_IDS = {
+  root: 'new-design-dialog',
+  inputName: 'new-design-dialog-input-name',
+  buttonSubmit: 'new-design-dialog-button-submit',
+  buttonCancel: 'new-design-dialog-button-cancel',
+} as const;
+
 export function NewDesignDialog() {
   const t = useT();
   const open = useCodesignStore((s) => s.newDesignDialogOpen);
@@ -11,6 +18,7 @@ export function NewDesignDialog() {
   const setView = useCodesignStore((s) => s.setView);
 
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [designName, setDesignName] = useState('');
   const [picking, setPicking] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -30,9 +38,11 @@ export function NewDesignDialog() {
   async function handleCreate(withPath: string | null) {
     setCreating(true);
     try {
-      const design = await createNewDesign(withPath);
+      const trimmedName = designName.trim() || undefined;
+      const design = await createNewDesign(withPath, trimmedName);
       close();
       setSelectedPath(null);
+      setDesignName('');
       if (design) setView('workspace');
     } finally {
       setCreating(false);
@@ -46,6 +56,7 @@ export function NewDesignDialog() {
       role="dialog"
       aria-modal="true"
       aria-label={t('canvas.newDesignDialog.title')}
+      data-testid={NEW_DESIGN_DIALOG_TEST_IDS.root}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--color-overlay)] animate-[overlay-in_120ms_ease-out]"
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) {
@@ -73,6 +84,18 @@ export function NewDesignDialog() {
           </p>
         </div>
 
+        <input
+          type="text"
+          value={designName}
+          onChange={(e) => setDesignName(e.target.value)}
+          placeholder={t('canvas.newDesignDialog.namePlaceholder', {
+            defaultValue: 'Design name (optional)',
+          })}
+          disabled={busy}
+          data-testid={NEW_DESIGN_DIALOG_TEST_IDS.inputName}
+          className="w-full h-9 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--text-sm)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-accent)] focus:shadow-[0_0_0_3px_var(--color-focus-ring)] transition-[box-shadow,border-color] duration-150 disabled:opacity-50"
+        />
+
         <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
           <span className="flex-1 text-[var(--text-sm)] text-[var(--color-text-secondary)] font-mono truncate">
             {selectedPath ?? t('canvas.newDesignDialog.noWorkspace')}
@@ -93,6 +116,7 @@ export function NewDesignDialog() {
             type="button"
             onClick={() => void handleCreate(null)}
             disabled={busy}
+            data-testid={NEW_DESIGN_DIALOG_TEST_IDS.buttonCancel}
             className="h-9 px-3 rounded-[var(--radius-md)] text-[var(--text-sm)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {t('canvas.newDesignDialog.skip')}
@@ -101,6 +125,7 @@ export function NewDesignDialog() {
             type="button"
             onClick={() => void handleCreate(selectedPath)}
             disabled={busy}
+            data-testid={NEW_DESIGN_DIALOG_TEST_IDS.buttonSubmit}
             className="h-9 px-3 rounded-[var(--radius-md)] bg-[var(--color-accent)] text-[var(--color-on-accent)] text-[var(--text-sm)] font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
             {t('canvas.newDesignDialog.confirm')}

@@ -5,6 +5,14 @@ import type { ProviderRow } from '../../../preload/index';
 import { recordAction } from '../lib/action-timeline';
 import { useCodesignStore } from '../store';
 
+export const MODEL_SWITCHER_TEST_IDS = {
+  root: 'model-switcher',
+  buttonTrigger: 'model-switcher-button-trigger',
+  listbox: 'model-switcher-listbox',
+  searchInput: 'model-switcher-search-input',
+  itemById: (id: string) => `model-switcher-item-${id}`,
+} as const;
+
 interface ModelSwitcherProps {
   variant: 'topbar' | 'sidebar';
 }
@@ -140,7 +148,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
   const isSidebar = variant === 'sidebar';
 
   return (
-    <div ref={rootRef} className="relative w-fit">
+    <div ref={rootRef} data-testid={MODEL_SWITCHER_TEST_IDS.root} className="relative w-fit">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -151,6 +159,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
         }
         aria-haspopup="listbox"
         aria-expanded={open}
+        data-testid={MODEL_SWITCHER_TEST_IDS.buttonTrigger}
       >
         {isSidebar ? (
           <span className="truncate" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -177,6 +186,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
       {open ? (
         <div
           role="listbox"
+          data-testid={MODEL_SWITCHER_TEST_IDS.listbox}
           className={`absolute z-50 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-card)] ${
             isSidebar
               ? 'bottom-full mb-[var(--space-1)] left-0 min-w-[220px]'
@@ -201,6 +211,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
                   defaultValue: 'Filter models by name',
                 })}
                 className="w-full h-[var(--size-control-xs)] pl-[calc(var(--space-2) + var(--size-icon-xs) + var(--space-1_5))] pr-[calc(var(--space-2) + var(--size-icon-sm))] rounded-[var(--radius-sm)] bg-transparent border-0 text-[var(--text-xs)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-focus-ring)]"
+                data-testid={MODEL_SWITCHER_TEST_IDS.searchInput}
                 style={{ fontFamily: 'var(--font-mono)' }}
               />
               {query.length > 0 && (
@@ -235,6 +246,7 @@ export function ModelSwitcher({ variant }: ModelSwitcherProps) {
                     type="button"
                     role="option"
                     aria-selected={isActive}
+                    data-testid={MODEL_SWITCHER_TEST_IDS.itemById(m)}
                     onClick={() => void switchModel(m)}
                     className={`relative w-full text-left px-[var(--space-3)] py-[var(--space-1_5)] text-[12px] transition-colors ${
                       isActive

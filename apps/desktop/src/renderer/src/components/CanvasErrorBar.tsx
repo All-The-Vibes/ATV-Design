@@ -33,6 +33,7 @@ export function CanvasErrorBar() {
   return (
     <div
       role="alert"
+      data-testid="canvas-error-bar"
       className="flex items-start gap-3 px-4 py-2 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-error)_10%,var(--color-background))] text-[var(--color-text-primary)]"
     >
       <span className="mt-0.5 inline-block w-2 h-2 rounded-full bg-[var(--color-error)] shrink-0" />

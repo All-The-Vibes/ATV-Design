@@ -9,6 +9,7 @@ const workspaceDir = path.resolve(desktopDir, '..', '..');
 const releaseDir = path.join(desktopDir, 'release');
 const builderConfigPath = path.join(desktopDir, 'electron-builder.yml');
 const skillBundleDir = path.join(workspaceDir, 'skills', 'ui-ux-pro-max');
+const builtinSkillsDir = path.join(workspaceDir, 'packages', 'core', 'src', 'skills', 'builtin');
 const electronVersion = '39.8.9';
 const APPLE_API_NOTARIZATION_ENV = ['APPLE_API_KEY', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER'];
 const APPLE_ID_NOTARIZATION_ENV = ['APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'];
@@ -108,7 +109,7 @@ function resolveBuilderArgs(builderArgs, env = process.env, platform = process.p
   return nextArgs;
 }
 
-function rewriteBuilderConfigText(originalConfig, { releaseOutput, skillBundle }) {
+function rewriteBuilderConfigText(originalConfig, { releaseOutput, skillBundle, builtinSkills }) {
   const stagedConfig = originalConfig.replace(/^(\s*output:\s*)release$/m, `$1"${releaseOutput}"`);
   if (stagedConfig === originalConfig) {
     throw new Error('Could not rewrite directories.output in electron-builder.yml');
@@ -119,14 +120,26 @@ function rewriteBuilderConfigText(originalConfig, { releaseOutput, skillBundle }
   if (withSkillBundle === stagedConfig) {
     throw new Error('Could not rewrite extraResources.from in electron-builder.yml');
   }
-  return withSkillBundle;
+
+  const builtinSkillsPattern =
+    /^(\s*(?:-\s*)?from:\s*)\.\.\/\.\.\/packages\/core\/src\/skills\/builtin$/m;
+  const withBuiltinSkills = withSkillBundle.replace(builtinSkillsPattern, `$1"${builtinSkills}"`);
+  if (withBuiltinSkills === withSkillBundle) {
+    throw new Error('Could not rewrite builtin skills extraResources.from in electron-builder.yml');
+  }
+  return withBuiltinSkills;
 }
 
 function writeStagedBuilderConfig(stageDir) {
   const originalConfig = fs.readFileSync(builderConfigPath, 'utf8');
   const releaseOutput = toPortablePath(releaseDir);
   const skillBundle = toPortablePath(skillBundleDir);
-  const rewritten = rewriteBuilderConfigText(originalConfig, { releaseOutput, skillBundle });
+  const builtinSkills = toPortablePath(builtinSkillsDir);
+  const rewritten = rewriteBuilderConfigText(originalConfig, {
+    releaseOutput,
+    skillBundle,
+    builtinSkills,
+  });
 
   const stagedConfigPath = path.join(stageDir, 'electron-builder.staged.yml');
   fs.writeFileSync(stagedConfigPath, rewritten);
@@ -142,6 +155,9 @@ function main() {
   assertWithin(desktopDir, releaseDir);
   if (!fs.existsSync(skillBundleDir)) {
     throw new Error(`Skill bundle is missing: ${skillBundleDir}`);
+  }
+  if (!fs.existsSync(builtinSkillsDir)) {
+    throw new Error(`Builtin skills directory is missing: ${builtinSkillsDir}`);
   }
 
   try {
