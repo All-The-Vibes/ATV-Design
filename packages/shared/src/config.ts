@@ -76,6 +76,32 @@ export type BaseUrlRef = z.infer<typeof BaseUrlRef>;
 
 export const STORED_DESIGN_SYSTEM_SCHEMA_VERSION = 1 as const;
 
+/**
+ * Where the design system came from. Drives the "Source:" badge and decides
+ * which import-button path replaces it. Optional for back-compat with v1
+ * snapshots written before this field existed (they're treated as 'folder').
+ */
+export const StoredDesignSystemSourceSchema = z.object({
+  kind: z.enum(['folder', 'url', 'files', 'builtIn']),
+  value: z.string().min(1).optional(),
+});
+export type StoredDesignSystemSource = z.infer<typeof StoredDesignSystemSourceSchema>;
+
+/**
+ * A single component rule in the design system. `name` is the component label
+ * (e.g. "Buttons", "Cards"); `rule` is a short prose paragraph describing the
+ * visual/interaction contract; `screenshotPath` is an optional absolute path
+ * to a reference image for the agent runtime to consume. Kept thin on
+ * purpose — richer schemas (variants, states, props) can be added later
+ * without breaking v1 configs.
+ */
+export const StoredDesignComponentSchema = z.object({
+  name: z.string().min(1).max(64),
+  rule: z.string().min(1).max(1024),
+  screenshotPath: z.string().min(1).optional(),
+});
+export type StoredDesignComponent = z.infer<typeof StoredDesignComponentSchema>;
+
 const StoredDesignSystemShape = z.object({
   schemaVersion: z.literal(STORED_DESIGN_SYSTEM_SCHEMA_VERSION),
   rootPath: z.string().min(1),
@@ -87,6 +113,22 @@ const StoredDesignSystemShape = z.object({
   spacing: z.array(z.string().min(1)).max(16).default([]),
   radius: z.array(z.string().min(1)).max(16).default([]),
   shadows: z.array(z.string().min(1)).max(16).default([]),
+  // ── Additive fields (optional for back-compat with v1 configs) ─────────────
+  /** Where the snapshot was extracted from. Optional for v1 configs that
+   *  predate the field; renderer falls back to `{ kind: 'folder' }`. */
+  source: StoredDesignSystemSourceSchema.optional(),
+  /** Human-friendly name shown in the tab header. Defaults to basename(rootPath). */
+  displayName: z.string().min(1).optional(),
+  /** Whether this snapshot is the bundled "ATV default". User edits to a
+   *  built-in snapshot fork it to a user-owned one (isBuiltIn becomes false). */
+  isBuiltIn: z.boolean().optional(),
+  /** Free-form notes — populated when the user edits tokens by hand so we can
+   *  show a "Customized" marker without comparing the whole array. */
+  userEdited: z.boolean().optional(),
+  /** Component rules — the third Claude-Design pillar alongside colors and
+   *  typography. Optional and capped to keep the snapshot small; richer
+   *  per-component data lives in the workspace DESIGN.md, not config.toml. */
+  components: z.array(StoredDesignComponentSchema).max(24).optional(),
 });
 
 export const StoredDesignSystem = z.preprocess((raw) => {
@@ -96,6 +138,28 @@ export const StoredDesignSystem = z.preprocess((raw) => {
   return { schemaVersion: STORED_DESIGN_SYSTEM_SCHEMA_VERSION, ...record };
 }, StoredDesignSystemShape);
 export type StoredDesignSystem = z.infer<typeof StoredDesignSystem>;
+
+/**
+ * Partial token patch sent across IPC for inline edits. Each array, if
+ * provided, REPLACES that token category wholesale. The main process is
+ * responsible for re-deriving `summary` and `extractedAt` after applying.
+ *
+ * `summary`, `displayName`, and `userEdited` may also be patched directly so
+ * the renderer can rename a system or flip the edited marker. `rootPath`,
+ * `source`, `isBuiltIn`, `extractedAt`, `schemaVersion`, and `sourceFiles`
+ * are immutable from the renderer.
+ */
+export const DesignSystemTokenPatchSchema = z.object({
+  colors: z.array(z.string().min(1)).max(24).optional(),
+  fonts: z.array(z.string().min(1)).max(16).optional(),
+  spacing: z.array(z.string().min(1)).max(16).optional(),
+  radius: z.array(z.string().min(1)).max(16).optional(),
+  shadows: z.array(z.string().min(1)).max(16).optional(),
+  components: z.array(StoredDesignComponentSchema).max(24).optional(),
+  summary: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
+});
+export type DesignSystemTokenPatch = z.infer<typeof DesignSystemTokenPatchSchema>;
 
 // ── ProviderEntry (v3) ───────────────────────────────────────────────────────
 

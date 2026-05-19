@@ -9,6 +9,7 @@ import type {
   CommentRow,
   CommentScope,
   Design,
+  DesignSystemTokenPatch,
   DiagnosticEventRow,
   DiagnosticHypothesis,
   LocalInputFile,
@@ -352,6 +353,9 @@ interface CodesignState {
   setReferenceUrl: (value: string) => void;
   pickDesignSystemDirectory: () => Promise<void>;
   clearDesignSystem: () => Promise<void>;
+  importDesignSystemFromUrl: (url: string) => Promise<void>;
+  importDesignSystemFromFiles: (filePaths: string[]) => Promise<void>;
+  updateDesignSystemTokens: (patch: DesignSystemTokenPatch) => Promise<void>;
 
   selectCanvasElement: (selection: SelectedElement) => void;
   clearCanvasElement: () => void;
@@ -1512,6 +1516,79 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
       set({ config: next });
       get().pushToast({ variant: 'info', title: tr('notifications.designSystemCleared') });
     } catch (err) {
+      const message = err instanceof Error ? err.message : tr('errors.generic');
+      get().pushToast({
+        variant: 'error',
+        title: tr('notifications.clearDesignSystemFailed'),
+        description: message,
+      });
+    }
+  },
+
+  async importDesignSystemFromUrl(url: string) {
+    if (!window.codesign) return;
+    try {
+      const next = await window.codesign.importDesignSystemFromUrl({ url });
+      set({ config: next });
+      if (next.designSystem) {
+        get().pushToast({
+          variant: 'success',
+          title: tr('notifications.designSystemLinked'),
+          description: next.designSystem.summary,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : tr('errors.generic');
+      get().pushToast({
+        variant: 'error',
+        title: tr('notifications.designSystemScanFailed'),
+        description: message,
+      });
+    }
+  },
+
+  async importDesignSystemFromFiles(filePaths: string[]) {
+    if (!window.codesign) return;
+    try {
+      const next = await window.codesign.importDesignSystemFromFiles({ filePaths });
+      set({ config: next });
+      if (next.designSystem) {
+        get().pushToast({
+          variant: 'success',
+          title: tr('notifications.designSystemLinked'),
+          description: next.designSystem.summary,
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : tr('errors.generic');
+      get().pushToast({
+        variant: 'error',
+        title: tr('notifications.designSystemScanFailed'),
+        description: message,
+      });
+    }
+  },
+
+  async updateDesignSystemTokens(patch: DesignSystemTokenPatch) {
+    if (!window.codesign) return;
+    // Optimistic update — only include defined patch fields to avoid clobbering required fields with undefined
+    const prev = get().config;
+    if (prev?.designSystem) {
+      const definedPatch = Object.fromEntries(
+        Object.entries(patch).filter(([, v]) => v !== undefined),
+      ) as Partial<typeof prev.designSystem>;
+      const optimistic = {
+        ...prev,
+        designSystem: { ...prev.designSystem, ...definedPatch, userEdited: true, isBuiltIn: false },
+      };
+      set({ config: optimistic });
+    }
+    try {
+      const next = await window.codesign.updateDesignSystemTokens(patch);
+      set({ config: next });
+    } catch (err) {
+      // Rollback
+      if (prev) set({ config: prev });
       const message = err instanceof Error ? err.message : tr('errors.generic');
       get().pushToast({
         variant: 'error',
@@ -2901,3 +2978,62 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
     set({ activeReportLocalId: null });
   },
 }));
+
+// ── Effective design system selector ─────────────────────────────────────────
+
+/**
+ * Built-in ATV default snapshot mirrored from
+ * apps/desktop/src/main/default-design-system.ts:135-153.
+ * Keep values in sync with the main-process version.
+ */
+export const BUILT_IN_DESIGN_SYSTEM = {
+  schemaVersion: 1 as const,
+  rootPath: 'atv-design-default',
+  sourceFiles: ['DESIGN.md'],
+  colors: [
+    'oklch(0.98 0.012 80)',
+    'oklch(0.99 0.008 80)',
+    'oklch(0.62 0.16 35)',
+    'oklch(0.22 0.025 50)',
+    'oklch(0.5 0.02 55)',
+  ],
+  fonts: ['"Fraunces Variable"', '"Geist Variable"', '"JetBrains Mono Variable"'],
+  spacing: ['4px', '8px', '12px', '16px', '24px', '32px'],
+  radius: ['6px', '10px', '14px', '18px'],
+  shadows: ['0 1px 2px oklch(0.3 0.02 45 / 0.04), 0 4px 16px oklch(0.3 0.02 45 / 0.06)'],
+  // Keep in sync with apps/desktop/src/main/default-design-system.ts createDefaultDesignSystemSnapshot
+  components: [
+    {
+      name: 'Buttons',
+      rule: 'Buttons expose hover, press, and focus states. Active state must use shape or weight, not color alone.',
+    },
+    {
+      name: 'Cards',
+      rule: 'Cards use --color-surface, --color-border, --radius-lg, and --shadow-card; avoid unstructured floating boxes.',
+    },
+    {
+      name: 'Data blocks',
+      rule: 'Large numbers use --font-mono or a sans face with tabular numerals; never italic serif numerals for KPIs.',
+    },
+    {
+      name: 'Empty states',
+      rule: 'Include an icon/scene, a reason, and a next action.',
+    },
+    {
+      name: 'Focus',
+      rule: 'Keyboard focus must be visible with --color-focus-ring.',
+    },
+  ],
+  summary:
+    'ATV Design default: warm cream surfaces, terracotta accent, editorial display type, precise sans UI text, and explicit workspace tokens.',
+  extractedAt: new Date().toISOString(),
+  source: { kind: 'builtIn' as const },
+  displayName: 'ATV Default',
+  isBuiltIn: true,
+  userEdited: false,
+};
+
+/** Returns the active design system, falling back to the built-in default. */
+export function useEffectiveDesignSystem() {
+  return useCodesignStore((s) => s.config?.designSystem ?? BUILT_IN_DESIGN_SYSTEM);
+}

@@ -9,6 +9,7 @@ import type {
   CommentStatus,
   Design,
   DesignSnapshot,
+  DesignSystemTokenPatch,
   ExternalConfigsDetection,
   GeneratePayloadV1,
   ListEventsInput,
@@ -217,6 +218,18 @@ const api = {
     ipcRenderer.invoke('codesign:pick-design-system-directory') as Promise<OnboardingState>,
   clearDesignSystem: () =>
     ipcRenderer.invoke('codesign:clear-design-system') as Promise<OnboardingState>,
+  importDesignSystemFromUrl: (payload: { url: string }) =>
+    ipcRenderer.invoke(
+      'codesign:import-design-system-from-url',
+      payload,
+    ) as Promise<OnboardingState>,
+  importDesignSystemFromFiles: (payload: { filePaths: string[] }) =>
+    ipcRenderer.invoke(
+      'codesign:import-design-system-from-files',
+      payload,
+    ) as Promise<OnboardingState>,
+  updateDesignSystemTokens: (patch: DesignSystemTokenPatch) =>
+    ipcRenderer.invoke('codesign:update-design-system-tokens', patch) as Promise<OnboardingState>,
   export: (payload: { format: ExportFormat; htmlContent: string; defaultFilename?: string }) =>
     ipcRenderer.invoke('codesign:export', payload) as Promise<ExportInvokeResponse>,
   locale: {

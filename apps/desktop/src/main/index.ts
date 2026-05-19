@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { mkdir, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path_module from 'node:path';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,6 +21,7 @@ import {
   BRAND,
   CancelGenerationPayloadV1,
   CodesignError,
+  DesignSystemTokenPatchSchema,
   GITHUB_COPILOT_PROVIDER_ID,
   GeneratePayload,
   GeneratePayloadV1,
@@ -44,8 +45,11 @@ import { configDir } from './config';
 import { registerConnectionIpc } from './connection-ipc';
 import { resolveCopilotTransportForModel } from './copilot-models';
 import { getCopilotSessionToken, registerCopilotOAuthIpc } from './copilot-oauth-ipc';
-import { scanDesignSystem } from './design-system';
+import { createDefaultDesignSystemSnapshot } from './default-design-system';
+import { rewriteDesignMd } from './design-md';
+import { collectCssVarValues, collectLooseValues, scanDesignSystem } from './design-system';
 import { resolveDesignSystemForDesign } from './design-system-resolver';
+import { extractDesignSystemFromUrl } from './design-system-url';
 import { registerDiagnosticsIpc } from './diagnostics-ipc';
 import { makeRuntimeVerifier } from './done-verify';
 import { BrowserWindow, app, clipboard, dialog, ipcMain, shell } from './electron-runtime';
@@ -816,6 +820,130 @@ function registerIpcHandlers(db: Database | null): void {
   ipcMain.handle('codesign:clear-design-system', async () => {
     const nextState = await setDesignSystem(null);
     logIpc.info('designSystem.clear');
+    return nextState;
+  });
+
+  ipcMain.handle('codesign:import-design-system-from-url', async (_e, raw: unknown) => {
+    const { url } = raw as { url: string };
+    if (typeof url !== 'string' || !url.startsWith('http')) {
+      throw new Error('A valid http(s) URL is required.');
+    }
+    try {
+      const snapshot = await extractDesignSystemFromUrl(url);
+      const nextState = await setDesignSystem(snapshot);
+      logIpc.info('designSystem.importUrl.ok', { url, colors: snapshot.colors.length });
+      return nextState;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logIpc.warn('designSystem.importUrl.failed', { url, err: msg });
+      throw new Error(`Could not import design system from URL: ${msg}`);
+    }
+  });
+
+  ipcMain.handle('codesign:import-design-system-from-files', async (_e, raw: unknown) => {
+    const { filePaths } = raw as { filePaths: string[] };
+    if (!Array.isArray(filePaths) || filePaths.length === 0) {
+      throw new Error('At least one file path is required.');
+    }
+
+    const MAX_BYTES = 32_768;
+    const colors: string[] = [];
+    const fonts: string[] = [];
+    const spacing: string[] = [];
+    const radius: string[] = [];
+    const shadows: string[] = [];
+
+    for (const fp of filePaths) {
+      try {
+        const raw = await readFile(fp, 'utf8');
+        const content = raw.length > MAX_BYTES ? raw.slice(0, MAX_BYTES) : raw;
+        collectCssVarValues(content, colors, spacing, radius, shadows);
+        collectLooseValues(content, colors, fonts, spacing, radius, shadows);
+      } catch {
+        // Skip unreadable files — best effort
+      }
+    }
+
+    const firstPath = filePaths[0];
+    if (!firstPath) return getOnboardingState();
+    const snapshot = {
+      schemaVersion: 1 as const,
+      rootPath: path_module.dirname(firstPath),
+      sourceFiles: filePaths.map((fp) => path_module.basename(fp)),
+      colors,
+      fonts,
+      spacing,
+      radius,
+      shadows,
+      summary: `Imported from ${filePaths.length} file(s): ${filePaths.map((fp) => path_module.basename(fp)).join(', ')}.`,
+      extractedAt: new Date().toISOString(),
+      source: { kind: 'files' as const, value: firstPath },
+      displayName: path_module.basename(firstPath),
+    };
+
+    const nextState = await setDesignSystem(snapshot);
+    logIpc.info('designSystem.importFiles.ok', {
+      files: filePaths.length,
+      colors: colors.length,
+    });
+    return nextState;
+  });
+
+  ipcMain.handle('codesign:update-design-system-tokens', async (_e, raw: unknown) => {
+    const patch = DesignSystemTokenPatchSchema.parse(raw);
+    const cfg = getCachedConfig();
+    const current = cfg?.designSystem ?? null;
+
+    // First edit while built-in is active forks the built-in snapshot to a
+    // user-owned one (matching the spec: "Edit any token to start your own
+    // customized version"). createDefaultDesignSystemSnapshot() returns a
+    // schema-valid snapshot with a non-empty summary so Zod parsing in
+    // setDesignSystem doesn't reject it.
+    const base = current ?? createDefaultDesignSystemSnapshot();
+
+    const merged = {
+      ...base,
+      ...(patch.colors !== undefined ? { colors: patch.colors } : {}),
+      ...(patch.fonts !== undefined ? { fonts: patch.fonts } : {}),
+      ...(patch.spacing !== undefined ? { spacing: patch.spacing } : {}),
+      ...(patch.radius !== undefined ? { radius: patch.radius } : {}),
+      ...(patch.shadows !== undefined ? { shadows: patch.shadows } : {}),
+      ...(patch.components !== undefined ? { components: patch.components } : {}),
+      ...(patch.summary !== undefined ? { summary: patch.summary } : {}),
+      ...(patch.displayName !== undefined ? { displayName: patch.displayName } : {}),
+      // If it was built-in, fork it to user-owned
+      isBuiltIn: false,
+      userEdited: true,
+      extractedAt: new Date().toISOString(),
+    };
+
+    const nextState = await setDesignSystem(merged);
+    logIpc.info('designSystem.updateTokens.ok');
+
+    // Best-effort: sync tokens back to the active workspace DESIGN.md.
+    // Failure here does NOT roll back token persistence — config is source of truth.
+    // We derive the workspace path from the merged snapshot's rootPath when it looks
+    // like a real filesystem path (not the built-in sentinel 'atv-design-default').
+    try {
+      const rootPath = merged.rootPath;
+      if (rootPath && rootPath !== 'atv-design-default') {
+        const designMdPath = join(rootPath, 'DESIGN.md');
+        let existing = '';
+        try {
+          existing = await readFile(designMdPath, 'utf8');
+        } catch {
+          // File may not exist yet; rewriteDesignMd will create valid content
+        }
+        const updated = rewriteDesignMd(existing, merged);
+        await writeFile(designMdPath, updated, 'utf8');
+        logIpc.info('designSystem.designMdSync.ok', { path: designMdPath });
+      }
+    } catch (err) {
+      logIpc.warn('designSystem.designMdSync.failed', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     return nextState;
   });
 

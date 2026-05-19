@@ -13,6 +13,10 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: [['list'], ['html', { outputFolder: path.join('playwright-report'), open: 'never' }]],
+  snapshotDir: 'e2e/__snapshots__',
+  expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.02 },
+  },
   use: {
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',

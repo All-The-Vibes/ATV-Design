@@ -268,6 +268,10 @@ function formatDesignSystem(designSystem: StoredDesignSystem): string {
   if (designSystem.spacing.length > 0) lines.push(`Spacing: ${designSystem.spacing.join(', ')}`);
   if (designSystem.radius.length > 0) lines.push(`Radius: ${designSystem.radius.join(', ')}`);
   if (designSystem.shadows.length > 0) lines.push(`Shadows: ${designSystem.shadows.join(', ')}`);
+  if (designSystem.components && designSystem.components.length > 0) {
+    lines.push('Component rules:');
+    for (const c of designSystem.components) lines.push(`- ${c.name}: ${c.rule}`);
+  }
   if (designSystem.sourceFiles.length > 0) {
     lines.push(`Source files: ${designSystem.sourceFiles.join(', ')}`);
   }

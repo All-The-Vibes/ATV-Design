@@ -129,6 +129,30 @@ export async function ensureWorkspaceDesignSystem(
   return designSystemPath;
 }
 
+// Keep in sync with apps/desktop/src/renderer/src/store.ts BUILT_IN_DESIGN_SYSTEM.components
+const DEFAULT_COMPONENTS = [
+  {
+    name: 'Buttons',
+    rule: 'Buttons expose hover, press, and focus states. Active state must use shape or weight, not color alone.',
+  },
+  {
+    name: 'Cards',
+    rule: 'Cards use --color-surface, --color-border, --radius-lg, and --shadow-card; avoid unstructured floating boxes.',
+  },
+  {
+    name: 'Data blocks',
+    rule: 'Large numbers use --font-mono or a sans face with tabular numerals; never italic serif numerals for KPIs.',
+  },
+  {
+    name: 'Empty states',
+    rule: 'Include an icon/scene, a reason, and a next action.',
+  },
+  {
+    name: 'Focus',
+    rule: 'Keyboard focus must be visible with --color-focus-ring.',
+  },
+] as const;
+
 export function createDefaultDesignSystemSnapshot(
   rootPath = DEFAULT_ROOT_PATH,
 ): StoredDesignSystem {
@@ -147,6 +171,7 @@ export function createDefaultDesignSystemSnapshot(
     spacing: ['4px', '8px', '12px', '16px', '24px', '32px'],
     radius: ['6px', '10px', '14px', '18px'],
     shadows: ['0 1px 2px oklch(0.3 0.02 45 / 0.04), 0 4px 16px oklch(0.3 0.02 45 / 0.06)'],
+    components: DEFAULT_COMPONENTS.map((c) => ({ ...c })),
     summary:
       'ATV Design default: warm cream surfaces, terracotta accent, editorial display type, precise sans UI text, and explicit workspace tokens.',
     extractedAt: new Date().toISOString(),

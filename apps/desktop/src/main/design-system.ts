@@ -107,7 +107,7 @@ async function collectCandidateFiles(
   }
 }
 
-function collectCssVarValues(
+export function collectCssVarValues(
   raw: string,
   colors: string[],
   spacing: string[],
@@ -126,7 +126,7 @@ function collectCssVarValues(
   }
 }
 
-function collectLooseValues(
+export function collectLooseValues(
   raw: string,
   colors: string[],
   fonts: string[],
@@ -158,7 +158,7 @@ function collectLooseValues(
   }
 }
 
-function buildSummary(
+export function buildSummary(
   snapshot: Omit<StoredDesignSystem, 'schemaVersion' | 'summary' | 'extractedAt'>,
 ): string {
   const repoLabel = basename(snapshot.rootPath);

@@ -257,6 +257,9 @@ export {
   SecretRef,
   STORED_DESIGN_SYSTEM_SCHEMA_VERSION,
   StoredDesignSystem,
+  StoredDesignComponentSchema,
+  DesignSystemTokenPatchSchema,
+  StoredDesignSystemSourceSchema,
   WireApiSchema,
   defaultProviderCapabilities,
   detectWireFromBaseUrl,
@@ -270,6 +273,7 @@ export {
 export type {
   Config,
   ConfigV3,
+  DesignSystemTokenPatch,
   ImageGenerationCredentialMode,
   ImageGenerationOutputFormat,
   ImageGenerationProvider,
@@ -283,6 +287,8 @@ export type {
   ProviderShortlist,
   ReasoningLevel,
   ResolvedProviderCapabilities,
+  StoredDesignComponent,
+  StoredDesignSystemSource,
   SupportedOnboardingProvider,
   WireApi,
 } from './config';
