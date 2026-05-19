@@ -1,0 +1,250 @@
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "accentMint": "oklch(0.82 0.14 175)",
+  "accentBlue": "oklch(0.74 0.14 240)",
+  "surfaceAlpha": 0.72,
+  "radiusScale": 1,
+  "motionScale": 1,
+  "density": "comfortable"
+}/*EDITMODE-END*/;
+const TWEAK_SCHEMA = /*TWEAK-SCHEMA-BEGIN*/{
+  "accentMint": {
+    "kind": "color"
+  },
+  "accentBlue": {
+    "kind": "color"
+  },
+  "surfaceAlpha": {
+    "kind": "number",
+    "min": 0.4,
+    "max": 1,
+    "step": 0.02
+  },
+  "radiusScale": {
+    "kind": "number",
+    "min": 0.8,
+    "max": 1.4,
+    "step": 0.05
+  },
+  "motionScale": {
+    "kind": "number",
+    "min": 0.5,
+    "max": 1.5,
+    "step": 0.05
+  },
+  "density": {
+    "kind": "enum",
+    "options": [
+      "compact",
+      "comfortable"
+    ]
+  }
+}/*TWEAK-SCHEMA-END*/;
+
+const T = {
+  bg: "oklch(0.17 0.01 250)",
+  bg2: "oklch(0.2 0.01 250)",
+  surface: `color-mix(in oklab, oklch(0.26 0.015 250) ${Math.round(TWEAK_DEFAULTS.surfaceAlpha * 100)}%, transparent)`,
+  surfaceStrong: "oklch(0.3 0.02 250)",
+  text: "oklch(0.95 0.01 240)",
+  muted: "oklch(0.75 0.02 240)",
+  line: "oklch(0.45 0.02 245 / 0.45)",
+  success: "oklch(0.79 0.17 155)",
+  danger: "oklch(0.68 0.21 24)",
+  warning: "oklch(0.8 0.16 90)",
+  pending: "oklch(0.75 0.14 250)",
+  radius: `${14 * TWEAK_DEFAULTS.radiusScale}px`,
+  radiusLg: `${22 * TWEAK_DEFAULTS.radiusScale}px`,
+  shadow: "0 18px 46px rgba(5,10,20,.42)",
+  ease: "cubic-bezier(.2,.8,.2,1)",
+  dur: `${Math.round(180 * TWEAK_DEFAULTS.motionScale)}ms`,
+  space: TWEAK_DEFAULTS.density === "compact" ? 12 : 16
+};
+
+const styles = `
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin:0; font-family:'DM Sans',system-ui,sans-serif; background: radial-gradient(1200px 700px at 15% -10%, ${TWEAK_DEFAULTS.accentBlue}20 0%, transparent 60%), linear-gradient(180deg, ${T.bg} 0%, ${T.bg2} 100%); color:${T.text}; }
+.app { max-width:1200px; margin:0 auto; padding:24px; display:grid; gap:20px; }
+.glass { background:${T.surface}; border:1px solid ${T.line}; border-radius:${T.radiusLg}; backdrop-filter: blur(12px); box-shadow:${T.shadow}; }
+.h1 { font-family:'Fraunces',serif; font-size:clamp(2rem,4vw,3.4rem); line-height:1.05; letter-spacing:-.02em; margin:0; }
+.h2 { font-family:'Fraunces',serif; font-size:1.25rem; margin:0 0 10px; }
+.p { color:${T.muted}; margin:0; line-height:1.55; }
+.grid { display:grid; gap:14px; }
+.btn, .chip, .navBtn, .controlBtn { transition: transform 120ms ${T.ease}, background-color 120ms, box-shadow 160ms; }
+.btn:hover, .chip:hover, .navBtn:hover, .controlBtn:hover { transform:translateY(-2px); }
+.btn:active, .chip:active, .navBtn:active, .controlBtn:active { transform:scale(.96); }
+.btn:focus-visible, .chip:focus-visible, .navBtn:focus-visible, .controlBtn:focus-visible, input:focus-visible, select:focus-visible { outline:none; box-shadow:0 0 0 2px ${T.bg}, 0 0 0 4px ${TWEAK_DEFAULTS.accentMint}; }
+.pulse{width:8px;height:8px;border-radius:999px;background:${T.success};display:inline-block;animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 ${T.success}66}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes pop{0%{transform:scale(.8)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.badgePop{animation:pop .24s ${T.ease}}
+.sectionHead{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:10px}
+.tokenSwatch{height:64px;border-radius:12px;border:1px solid ${T.line};position:relative;overflow:hidden}
+.caption{font-size:.75rem;color:${T.muted};text-transform:uppercase;letter-spacing:.08em}
+.card{padding:16px;border-radius:${T.radius};border:1px solid ${T.line};background:color-mix(in oklab, ${T.surfaceStrong} 78%, transparent)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stateTag{font-size:.7rem;padding:3px 8px;border-radius:999px;border:1px solid ${T.line};}
+.liveClock{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;color:${T.muted}}
+.mono{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+.disclosure{font-size:.78rem;line-height:1.45;color:${T.muted}}
+.heroCard{padding:20px; border-radius:${T.radiusLg}; border:1px solid ${T.line}; background:linear-gradient(135deg, ${T.surfaceStrong} 0%, color-mix(in oklab, ${TWEAK_DEFAULTS.accentBlue} 16%, ${T.surfaceStrong}) 100%)}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.navBtn{padding:9px 12px;border-radius:999px;border:1px solid ${T.line};background:transparent;color:${T.text};cursor:pointer}
+.navBtn.active{background:color-mix(in oklab, ${TWEAK_DEFAULTS.accentMint} 18%, transparent);font-weight:700;border-color:${TWEAK_DEFAULTS.accentMint}}
+.panelTrans{transition:opacity ${T.dur} ${T.ease}, transform ${T.dur} ${T.ease}}
+.hiddenPanel{opacity:0;transform:translateY(6px);pointer-events:none;height:0;overflow:hidden}
+.showPanel{opacity:1;transform:translateY(0)}
+.toast{position:fixed;right:18px;bottom:18px;padding:10px 12px;background:${T.surfaceStrong};border:1px solid ${T.line};border-radius:10px;box-shadow:${T.shadow};font-size:.85rem}
+.skeleton{height:16px;border-radius:8px;background:linear-gradient(90deg, ${T.surfaceStrong}, color-mix(in oklab, ${T.surfaceStrong} 72%, white), ${T.surfaceStrong});background-size:220% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:220% 0}}
+.reduced *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+@media (max-width:760px){.app{padding:14px}.heroCard{padding:16px}}
+`;
+
+const foundation = [
+  ["--color-bg", T.bg], ["--color-surface", T.surfaceStrong], ["--color-text", T.text], ["--color-muted", T.muted],
+  ["--accent-mint", TWEAK_DEFAULTS.accentMint], ["--accent-blue", TWEAK_DEFAULTS.accentBlue], ["--radius", T.radius], ["--shadow-elevation-2", T.shadow]
+];
+
+const semanticBanking = [
+  ["availableCredit", T.success, "Available credit"],
+  ["utilization", TWEAK_DEFAULTS.accentBlue, "Utilization"],
+  ["dueSoon", T.warning, "Due soon"],
+  ["pending", T.pending, "Pending"],
+  ["fraudRisk", T.danger, "Fraud risk"],
+  ["autopay", TWEAK_DEFAULTS.accentMint, "Autopay active"],
+  ["rewards", "oklch(0.84 0.14 88)", "Rewards earned"]
+];
+
+function Meter({ value }) {
+  return <div style={{height:10,borderRadius:999,background:T.surfaceStrong,border:`1px solid ${T.line}`}}><div style={{width:`${value}%`,height:'100%',borderRadius:999,background:`linear-gradient(90deg, ${TWEAK_DEFAULTS.accentMint}, ${TWEAK_DEFAULTS.accentBlue})`}}/></div>;
+}
+
+function App() {
+  const [clock, setClock] = React.useState("");
+  const [view, setView] = React.useState("components");
+  const [controlsOn, setControlsOn] = React.useState(true);
+  const [txFilter, setTxFilter] = React.useState("all");
+  const [saved, setSaved] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const [showToast, setShowToast] = React.useState(false);
+  const [showEmpty, setShowEmpty] = React.useState(false);
+  const [reduced, setReduced] = React.useState(false);
+  const [notesOpen, setNotesOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const updateClock = () => setClock(new Date().toLocaleTimeString('en-GB'));
+    updateClock();
+    const id = setInterval(updateClock, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  React.useEffect(() => {
+    if (copied) { const t = setTimeout(() => setCopied(false), 1200); return () => clearTimeout(t); }
+  }, [copied]);
+
+  const txs = showEmpty ? [] : [
+    { name: "Aster Air", amt: "-$428.37", status: "pending", icon: "✈" },
+    { name: "Nori Market", amt: "-$84.12", status: "posted", icon: "◉" },
+    { name: "Vaultline Rewards", amt: "+$32.40", status: "success", icon: "★" },
+    { name: "Chargeback Review", amt: "-$61.09", status: "risk", icon: "⚠" }
+  ].filter(t => txFilter === 'all' || t.status === txFilter);
+
+  return <div className={reduced ? 'reduced' : ''}>
+    <style>{styles}</style>
+    <div className="app">
+      <header className="glass" style={{padding:18}}>
+        <div className="row" style={{alignItems:'start'}}>
+          <div>
+            <div className="caption" style={{display:'flex',alignItems:'center',gap:8}}><span className="pulse"/>System online · Vaultline Card</div>
+            <h1 className="h1">Premium Banking Design System</h1>
+            <p className="p">Dark graphite surfaces, luminous mint/blue trust signals, editorial financial hierarchy.</p>
+          </div>
+          <div className="liveClock">{clock}</div>
+        </div>
+        <div className="nav" style={{marginTop:12}}>
+          {[['foundation','Foundation'],['semantic','Semantic'],['components','Components'],['states','States'],['compliance','Compliance']].map(([k,l]) => <button key={k} className={`navBtn ${view===k?'active':''}`} onClick={() => setView(k)}>{l}</button>)}
+        </div>
+      </header>
+
+      <main className="grid" style={{gap:16}}>
+        <section className={`panelTrans ${view==='foundation'?'showPanel':'hiddenPanel'}`}>
+          <article className="glass" style={{padding:16}}>
+            <div className="sectionHead"><h2 className="h2">Foundation tokens</h2><span className="stateTag">Typography · spacing · radius · motion</span></div>
+            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))'}}>
+              {foundation.map(([k,v]) => <div key={k} className="card"><div className="tokenSwatch" style={{background:v}}/><div className="caption" style={{marginTop:8}}>{k}</div><div className="mono" style={{fontSize:12,marginTop:4}}>{String(v)}</div></div>)}
+            </div>
+            <div className="grid" style={{gridTemplateColumns:'1fr 1fr',marginTop:12}}>
+              <div className="card"><div className="caption">Type scale</div><div style={{fontFamily:'Fraunces',fontSize:34}}>Display 56/60</div><div style={{fontFamily:'Fraunces',fontSize:26}}>H1 36/42</div><div>Body 16/25 DM Sans</div><div className="caption">Caption 12/16 mono</div></div>
+              <div className="card"><div className="caption">Motion + elevation</div><div className="p">Duration: {T.dur} · Curve: {T.ease}</div><div style={{height:12}}/><div className="btn" style={{display:'inline-block',padding:'10px 12px',border:`1px solid ${T.line}`,borderRadius:10,background:T.surfaceStrong}}>Hover/press specimen</div></div>
+            </div>
+          </article>
+        </section>
+
+        <section className={`panelTrans ${view==='semantic'?'showPanel':'hiddenPanel'}`}>
+          <article className="glass" style={{padding:16}}>
+            <div className="sectionHead"><h2 className="h2">Semantic banking tokens</h2><button className="chip" onClick={() => {navigator.clipboard?.writeText('vaultline-semantic.json'); setCopied(true);}} style={{border:`1px solid ${T.line}`,background:'transparent',color:T.text,padding:'7px 10px',borderRadius:999}}>{copied ? 'Copied ✓' : 'Copy token map'}</button></div>
+            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))'}}>
+              {semanticBanking.map(([k,v,l]) => <div key={k} className="card"><div className="tokenSwatch" style={{background:v}}/><div className="row" style={{marginTop:8}}><div><div style={{fontWeight:700}}>{l}</div><div className="caption">{k}</div></div><span className="stateTag">AA+ contrast</span></div></div>)}
+            </div>
+          </article>
+        </section>
+
+        <section className={`panelTrans ${view==='components'?'showPanel':'hiddenPanel'}`}>
+          <article className="glass" style={{padding:16}}>
+            <div className="sectionHead"><h2 className="h2">Component specimens</h2><span className="stateTag">LIVE</span></div>
+            <div className="grid" style={{gridTemplateColumns:'1.4fr 1fr'}}>
+              <div className="heroCard">
+                <div className="caption">Credit card hero</div>
+                <div style={{fontFamily:'Fraunces',fontSize:28,marginTop:10}}>Vaultline Black</div>
+                <div className="row" style={{marginTop:20}}><div className="mono">•••• 8834</div><div className="mono">03/29</div></div>
+                <div style={{marginTop:16}} className="row"><div><div className="caption">Available credit</div><div style={{fontSize:32,fontWeight:800}}>$14,284</div></div><div style={{width:4,height:56,borderRadius:99,background:T.success}}/></div>
+              </div>
+              <div className="grid">
+                <div className="card"><div className="caption">Balance summary</div><div style={{fontSize:30,fontWeight:800}}>$3,118.42</div><div className="p">▲ 6.3% vs last statement</div></div>
+                <div className="card"><div className="caption">Payment due module</div><div style={{fontWeight:700}}>Due in 4 days — $812.33</div><div className="disclosure">APR 19.24% variable · Late fee up to $30.</div><button className="btn" onClick={() => {setSaved(true);setShowToast(true)}} style={{marginTop:10,width:'100%',padding:'10px 12px',borderRadius:10,border:'none',background:TWEAK_DEFAULTS.accentMint,color:'#04100c',fontWeight:700}}>Pay now</button></div>
+              </div>
+            </div>
+
+            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',marginTop:12}}>
+              <div className="card"><div className="caption">Transaction rows + states</div>
+                <div style={{display:'flex',gap:6,margin:'8px 0'}}>{['all','pending','posted','risk'].map(f=> <button key={f} className="chip" onClick={()=>setTxFilter(f)} style={{fontSize:12,padding:'4px 8px',borderRadius:999,border:`1px solid ${T.line}`,background:txFilter===f?`${TWEAK_DEFAULTS.accentBlue}33`:'transparent',color:T.text}}>{f}</button>)}</div>
+                <div className="grid" style={{gap:8}}>{txs.length?txs.map((t,i)=><div key={i} className="row" style={{padding:'8px 9px',borderRadius:10,border:`1px solid ${T.line}`}}><span>{t.icon} {t.name}</span><strong style={{color:t.status==='risk'?T.danger:t.status==='success'?T.success:T.text}}>{t.amt}</strong></div>):<div className="card" style={{textAlign:'center'}}><svg aria-hidden="true" width="48" height="34" viewBox="0 0 48 34"><rect x="2" y="4" width="44" height="26" rx="7" fill="none" stroke={T.line}/><circle cx="16" cy="17" r="3" fill={T.muted}/><path d="M24 19h10" stroke={T.muted}/></svg><div>No transactions in this state.</div><button className="btn" onClick={()=>setShowEmpty(false)} style={{marginTop:8,padding:'7px 10px',border:`1px solid ${T.line}`,background:'transparent',borderRadius:9,color:T.text}}>Reset feed</button></div>}</div>
+              </div>
+
+              <div className="card"><div className="caption">Reward meter</div><div style={{fontSize:26,fontWeight:800}}>8,420 pts</div><Meter value={68}/><div className="p" style={{marginTop:8}}>32% to next lounge pass</div></div>
+              <div className="card"><div className="caption">Card controls</div><button className="controlBtn" onClick={()=>setControlsOn(!controlsOn)} style={{width:'100%',padding:'10px',borderRadius:10,border:`1px solid ${T.line}`,background:controlsOn?`${T.success}22`:'transparent',color:T.text,fontWeight:700}}>{controlsOn?'Card unlocked':'Card locked'}</button><div className="row" style={{marginTop:8}}><span className="p">Autopay</span><span className="stateTag" style={{borderColor:TWEAK_DEFAULTS.accentMint,color:TWEAK_DEFAULTS.accentMint}}>ON</span></div></div>
+              <div className="card"><div className="caption">Fraud alert + statement chip</div><div className="row"><strong style={{color:T.danger}}>Unusual fuel purchase</strong><span className="stateTag">risk</span></div><button className="btn" onClick={()=>setShowToast(true)} style={{marginTop:8,padding:'7px 10px',border:`1px solid ${T.line}`,background:'transparent',color:T.text,borderRadius:8}}>Review alert</button><div style={{marginTop:10}}><span className="chip" style={{padding:'4px 9px',border:`1px solid ${T.line}`,borderRadius:999}}>Statement · Mar 2026</span></div></div>
+              <div className="card"><div className="caption">Secure form fields</div><label className="caption">Payment amount</label><input defaultValue="$812.33" style={{width:'100%',marginTop:6,padding:'10px',borderRadius:10,border:`1px solid ${T.line}`,background:T.surfaceStrong,color:T.text}}/><label className="caption" style={{display:'block',marginTop:8}}>CVV</label><input defaultValue="•••" style={{width:'100%',marginTop:6,padding:'10px',borderRadius:10,border:`1px solid ${T.line}`,background:T.surfaceStrong,color:T.text}}/></div>
+              <div className="card"><div className="caption">Status banners</div><div style={{padding:'7px 10px',borderRadius:9,background:`${T.success}22`,border:`1px solid ${T.success}`}}>Success · Autopay scheduled</div><div style={{height:7}}/><div style={{padding:'7px 10px',borderRadius:9,background:`${T.warning}20`,border:`1px solid ${T.warning}`}}>Pending · Transfer review in progress</div><div style={{height:7}}/><div style={{padding:'7px 10px',borderRadius:9,background:`${T.danger}18`,border:`1px solid ${T.danger}`}}>Error · Payment failed</div></div>
+            </div>
+          </article>
+        </section>
+
+        <section className={`panelTrans ${view==='states'?'showPanel':'hiddenPanel'}`}>
+          <article className="glass" style={{padding:16}}>
+            <div className="sectionHead"><h2 className="h2">Interaction states matrix</h2><button className="chip" onClick={()=>setShowEmpty(!showEmpty)} style={{padding:'7px 10px',border:`1px solid ${T.line}`,borderRadius:999,background:'transparent',color:T.text}}>{showEmpty?'Show data':'Show empty-state'}</button></div>
+            <div className="grid" style={{gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))'}}>
+              {['default','hover/focus','disabled','loading/skeleton','error','success','pending'].map(s=><div key={s} className="card"><div className="caption">{s}</div>{s.includes('loading')?<div className="grid" style={{marginTop:8}}><div className="skeleton"/><div className="skeleton" style={{width:'70%'}}/></div>:<button className="btn" disabled={s==='disabled'} style={{marginTop:8,padding:'9px 10px',borderRadius:10,border:`1px solid ${T.line}`,background:s==='error'?`${T.danger}20`:s==='success'?`${T.success}20`:s==='pending'?`${T.pending}20`:T.surfaceStrong,color:T.text,opacity:s==='disabled'?.45:1,width:'100%'}}>{s}</button>}</div>)}
+            </div>
+          </article>
+        </section>
+
+        <section className={`panelTrans ${view==='compliance'?'showPanel':'hiddenPanel'}`}>
+          <article className="glass" style={{padding:16}}>
+            <div className="sectionHead"><h2 className="h2">Accessibility & compliance</h2><button className="chip" onClick={()=>setNotesOpen(!notesOpen)} style={{padding:'7px 10px',border:`1px solid ${T.line}`,borderRadius:999,background:'transparent',color:T.text}}>{notesOpen?'Hide details':'Show details'}</button></div>
+            <div className="grid" style={{gridTemplateColumns:'1fr 1fr'}}>
+              <div className="card"><div className="caption">Built-in safeguards</div><ul className="p" style={{marginTop:8,paddingLeft:18}}><li>Visible 2px focus ring with offset across controls</li><li>Risk states pair color with icon/label text</li><li>Contrast floor enforced at AA for body/surfaces</li><li>Reduced-motion mode toggle included</li><li>APR / fees use hierarchy above actions</li></ul></div>
+              <div className="card"><div className="caption">Controls</div><div className="row" style={{marginTop:8}}><span>Reduce motion</span><button className="chip" onClick={()=>setReduced(!reduced)} style={{padding:'6px 10px',border:`1px solid ${T.line}`,background:reduced?`${TWEAK_DEFAULTS.accentMint}26`:'transparent',color:T.text,borderRadius:999}}>{reduced?'On':'Off'}</button></div><div className="row" style={{marginTop:8}}><span>Saved disclosure status</span><span className={`stateTag ${saved?'badgePop':''}`}>{saved?'Updated':'Not saved'}</span></div><div style={{marginTop:8}} className="disclosure">Fees: Cash advance APR 29.99% variable. Foreign transaction fee: none. Balance transfer fee: 3% intro period.</div></div>
+            </div>
+            {notesOpen && <div className="card" style={{marginTop:12}}><div className="caption">Audit notes</div><p className="p">Status indications use text labels plus border/icon change, so risk remains legible in grayscale and for color-vision deficiencies. Type pairing uses Fraunces for financial editorial voice, while numeric data stays tabular sans/mono for precision scanning.</p></div>}
+          </article>
+        </section>
+      </main>
+    </div>
+    {showToast && <div className="toast">Action captured · Vaultline component event log <button className="chip" onClick={()=>setShowToast(false)} style={{marginLeft:8,padding:'3px 7px',border:`1px solid ${T.line}`,background:'transparent',color:T.text,borderRadius:999}}>esc</button></div>}
+  </div>;
+}
+
+// Components: App, Meter
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);

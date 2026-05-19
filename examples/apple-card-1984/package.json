@@ -1,0 +1,11 @@
+{
+  "name": "apple-card-1984",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm dlx hyperframes@0.4.45 preview",
+    "check": "pnpm dlx hyperframes@0.4.45 lint && pnpm dlx hyperframes@0.4.45 validate && pnpm dlx hyperframes@0.4.45 inspect",
+    "render": "pnpm dlx hyperframes@0.4.45 render",
+    "publish": "pnpm dlx hyperframes@0.4.45 publish"
+  }
+}

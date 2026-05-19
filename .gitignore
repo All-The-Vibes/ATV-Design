@@ -115,3 +115,18 @@ output/
 # Stray nested dirs from misrun tools — defensive.
 apps/desktop/.omc/
 apps/desktop/apps/
+
+# Local fork-bootstrap scratch (pre-overlay artifacts; not for public repo).
+.atv-design-fork-files/
+
+# Defensive catch-all for *new* local-only dot-folders at the repo root.
+# Existing tracked dot-folders are explicitly re-included below so this
+# rule cannot silently drop governance/config dirs. If you add a new
+# tracked dot-folder, add a matching `!/.<name>/` line below.
+/.*/
+!/.changeset/
+!/.github/
+!/.husky/
+!/.vscode/
+!/.claude/
+!/.omc/

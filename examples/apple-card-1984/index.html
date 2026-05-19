@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #090b0a; }
+      body { color: #f4f0e6; font-family: "Newsreader", Georgia, serif; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #090b0a; isolation: isolate; }
+      .scene { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0c0f0d; }
+      #scene1 { z-index: 2; }
+      #scene2, #scene3, #scene4, #scene5 { opacity: 0; z-index: 1; transform: translateX(2200px); }
+      .scene-content { position: relative; z-index: 5; display: flex; flex-direction: column; justify-content: center; width: 100%; height: 100%; padding: 92px 116px; gap: 34px; }
+      .mono, .terminal, .mini-label, .token, .amount, .switch-label, .feed-row { font-family: "IBM Plex Mono", "Cascadia Code", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+      .crt::before { content: ""; position: absolute; inset: 0; z-index: 30; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(189,247,168,.055) 0, rgba(189,247,168,.055) 1px, rgba(9,11,10,0) 4px, rgba(9,11,10,0) 7px); mix-blend-mode: screen; }
+      .crt::after { content: ""; position: absolute; inset: -80px; z-index: 31; pointer-events: none; background: radial-gradient(circle at 50% 42%, rgba(244,240,230,0) 45%, rgba(0,0,0,.42) 76%); }
+      .scan-sweep { position: absolute; left: 0; top: -120px; z-index: 29; width: 100%; height: 92px; pointer-events: none; background: linear-gradient(to bottom, rgba(189,247,168,0), rgba(189,247,168,.16), rgba(189,247,168,0)); filter: blur(4px); }
+      .grid-bg { position: absolute; inset: 0; z-index: 1; background: linear-gradient(rgba(244,240,230,.05) 1px, rgba(244,240,230,0) 1px), linear-gradient(90deg, rgba(244,240,230,.045) 1px, rgba(244,240,230,0) 1px); background-size: 48px 48px; mask-image: radial-gradient(circle at 50% 48%, #000, rgba(0,0,0,0) 78%); }
+      .halo { position: absolute; width: 680px; height: 680px; border-radius: 50%; z-index: 2; background: radial-gradient(circle, rgba(189,247,168,.22), rgba(189,247,168,.05) 42%, rgba(189,247,168,0) 70%); filter: blur(16px); }
+      .halo.one { top: -180px; right: 140px; }
+      .halo.two { bottom: -220px; left: 80px; background: radial-gradient(circle, rgba(198,163,111,.19), rgba(198,163,111,.04) 44%, rgba(198,163,111,0) 72%); }
+      .topline { position: absolute; top: 72px; left: 116px; right: 116px; z-index: 8; display: flex; justify-content: space-between; align-items: center; color: #dbe3d6; font-size: 18px; letter-spacing: .18em; text-transform: uppercase; }
+      .topline::after { content: ""; position: absolute; left: 0; right: 0; bottom: -20px; height: 1px; background: #6b7c68; }
+      h1, h2 { color: #f4f0e6; font-weight: 880; letter-spacing: -.045em; line-height: .88; }
+      h1 { max-width: 1180px; font-size: 150px; }
+      h2 { max-width: 1120px; font-size: 118px; }
+      .subcopy { max-width: 760px; color: #ded8cc; font-size: 34px; font-weight: 320; line-height: 1.16; }
+      .mini-label { color: #c9ffbc; font-size: 18px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; }
+      .bank-card { position: absolute; z-index: 7; width: 520px; height: 328px; border: 1px solid rgba(244,240,230,.24); border-radius: 34px; background: linear-gradient(135deg, rgba(255,252,244,.08), rgba(255,252,244,0) 24%), linear-gradient(160deg, #1b1f1d 0%, #0d100f 62%, #161a18 100%); box-shadow: inset 0 1px 0 rgba(255,252,244,.18), inset 0 -1px 0 rgba(198,163,111,.18), 0 34px 80px rgba(0,0,0,.44); overflow: hidden; }
+      .bank-card::before { content: ""; position: absolute; inset: 28px; border: 1px solid rgba(189,247,168,.16); border-radius: 24px; }
+      .bank-card::after { content: ""; position: absolute; left: -10%; right: -10%; top: 76%; height: 2px; background: linear-gradient(90deg, rgba(198,163,111,0), rgba(198,163,111,.8), rgba(198,163,111,0)); }
+      .chip { position: absolute; left: 44px; top: 48px; width: 74px; height: 56px; border: 1px solid rgba(198,163,111,.7); border-radius: 13px; background: linear-gradient(90deg, rgba(198,163,111,0) 48%, rgba(198,163,111,.58) 49%, rgba(198,163,111,.58) 51%, rgba(198,163,111,0) 52%), linear-gradient(#dac693, #9c784a); }
+      .card-brand { position: absolute; right: 42px; top: 42px; color: #f4f0e6; font-size: 19px; letter-spacing: .16em; text-transform: uppercase; }
+      .card-number { position: absolute; left: 44px; bottom: 72px; color: #e8e3d7; font-size: 30px; letter-spacing: .11em; }
+      .secure-dot { position: absolute; right: 48px; bottom: 48px; width: 18px; height: 18px; border-radius: 50%; background: #bdf7a8; box-shadow: 0 0 28px rgba(189,247,168,.8); }
+      #scene1 { background: radial-gradient(circle at 73% 28%, rgba(189,247,168,.16), rgba(189,247,168,0) 31%), linear-gradient(135deg, #0e110f 0%, #090b0a 58%, #14100c 100%); }
+      .boot-layout { display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; padding-top: 128px; }
+      .boot-title { max-width: 980px; }
+      .boot-title .accent { color: #bdf7a8; text-shadow: 0 0 22px rgba(189,247,168,.34); }
+      .terminal { width: 650px; min-height: 460px; justify-self: end; border: 1px solid rgba(189,247,168,.36); border-radius: 18px; background: rgba(5,7,6,.72); box-shadow: 0 0 54px rgba(189,247,168,.12), inset 0 0 42px rgba(189,247,168,.05); overflow: hidden; }
+      .terminal-bar { display: flex; gap: 10px; align-items: center; height: 48px; padding: 0 18px; border-bottom: 1px solid rgba(189,247,168,.26); }
+      .pixel-dot { width: 12px; height: 12px; border: 1px solid #bdf7a8; }
+      .terminal-body { display: flex; flex-direction: column; gap: 18px; padding: 38px; color: #c9ffbc; font-size: 25px; line-height: 1.35; }
+      .prompt-line { display: inline-block; max-width: 100%; white-space: nowrap; overflow: hidden; }
+      .window-stack { position: absolute; right: 166px; bottom: 110px; z-index: 6; width: 620px; height: 350px; }
+      .mac-window { position: absolute; width: 390px; height: 220px; border: 2px solid #f4f0e6; background: #131714; box-shadow: 12px 12px 0 rgba(244,240,230,.14); }
+      .mac-window.a { right: 170px; bottom: 72px; }
+      .mac-window.b { right: 34px; bottom: 8px; width: 340px; height: 178px; }
+      .mac-title { height: 32px; border-bottom: 2px solid #f4f0e6; background: repeating-linear-gradient(90deg, rgba(244,240,230,.22) 0 8px, rgba(244,240,230,0) 8px 16px); }
+      .mac-body { display: flex; flex-direction: column; gap: 10px; padding: 22px; color: #f4f0e6; font-size: 22px; }
+      #scene1 .bank-card { right: 250px; top: 310px; transform: rotate(-7deg); }
+      #scene2 { background: radial-gradient(circle at 16% 22%, rgba(198,163,111,.12), rgba(198,163,111,0) 30%), linear-gradient(160deg, #101312 0%, #0b0d0c 100%); }
+      .system-board { display: grid; grid-template-columns: .92fr 1.08fr; align-items: center; gap: 76px; padding-top: 108px; }
+      .principles, .dashboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+      .principle-card, .token-card, .ui-panel, .control-cell { border: 1px solid rgba(244,240,230,.2); border-radius: 30px; background: rgba(255,252,244,.06); box-shadow: inset 0 1px 0 rgba(255,252,244,.08); }
+      .principle-card { min-height: 174px; padding: 24px; }
+      .principle-card strong { display: block; margin-bottom: 18px; color: #f4f0e6; font-size: 31px; letter-spacing: -.03em; }
+      .principle-card span { color: #ded8cc; font-size: 20px; line-height: 1.28; }
+      .token-wall { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+      .token-card { min-height: 152px; padding: 22px; }
+      .swatch { width: 100%; height: 62px; margin-bottom: 18px; border: 1px solid rgba(244,240,230,.28); border-radius: 18px; }
+      .swatch.canvas { background: #f4f1ea; } .swatch.graphite { background: #101312; } .swatch.phosphor { background: #bdf7a8; } .swatch.copper { background: #c6a36f; } .swatch.surface { background: #fffcf4; } .swatch.success { background: #2f6b4f; }
+      .token { color: #f4f0e6; font-size: 18px; line-height: 1.35; }
+      #scene3 { background: radial-gradient(circle at 78% 58%, rgba(189,247,168,.14), rgba(189,247,168,0) 34%), linear-gradient(155deg, #0b0d0c 0%, #121613 100%); }
+      .product-layout { display: grid; grid-template-columns: .95fr 1.05fr; gap: 90px; align-items: center; padding-top: 104px; }
+      .phone { position: relative; width: 450px; height: 820px; justify-self: center; border: 2px solid rgba(244,240,230,.78); border-radius: 62px; background: #f4f1ea; box-shadow: 0 48px 120px rgba(0,0,0,.55); overflow: hidden; }
+      .phone-screen { position: absolute; inset: 20px; border-radius: 44px; background: #fffcf4; overflow: hidden; color: #20211f; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+      .status-pill { position: absolute; top: 28px; left: 50%; width: 130px; height: 28px; border-radius: 99px; background: #101312; transform: translateX(-50%); }
+      .app-header { padding: 82px 30px 26px; }
+      .eyebrow { color: #586157; font-size: 15px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+      .balance { margin-top: 10px; color: #20211f; font-size: 58px; font-weight: 750; letter-spacing: -.055em; }
+      .due { margin-top: 8px; color: #235a40; font-size: 18px; font-weight: 650; }
+      .mini-card { margin: 0 30px; height: 212px; border-radius: 30px; background: linear-gradient(155deg, #1a1e1c, #0d100f); color: #f4f0e6; box-shadow: 0 24px 54px rgba(16,19,18,.26); position: relative; overflow: hidden; }
+      .mini-card::before { content: ""; position: absolute; inset: 22px; border: 1px solid rgba(189,247,168,.2); border-radius: 22px; }
+      .mini-card .chip { transform: scale(.58); transform-origin: top left; }
+      .mini-card .small-number { position: absolute; left: 30px; bottom: 30px; font-size: 19px; letter-spacing: .12em; }
+      .feed { display: flex; flex-direction: column; gap: 10px; margin: 24px 30px 0; }
+      .feed-row { display: grid; grid-template-columns: 42px 1fr auto; align-items: center; gap: 14px; min-height: 60px; border-bottom: 1px solid #d0c7b8; }
+      .merchant-icon { width: 42px; height: 42px; border-radius: 14px; background: #eee7d8; border: 1px solid #d0c7b8; }
+      .merchant { font-size: 17px; font-weight: 680; }
+      .meta { margin-top: 3px; color: #586157; font-size: 13px; }
+      .amount { font-size: 16px; font-weight: 800; }
+      .dashboard { gap: 22px; }
+      .ui-panel { min-height: 190px; padding: 28px; }
+      .ui-panel h3 { color: #f4f0e6; font-size: 31px; letter-spacing: -.035em; }
+      .ui-panel p { margin-top: 12px; color: #ded8cc; font-size: 21px; line-height: 1.26; }
+      .meter { position: relative; height: 12px; margin-top: 26px; border-radius: 99px; background: rgba(244,240,230,.18); overflow: hidden; }
+      .meter span { display: block; width: 68%; height: 100%; border-radius: inherit; background: #bdf7a8; }
+      #scene4 { background: radial-gradient(circle at 50% 50%, rgba(189,247,168,.12), rgba(189,247,168,0) 42%), linear-gradient(135deg, #080a09 0%, #101312 100%); }
+      .security-layout { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: 86px; padding-top: 112px; }
+      .lock-stage { position: relative; width: 720px; height: 720px; justify-self: center; }
+      .ring { position: absolute; inset: 0; border: 1px solid rgba(189,247,168,.3); border-radius: 50%; }
+      .ring.r2 { inset: 96px; border-color: rgba(244,240,230,.24); } .ring.r3 { inset: 190px; border-color: rgba(198,163,111,.34); }
+      .lock { position: absolute; left: 50%; top: 50%; width: 210px; height: 190px; border: 2px solid #bdf7a8; border-radius: 30px; transform: translate(-50%, -36%); box-shadow: 0 0 44px rgba(189,247,168,.18); }
+      .lock::before { content: ""; position: absolute; left: 42px; top: -112px; width: 126px; height: 126px; border: 2px solid #bdf7a8; border-bottom: 0; border-radius: 70px 70px 0 0; }
+      .lock::after { content: ""; position: absolute; left: 50%; top: 76px; width: 22px; height: 58px; border-radius: 99px; background: #bdf7a8; transform: translateX(-50%); }
+      .control-stack { display: flex; flex-direction: column; gap: 18px; }
+      .control-cell { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 112px; padding: 24px 28px; }
+      .switch-label { color: #f4f0e6; font-size: 24px; letter-spacing: .04em; }
+      .control-cell span { display: block; margin-top: 7px; color: #dbe3d6; font-size: 20px; line-height: 1.24; }
+      .toggle { position: relative; width: 92px; height: 48px; border: 1px solid rgba(189,247,168,.58); border-radius: 99px; background: rgba(189,247,168,.15); }
+      .toggle::after { content: ""; position: absolute; top: 7px; right: 8px; width: 32px; height: 32px; border-radius: 50%; background: #bdf7a8; box-shadow: 0 0 20px rgba(189,247,168,.64); }
+      #scene5 { background: radial-gradient(circle at 50% 38%, rgba(189,247,168,.19), rgba(189,247,168,0) 36%), linear-gradient(180deg, #111411 0%, #080a09 100%); }
+      .final-layout { align-items: center; text-align: center; padding-top: 94px; }
+      #scene5 .bank-card { position: relative; inset: auto; margin: 10px auto 0; transform: rotate(0deg); }
+      .final-title { max-width: 1300px; font-size: 138px; }
+      .token-row { display: flex; justify-content: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+      .token-pill { border: 1px solid rgba(244,240,230,.24); border-radius: 999px; padding: 14px 20px; color: #ded8cc; background: rgba(255,252,244,.06); font-size: 16px; letter-spacing: .12em; text-transform: uppercase; }
+      .wipe { position: absolute; inset: 0; z-index: 28; display: flex; flex-direction: column; pointer-events: none; opacity: 0; }
+      .wipe .bar { flex: 1; transform: scaleX(0); transform-origin: left center; background: #bdf7a8; box-shadow: 0 0 22px rgba(189,247,168,.45); }
+      .wipe .bar:nth-child(2n) { background: #f4f0e6; } .wipe .bar:nth-child(3n) { background: #c6a36f; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="crt" data-composition-id="main" data-start="0" data-duration="24" data-width="1920" data-height="1080">
+      <div class="scan-sweep"></div>
+      <section id="scene1" class="scene">
+        <div class="grid-bg"></div><div class="halo one" data-layout-allow-overflow></div>
+        <div class="topline mono"><span>ATV Design Demo</span><span>Credit Design Tool / Online</span></div>
+        <div class="scene-content boot-layout">
+          <div class="boot-title">
+            <div class="mini-label">Built with ATV Design</div><h1>Banking wakes <span class="accent">up.</span></h1>
+            <p class="subcopy">A credit card app shaped by restraint, privacy, and a monochrome machine that still feels alive.</p>
+          </div>
+          <div class="terminal">
+            <div class="terminal-bar"><span class="pixel-dot"></span><span class="pixel-dot"></span><span class="pixel-dot"></span></div>
+            <div class="terminal-body">
+              <span class="prompt-line">&gt; LOAD CREDIT.SYSTEM</span>
+              <span class="prompt-line">&gt; VERIFY LOCAL KEYCHAIN</span>
+              <span class="prompt-line">&gt; DRAW SECURE CARD SURFACE</span>
+              <span class="prompt-line">&gt; READY FOR HUMAN CONTROL</span>
+            </div>
+          </div>
+        </div>
+        <div class="window-stack">
+          <div class="mac-window a"><div class="mac-title"></div><div class="mac-body mono"><span>AVAILABLE CREDIT</span><span>$18,420.00</span></div></div>
+          <div class="mac-window b"><div class="mac-title"></div><div class="mac-body mono"><span>AUTOPAY: ON</span><span>APR: VISIBLE</span></div></div>
+        </div>
+        <div class="bank-card mono"><div class="chip"></div><div class="card-brand mono">Aperture</div><div class="card-number">4219 •••• •••• 1984</div><div class="secure-dot"></div></div>
+      </section>
+      <section id="scene2" class="scene">
+        <div class="grid-bg"></div><div class="halo two" data-layout-allow-overflow></div>
+        <div class="topline mono"><span>Design System</span><span>Created in ATV Design</span></div>
+        <div class="scene-content system-board">
+          <div><div class="mini-label">Apple-inspired, built in ATV Design</div><h2>Premium means quiet.</h2><p class="subcopy">Warm ceramic canvas. Graphite card surfaces. One phosphor accent for secure, active, awake states.</p></div>
+          <div class="principles">
+            <div class="principle-card"><strong>Clarity first</strong><span>Balances, due dates, APR, limits, and risk states stay visible.</span></div>
+            <div class="principle-card"><strong>Physical control</strong><span>Freeze, pay, limit, and replace feel guarded and deliberate.</span></div>
+            <div class="principle-card"><strong>Privacy layer</strong><span>Security is shown through locks, rails, pulses, and explicit labels.</span></div>
+            <div class="principle-card"><strong>No casino gloss</strong><span>Rewards are earned-value signals, never confetti or neon bait.</span></div>
+          </div>
+          <div class="token-wall">
+            <div class="token-card"><div class="swatch canvas"></div><div class="token">canvas #F4F1EA</div></div>
+            <div class="token-card"><div class="swatch graphite"></div><div class="token">graphite #101312</div></div>
+            <div class="token-card"><div class="swatch phosphor"></div><div class="token">phosphor #BDF7A8</div></div>
+            <div class="token-card"><div class="swatch copper"></div><div class="token">copper #C6A36F</div></div>
+            <div class="token-card"><div class="swatch surface"></div><div class="token">surface #FFFCF4</div></div>
+            <div class="token-card"><div class="swatch success"></div><div class="token">success #2F6B4F</div></div>
+          </div>
+        </div>
+      </section>
+      <section id="scene3" class="scene">
+        <div class="grid-bg"></div><div class="halo one" data-layout-allow-overflow></div>
+        <div class="topline mono"><span>ATV Design Output</span><span>Card / Ledger / Controls</span></div>
+        <div class="scene-content product-layout">
+          <div class="phone">
+            <div class="phone-screen">
+              <div class="status-pill"></div>
+              <div class="app-header"><div class="eyebrow">Current balance</div><div class="balance">$2,148.90</div><div class="due">Autopay posts May 18</div></div>
+              <div class="mini-card mono"><div class="chip"></div><div class="small-number">4219 •••• •••• 1984</div><div class="secure-dot"></div></div>
+              <div class="feed">
+                <div class="feed-row"><div class="merchant-icon"></div><div><div class="merchant">Civic Coffee</div><div class="meta">posted · personal card</div></div><div class="amount">-$6.40</div></div>
+                <div class="feed-row"><div class="merchant-icon"></div><div><div class="merchant">Statement credit</div><div class="meta">reward · automatic</div></div><div class="amount">+$18.00</div></div>
+                <div class="feed-row"><div class="merchant-icon"></div><div><div class="merchant">Travel hold</div><div class="meta">verified · device key</div></div><div class="amount">-$240.00</div></div>
+              </div>
+            </div>
+          </div>
+          <div><div class="mini-label">The workspace is the product</div><h2>Every screen explains itself.</h2>
+            <div class="dashboard">
+              <div class="ui-panel"><h3>Payment status</h3><p>Due dates travel with balances, so no number floats without context.</p><div class="meter"><span></span></div></div>
+              <div class="ui-panel"><h3>Reward intent</h3><p>Cashback points to travel, buffer, or statement credit — not noise.</p><div class="meter"><span></span></div></div>
+              <div class="ui-panel"><h3>Visible APR</h3><p>Terms stay in the same surface as spending decisions.</p><div class="meter"><span></span></div></div>
+              <div class="ui-panel"><h3>Local trust</h3><p>Device, card, and session state read as plain language.</p><div class="meter"><span></span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="scene4" class="scene">
+        <div class="grid-bg"></div><div class="topline mono"><span>Privacy Layer</span><span>Visible Security / Human Control</span></div>
+        <div class="scene-content security-layout">
+          <div class="lock-stage"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="lock"></div></div>
+          <div><div class="mini-label">Guarded interactions</div><h2>Security you can see.</h2><p class="subcopy">Freeze, limit, reveal, and replace are explicit controls with context, not mystery icons.</p>
+            <div class="control-stack">
+              <div class="control-cell"><div><div class="switch-label">Freeze card</div><span>Stops new charges while keeping autopay visible.</span></div><div class="toggle"></div></div>
+              <div class="control-cell"><div><div class="switch-label">Travel mode</div><span>Dates, regions, and device keys shown before enabling.</span></div><div class="toggle"></div></div>
+              <div class="control-cell"><div><div class="switch-label">Reveal number</div><span>One-time view with local confirmation and session log.</span></div><div class="toggle"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section id="scene5" class="scene">
+        <div class="grid-bg"></div><div class="halo one" data-layout-allow-overflow></div>
+        <div class="scene-content final-layout">
+          <div class="mini-label">Built with ATV Design</div><h2 class="final-title">Think clear. Spend precise.</h2><p class="subcopy">A demo banking design system and animation built with ATV Design from calm surfaces, honest data, and visible control.</p>
+          <div class="bank-card mono"><div class="chip"></div><div class="card-brand mono">Aperture</div><div class="card-number">4219 •••• •••• 1984</div><div class="secure-dot"></div></div>
+          <div class="token-row mono"><span class="token-pill">canvas</span><span class="token-pill">graphite</span><span class="token-pill">phosphor</span><span class="token-pill">copper</span><span class="token-pill">ATV Design</span></div>
+        </div>
+      </section>
+      <div id="wipe" class="wipe"><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      function revealScene(previous, next, at, fromRight) {
+        const startClip = fromRight ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)";
+        tl.set(next, { opacity: 1, zIndex: 4, x: 0, clipPath: startClip }, at);
+        tl.set(previous, { zIndex: 3 }, at);
+        tl.set("#wipe", { opacity: 1 }, at);
+        tl.set("#wipe .bar", { transformOrigin: fromRight ? "left center" : "right center" }, at);
+        tl.fromTo("#wipe .bar", { scaleX: 0 }, { scaleX: 1, duration: 0.12, stagger: 0.009, ease: "power4.out" }, at + 0.02);
+        tl.to(next, { clipPath: "inset(0 0% 0 0)", duration: 0.58, ease: "expo.inOut" }, at + 0.08);
+        tl.to("#wipe .bar", { scaleX: 0, overwrite: "auto", duration: 0.24, stagger: 0.014, ease: "power3.in" }, at + 0.42);
+        tl.set(previous, { opacity: 0, zIndex: 1, x: -2200 }, at + 0.7);
+        tl.set(next, { zIndex: 2, clipPath: "none" }, at + 0.72);
+        tl.set("#wipe", { opacity: 0 }, at + 0.76);
+      }
+      tl.to(".scan-sweep", { y: 1320, duration: 2.35, ease: "none", repeat: 10 }, 0);
+      tl.to(".grid-bg", { backgroundPosition: "48px 96px", duration: 12, ease: "none", repeat: 1 }, 0);
+      tl.to(".halo.one", { scale: 1.08, x: -22, y: 16, duration: 3.4, ease: "sine.inOut", repeat: 6, yoyo: true }, 0.2);
+      tl.to(".halo.two", { scale: 1.1, x: 28, y: -18, duration: 4.1, ease: "sine.inOut", repeat: 4, yoyo: true }, 5.0);
+      tl.from("#scene1 .topline", { y: -26, opacity: 0, duration: 0.46, ease: "power3.out" }, 0.18);
+      tl.from("#scene1 .mini-label", { x: -34, opacity: 0, duration: 0.34, ease: "expo.out" }, 0.32);
+      tl.from("#scene1 h1", { y: 76, opacity: 0, letterSpacing: "0.015em", duration: 0.82, ease: "power4.out" }, 0.48);
+      tl.from("#scene1 .subcopy", { y: 34, opacity: 0, duration: 0.56, ease: "sine.out" }, 0.88);
+      tl.from("#scene1 .terminal", { x: 92, opacity: 0, scale: 0.96, duration: 0.62, ease: "back.out(1.2)" }, 0.68);
+      tl.from("#scene1 .prompt-line", { x: -18, opacity: 0, duration: 0.32, stagger: 0.18, ease: "steps(8)" }, 1.08);
+      tl.from("#scene1 .window-stack", { y: 70, opacity: 0, scale: 0.94, duration: 0.54, ease: "power2.out" }, 1.72);
+      tl.from("#scene1 .bank-card", { x: 160, y: 90, rotation: 8, opacity: 0, scale: 0.86, duration: 0.86, ease: "expo.out" }, 2.05);
+      tl.to("#scene1 .bank-card", { y: -10, rotation: -4.5, duration: 1.8, ease: "sine.inOut", repeat: 1, yoyo: true }, 2.92);
+      revealScene("#scene1", "#scene2", 4.55, true);
+      tl.from("#scene2 .topline", { y: -24, opacity: 0, duration: 0.44, ease: "power3.out" }, 4.92);
+      tl.from("#scene2 .mini-label", { x: -42, opacity: 0, duration: 0.36, ease: "expo.out" }, 5.02);
+      tl.from("#scene2 h2", { y: 62, opacity: 0, scale: 0.985, duration: 0.72, ease: "power4.out" }, 5.16);
+      tl.from("#scene2 .subcopy", { y: 30, opacity: 0, duration: 0.52, ease: "sine.out" }, 5.52);
+      tl.from("#scene2 .principle-card", { y: 54, opacity: 0, scale: 0.96, duration: 0.48, stagger: 0.09, ease: "back.out(1.1)" }, 5.72);
+      tl.from("#scene2 .token-card", { rotationX: -18, y: 40, opacity: 0, duration: 0.42, stagger: 0.055, ease: "power2.out" }, 6.22);
+      tl.to("#scene2 .token-card", { y: -8, duration: 1.6, ease: "sine.inOut", repeat: 1, yoyo: true, stagger: 0.05 }, 7.22);
+      revealScene("#scene2", "#scene3", 9.05, false);
+      tl.from("#scene3 .topline", { y: -28, opacity: 0, duration: 0.42, ease: "power3.out" }, 9.42);
+      tl.from("#scene3 .phone", { x: -120, y: 42, opacity: 0, scale: 0.91, duration: 0.78, ease: "expo.out" }, 9.54);
+      tl.from("#scene3 .mini-label", { x: 48, opacity: 0, duration: 0.38, ease: "power4.out" }, 9.72);
+      tl.from("#scene3 h2", { y: 72, opacity: 0, letterSpacing: "0.005em", duration: 0.72, ease: "back.out(1.05)" }, 9.9);
+      tl.from("#scene3 .mini-card", { y: 46, opacity: 0, scale: 0.94, duration: 0.56, ease: "power3.out" }, 10.22);
+      tl.from("#scene3 .feed-row", { x: -28, opacity: 0, duration: 0.32, stagger: 0.1, ease: "sine.out" }, 10.48);
+      tl.from("#scene3 .ui-panel", { y: 52, opacity: 0, scale: 0.96, duration: 0.44, stagger: 0.085, ease: "power2.out" }, 10.68);
+      tl.from("#scene3 .meter span", { width: "0%", duration: 0.62, stagger: 0.08, ease: "expo.out" }, 11.0);
+      tl.to("#scene3 .phone", { y: -14, rotation: -1.2, duration: 2.0, ease: "sine.inOut", repeat: 1, yoyo: true }, 11.45);
+      revealScene("#scene3", "#scene4", 13.75, true);
+      tl.from("#scene4 .topline", { y: -28, opacity: 0, duration: 0.42, ease: "power3.out" }, 14.12);
+      tl.from("#scene4 .lock-stage", { scale: 0.72, opacity: 0, rotation: -5, duration: 0.76, ease: "expo.out" }, 14.2);
+      tl.from("#scene4 .ring", { scale: 0.65, opacity: 0, duration: 0.62, stagger: 0.08, ease: "sine.out" }, 14.38);
+      tl.from("#scene4 .lock", { y: 54, opacity: 0, duration: 0.56, ease: "back.out(1.35)" }, 14.62);
+      tl.from("#scene4 .mini-label", { x: 44, opacity: 0, duration: 0.35, ease: "power4.out" }, 14.5);
+      tl.from("#scene4 h2", { y: 66, opacity: 0, duration: 0.68, ease: "expo.out" }, 14.72);
+      tl.from("#scene4 .subcopy", { y: 28, opacity: 0, duration: 0.5, ease: "sine.out" }, 15.08);
+      tl.from("#scene4 .control-cell", { x: 72, opacity: 0, duration: 0.42, stagger: 0.11, ease: "power2.out" }, 15.36);
+      tl.to("#scene4 .ring", { scale: 1.035, duration: 1.35, stagger: 0.13, ease: "sine.inOut", repeat: 2, yoyo: true }, 16.1);
+      revealScene("#scene4", "#scene5", 18.55, false);
+      tl.from("#scene5 .mini-label", { y: -30, opacity: 0, duration: 0.38, ease: "power4.out" }, 18.92);
+      tl.from("#scene5 .final-title", { y: 78, opacity: 0, scale: 0.975, duration: 0.86, ease: "expo.out" }, 19.08);
+      tl.from("#scene5 .subcopy", { y: 34, opacity: 0, duration: 0.52, ease: "sine.out" }, 19.52);
+      tl.from("#scene5 .bank-card", { y: 100, opacity: 0, scale: 0.82, rotation: -3.5, duration: 0.82, ease: "back.out(1.15)" }, 19.82);
+      tl.from("#scene5 .token-pill", { y: 24, opacity: 0, scale: 0.92, duration: 0.34, stagger: 0.055, ease: "power2.out" }, 20.36);
+      tl.to("#scene5 .bank-card", { y: -12, rotation: 1.6, duration: 1.45, ease: "sine.inOut", repeat: 1, yoyo: true }, 20.9);
+      tl.to("#scene5 .scene-content", { opacity: 0, y: -26, duration: 0.58, ease: "power2.in" }, 23.15);
+      tl.to("#scene5", { filter: "brightness(0)", duration: 0.62, ease: "sine.inOut" }, 23.32);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
+
+
