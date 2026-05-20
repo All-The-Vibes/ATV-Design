@@ -25,7 +25,7 @@ export function TokenSwatch({ value, index, onEdit, onRemove }: TokenSwatchProps
   }
 
   return (
-    <div className="group relative flex flex-col items-center gap-[var(--space-1)] w-12">
+    <div className="group relative flex flex-col items-start gap-[var(--space-2)] w-16">
       <button
         type="button"
         title={t('hub.designSystems.tokens.edit')}
@@ -34,11 +34,11 @@ export function TokenSwatch({ value, index, onEdit, onRemove }: TokenSwatchProps
           setDraft(value);
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
-        className="w-10 h-10 rounded-[var(--radius-md)] border border-[var(--color-border)] flex-shrink-0 transition-transform hover:scale-105 cursor-pointer"
+        className="w-16 h-16 rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] flex-shrink-0 transition-all hover:shadow-[var(--shadow-soft)] hover:-translate-y-px cursor-pointer"
         style={{ background: value }}
         aria-label={`${t('hub.designSystems.tokens.edit')}: ${value}`}
       />
-      <span className="text-[10px] text-[var(--color-text-muted)] font-mono truncate max-w-full leading-none">
+      <span className="text-[var(--text-xs)] text-[var(--color-text-secondary)] font-mono truncate max-w-full leading-none">
         {value}
       </span>
 
@@ -47,7 +47,7 @@ export function TokenSwatch({ value, index, onEdit, onRemove }: TokenSwatchProps
         type="button"
         title={t('hub.designSystems.tokens.remove')}
         onClick={() => onRemove(index)}
-        className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[var(--color-bg-subtle)] border border-[var(--color-border)] text-[var(--color-text-muted)] hidden group-hover:flex items-center justify-center text-[10px] hover:text-[var(--color-text-primary)] transition-colors"
+        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] hidden group-hover:flex items-center justify-center text-[var(--text-xs)] hover:text-[var(--color-text-primary)] shadow-[var(--shadow-soft)] transition-colors"
         aria-label={`${t('hub.designSystems.tokens.remove')}: ${value}`}
       >
         ×
@@ -55,7 +55,7 @@ export function TokenSwatch({ value, index, onEdit, onRemove }: TokenSwatchProps
 
       {/* Edit popover */}
       {editing && (
-        <div className="absolute top-12 left-0 z-20 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-[var(--space-2)] shadow-[var(--shadow-card)] flex flex-col gap-[var(--space-1)] min-w-[160px]">
+        <div className="absolute top-[72px] left-0 z-20 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-[var(--space-2)] shadow-[var(--shadow-card)] flex flex-col gap-[var(--space-1)] min-w-[180px]">
           {isHexColor(value) ? (
             <input
               ref={inputRef}

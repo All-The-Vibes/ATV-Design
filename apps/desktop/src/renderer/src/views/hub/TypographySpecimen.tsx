@@ -19,7 +19,7 @@ export function TypographySpecimen({ value, index, onEdit, onRemove }: Typograph
   }
 
   return (
-    <div className="group flex items-center justify-between gap-[var(--space-3)] py-[var(--space-2)] border-b border-[var(--color-border)] last:border-none">
+    <div className="group flex items-center justify-between gap-[var(--space-3)] py-[var(--space-3)] border-b border-[var(--color-border-subtle)] last:border-none">
       {editing ? (
         <input
           type="text"
@@ -33,12 +33,17 @@ export function TypographySpecimen({ value, index, onEdit, onRemove }: Typograph
           className="flex-1 text-[var(--text-sm)] border border-[var(--color-border)] rounded px-[var(--space-2)] py-[var(--space-1)] bg-[var(--color-background)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-focus)]"
         />
       ) : (
-        <span
-          className="flex-1 text-[var(--text-base)] text-[var(--color-text-primary)] truncate"
-          style={{ fontFamily: value }}
-        >
-          {value} — The quick brown fox
-        </span>
+        <div className="flex-1 flex flex-col gap-[var(--space-1)] min-w-0">
+          <span
+            className="text-[var(--text-md)] text-[var(--color-text-primary)] truncate leading-[var(--leading-snug)]"
+            style={{ fontFamily: value }}
+          >
+            The quick brown fox jumps
+          </span>
+          <span className="text-[var(--text-xs)] text-[var(--color-text-muted)] font-mono truncate">
+            {value}
+          </span>
+        </div>
       )}
       <div className="flex gap-[var(--space-1)] opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         <button

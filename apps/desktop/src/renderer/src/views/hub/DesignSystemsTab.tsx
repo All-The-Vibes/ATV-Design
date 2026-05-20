@@ -97,20 +97,23 @@ interface TokenPanelProps {
 
 function TokenPanel({ title, children, onAdd, addLabel }: TokenPanelProps) {
   return (
-    <section className="rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
-      <div className="flex items-center justify-between px-[var(--space-4)] py-[var(--space-3)] border-b border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
-        <h3 className="text-[var(--text-sm)] font-semibold text-[var(--color-text-primary)] m-0">
+    <section className="rounded-[var(--radius-lg)] bg-[var(--color-accent-tint)] p-[var(--space-5)] shadow-[var(--shadow-soft)]">
+      <div className="flex items-center justify-between mb-[var(--space-4)]">
+        <h3
+          className="text-[var(--text-md)] font-medium text-[var(--color-text-primary)] m-0 tracking-[var(--tracking-heading)]"
+          style={{ fontFamily: 'var(--font-display)' }}
+        >
           {title}
         </h3>
         <button
           type="button"
           onClick={onAdd}
-          className="text-[var(--text-xs)] px-[var(--space-2)] py-[var(--space-1)] rounded-[var(--radius-sm)] border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)] transition-colors"
+          className="text-[var(--text-xs)] px-[var(--space-2_5)] py-[var(--space-1)] rounded-full border border-[var(--color-border-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text-primary)] transition-colors"
         >
           + {addLabel}
         </button>
       </div>
-      <div className="px-[var(--space-4)] py-[var(--space-3)]">{children}</div>
+      <div>{children}</div>
     </section>
   );
 }
@@ -258,11 +261,14 @@ export function DesignSystemsTab() {
   }
 
   return (
-    <section className="max-w-[var(--size-prose-narrow)] space-y-[var(--space-6)]">
+    <section className="max-w-[var(--size-prose-narrow)] space-y-[var(--space-8)]">
       {/* Header */}
-      <div className="flex items-start justify-between gap-[var(--space-4)]">
-        <div className="space-y-[var(--space-1)]">
-          <h2 className="display text-[var(--text-lg)] tracking-[var(--tracking-heading)] text-[var(--color-text-primary)] m-0">
+      <div className="flex items-start justify-between gap-[var(--space-4)] pb-[var(--space-6)] border-b border-[var(--color-border-subtle)]">
+        <div className="space-y-[var(--space-2)]">
+          <h2
+            className="text-[var(--text-xl)] tracking-[var(--tracking-heading)] leading-[var(--leading-heading)] text-[var(--color-text-primary)] m-0 font-normal"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
             {displayName}
           </h2>
           <div className="flex items-center gap-[var(--space-2)]">
@@ -278,7 +284,7 @@ export function DesignSystemsTab() {
             )}
           </div>
           {isBuiltIn && (
-            <p className="text-[var(--text-xs)] text-[var(--color-text-muted)] leading-[var(--leading-body)] max-w-[40ch]">
+            <p className="text-[var(--text-sm)] text-[var(--color-text-muted)] leading-[var(--leading-body)] max-w-[52ch] pt-[var(--space-1)]">
               {t('hub.designSystems.builtInHint')}
             </p>
           )}
@@ -299,7 +305,7 @@ export function DesignSystemsTab() {
             {t('hub.designSystems.tokens.empty', { category: 'color' })}
           </p>
         ) : (
-          <div className="flex flex-wrap gap-[var(--space-3)]">
+          <div className="flex flex-wrap gap-[var(--space-5)]">
             {ds.colors.map((c, i) => (
               <TokenSwatch
                 key={i}
@@ -349,15 +355,17 @@ export function DesignSystemsTab() {
             {t('hub.designSystems.tokens.empty', { category: 'spacing' })}
           </p>
         ) : (
-          ds.spacing.map((s, i) => (
-            <SpacingChip
-              key={i}
-              value={s}
-              index={i}
-              onEdit={spacingEditor.onEdit}
-              onRemove={spacingEditor.onRemove}
-            />
-          ))
+          <div className="space-y-[var(--space-2)]">
+            {ds.spacing.map((s, i) => (
+              <SpacingChip
+                key={i}
+                value={s}
+                index={i}
+                onEdit={spacingEditor.onEdit}
+                onRemove={spacingEditor.onRemove}
+              />
+            ))}
+          </div>
         )}
       </TokenPanel>
 
