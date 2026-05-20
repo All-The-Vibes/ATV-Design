@@ -17,6 +17,9 @@
 import type { DoneError, DoneRuntimeVerifier } from '@atv-design/core';
 import { buildSrcdoc } from '@atv-design/runtime';
 import { BrowserWindow } from './electron-runtime';
+import { getLogger } from './logger';
+
+const log = getLogger('main:done-verify');
 
 const VERIFY_TIMEOUT_MS = 3000;
 // Settle window: how long we wait after the page reports `did-finish-load`
@@ -44,12 +47,24 @@ export function makeRuntimeVerifier(): DoneRuntimeVerifier {
     });
 
     const errors: DoneError[] = [];
+    const warnings: DoneError[] = [];
     const seen = new Set<string>();
+    // Errors here gate the agent's `done` loop. We deliberately do NOT count
+    // console.warning toward that gate: a single Google Fonts CORS warning,
+    // React deprecation notice, or autocomplete hint would otherwise abort a
+    // 5-round generation for no good reason. Warnings are still collected
+    // (returned to the tool result for transparency) but never raise status.
     function pushError(message: string, source: string, lineno?: number): void {
       const key = `${source}|${lineno ?? ''}|${message}`;
       if (seen.has(key)) return;
       seen.add(key);
       errors.push(lineno !== undefined ? { message, source, lineno } : { message, source });
+    }
+    function pushWarning(message: string, source: string, lineno?: number): void {
+      const key = `${source}|${lineno ?? ''}|${message}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      warnings.push(lineno !== undefined ? { message, source, lineno } : { message, source });
     }
 
     type ConsoleMessageEvent = {
@@ -83,8 +98,8 @@ export function makeRuntimeVerifier(): DoneRuntimeVerifier {
       // Electron <26 emits a numeric level (0-3); newer builds emit a string.
       const isError = level === 'error' || level === 3;
       const isWarning = level === 'warning' || level === 2;
-      if (!isError && !isWarning) return;
-      pushError(message, isError ? 'console.error' : 'console.warning', line);
+      if (isError) pushError(message, 'console.error', line);
+      else if (isWarning) pushWarning(message, 'console.warning', line);
     };
     const onFailLoad = (
       _event: unknown,
@@ -145,6 +160,14 @@ export function makeRuntimeVerifier(): DoneRuntimeVerifier {
       }
     }
 
+    if (warnings.length > 0) {
+      // Observability: warnings don't fail the gate, but we still want them
+      // visible when debugging "why did the agent keep retrying?" sessions.
+      log.info('[done-verify] runtime warnings (non-fatal)', {
+        count: warnings.length,
+        first: warnings[0]?.message,
+      });
+    }
     return errors;
   };
 }
