@@ -1,39 +1,88 @@
 # ATV Design
 
-**ATV Design** is a local-first design agent. Prompt → prototype, slides, or PDF. BYOK end-to-end with multi-model support (Claude, GPT, Gemini, Kimi, GLM, Ollama, and GitHub Copilot SDK with OAuth + PKCE). Ships with the full `ui-ux-pro-max` skill bundle and an original animation-design skill.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./NOTICE)
+[![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848F.svg)](https://www.electronjs.org/)
+[![TypeScript](https://img.shields.io/badge/language-TypeScript-3178c6.svg)](https://www.typescriptlang.org/)
+[![Node 22](https://img.shields.io/badge/node-%3E%3D22-green.svg)](https://nodejs.org/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
-Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT). See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream license text and credits.
+**ATV Design** is an open-source AI design agent for your desktop. Turn natural-language prompts into production-ready design artifacts — HTML/JSX prototypes, PPTX slides, or PDFs — in seconds. BYOK (Bring Your Own Key) end-to-end: all credentials stay local, and you choose your AI provider: Claude, GPT, Gemini, DeepSeek, Kimi, GLM, Ollama, or GitHub Copilot (OAuth+PKCE).
 
-> **Status:** GitHub Copilot OAuth + PKCE shipped. The additive `ui-ux-pro-max` bundle is preserved under `skills/ui-ux-pro-max/` and exposed through flattened builtin entrypoints. M1 convergence is the current repo state; `.omc/HANDOFF.md` is historical context only.
+A fast, privacy-first Figma alternative and Claude Design alternative that runs on your laptop. Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT); ships with premium skill bundles including **ui-ux-pro-max** and **emil-design-eng-inspired**.
 
----
-
-## What changed vs. upstream open-codesign
-
-| Area | Upstream | atv-design |
-|------|----------|-----------|
-| Branding | open-codesign | atv-design |
-| Config dir | `~/.config/open-codesign/` | `~/.config/atv-design/` |
-| OAuth scheme | (upstream's) | loopback HTTP `http://127.0.0.1:<random-port>/oauth-callback` |
-| Providers | Anthropic, OpenAI, Gemini, DeepSeek, Kimi, GLM, Ollama, OpenAI-compatible (BYOK) | All of the above **plus** GitHub Copilot SDK with PKCE |
-| Skill bundles | open-codesign builtin set | 12 runtime-loaded builtins total (4 retained upstream carryovers + 7 `uipromax-*` + `emil-design-eng-inspired`) plus preserved source bundles under `skills/ui-ux-pro-max/` and `skills/emil-design-eng-inspired/` |
-| License hygiene | (upstream MIT) | NOTICE with full upstream MIT text from open-codesign and ui-ux-pro-max + per-bundle READMEs |
-| CI | (upstream's) | + `.github/workflows/forbidden-endpoints.yml` blocking regressions to undocumented Copilot endpoints |
-| Auth posture | (varies by provider) | BYOK end-to-end with one BYOK ADR committed (`docs/adr/0001-byok-oauth-posture.md`) |
-
-The upstream stack — Electron + TypeScript + React 19 + Vite 6 + Tailwind v4, pnpm/turbo monorepo — is preserved as-is. atv-design does not migrate the stack.
+See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attribution and license text.
 
 ---
 
-## Setup
+## ✨ Why ATV Design
+
+- **Prompt-to-prototype in seconds** — describe your design idea; the AI agent generates interactive HTML/JSX, editable PPTX, or PDF exports instantly.
+- **100% local-first, BYOK** — no accounts, no proxied APIs, no telemetry. Credentials live in plain-text config on your machine. Self-hosted or bring your own provider credentials.
+- **Multi-model support** — use Claude, GPT-4o, Gemini, DeepSeek, Kimi, GLM, Ollama, or GitHub Copilot. Switch providers in settings without losing work.
+- **Design system first** — generates and refines `DESIGN.md` brand systems automatically. Consistent tokens across all designs; edit once, regenerate everywhere.
+- **Extensible with skills** — ship with curated skill bundles (UI/UX pro patterns, animation design, and more). Load project-specific or user custom skills on demand.
+- **Real workspace, real files** — designs live in your filesystem alongside `DESIGN.md`, assets, and exports. Edit with your favorite tools; re-run to regenerate.
+
+---
+
+## 🚀 Features
+
+### Agentic Design
+- **Interactive sessions** — long-running design conversations with preview, tweak, and regenerate controls.
+- **Structured input** — ask the agent questions; get answers with follow-up suggestions.
+- **Live preview** — see HTML/JSX/CSS render in real-time with error reporting and metrics.
+
+### Multi-Provider & Multi-Model
+- **10+ supported providers**: Anthropic Claude (3.5 Sonnet, Opus, Haiku), OpenAI (GPT-4o, GPT-4 Turbo), Google Gemini, DeepSeek, Kimi, GLM, Ollama (local), OpenAI-compatible APIs, and GitHub Copilot SDK with PKCE.
+- **Switch seamlessly** — pick providers in **Settings**; session history stays with the design workspace.
+
+### Local-First & BYOK
+- **No hosted backend** — zero dependency on external services. All processing on your machine or your chosen cloud provider.
+- **Plain-text credentials** — API keys stored in `~/.config/atv-design/` as readable JSON. No account creation, sync, or vendor lock-in.
+
+### Skills & Scaffolds
+- **12 runtime-loaded skill entrypoints** — UI/UX pro patterns (colors, components, layouts), animation design guidance, and upstream carryovers.
+- **ui-ux-pro-max bundle** — comprehensive design system patterns, component templates, and reference data.
+- **emil-design-eng-inspired skill** — Emil Kowalski–inspired motion and design guidance.
+- **Custom skills** — load project-local or user-level skills without modifying the app.
+
+### Outputs
+- **HTML/JSX prototypes** — interactive, styled, copy-paste ready.
+- **PPTX slides** — auto-generated presentations with branding applied.
+- **PDF exports** — high-fidelity static documents.
+- **Design system artifacts** — `DESIGN.md` with extracted tokens (colors, fonts, spacing, scales).
+
+### Design System Hub
+- **Ingest brand data** — read from URLs, Git repos, or screenshots. Extract and unify color, typography, and spacing tokens.
+- **Auto-refine** — regenerate designs with consistent tokens as your brand evolves.
+
+---
+
+## 🧠 Supported Providers & Models
+
+| Provider | Models | Auth | Status |
+|----------|--------|------|--------|
+| **Anthropic** | Claude 3.5 Sonnet, Opus, Haiku | API key | ✓ BYOK |
+| **OpenAI** | GPT-4o, GPT-4 Turbo, GPT-4 | API key | ✓ BYOK |
+| **Google Gemini** | Gemini 2.0, 1.5 Pro, 1.5 Flash | API key | ✓ BYOK |
+| **DeepSeek** | DeepSeek Chat, R1 | API key | ✓ BYOK |
+| **Kimi** | Kimi (all versions) | API key | ✓ BYOK |
+| **GLM** | GLM-4, GLM-3 | API key | ✓ BYOK |
+| **Ollama** | Any local Ollama model | Localhost | ✓ BYOK |
+| **OpenAI-compatible** | Any OpenAI-compatible endpoint | Custom | ✓ BYOK |
+| **GitHub Copilot** | Copilot Chat | OAuth + PKCE | ✓ Official SDK |
+
+---
+
+## ⚡ Quick Start
 
 ### Prerequisites
 
-- An active GitHub Copilot subscription (any paid tier) — only required if you plan to use the Copilot provider; other BYOK providers work without it.
-- Node.js 22 LTS (see `.nvmrc`) and pnpm 9.15+ (pinned via `packageManager` in `package.json`).
-- Git.
+- **Node.js 22 LTS** (see `.nvmrc`) and **pnpm 9.15+** (pinned in `package.json`).
+- **Git**.
+- *(Optional)* A GitHub Copilot subscription if you plan to use the Copilot provider. Other BYOK providers work with just an API key.
 
-### Quick start
+### Run from Source
 
 ```bash
 git clone https://github.com/All-The-Vibes/ATV-Design.git atv-design
@@ -42,78 +91,141 @@ pnpm install
 pnpm dev
 ```
 
-On first launch, open **Settings** (gear icon) and configure your provider. Paste your API key — credentials stay local. See [`docs/oauth-setup.md`](./docs/oauth-setup.md) for OAuth providers and per-OS notes. Existing `~/.config/open-codesign/` config and known auth sidecars auto-migrate into `~/.config/atv-design/` on first read.
+On first launch:
+1. Open **Settings** (gear icon).
+2. Choose a provider and paste your API key (or leave blank for Ollama localhost).
+3. Credentials stay local in `~/.config/atv-design/`.
+
+For OAuth providers (GitHub Copilot), see [`docs/oauth-setup.md`](./docs/oauth-setup.md) for per-OS notes.
+
+### Development Commands
+
+```bash
+pnpm test              # Run unit tests (Vitest)
+pnpm typecheck         # TypeScript strict mode
+pnpm lint              # Biome format & lint
+pnpm build             # Build all packages
+pnpm test:e2e          # Playwright end-to-end tests
+```
+
+See [AGENTS.md](./AGENTS.md) for contributor setup and guidelines.
 
 ---
 
-## Skill bundles
+## 🧩 Skill Bundles
 
-atv-design loads skills from three tiers — `<project>/.codesign/skills/`, `~/.config/atv-design/skills/`, and the built-in bundle — with project > user > builtin priority. The full discovery contract is documented in [`docs/skill-loader.md`](./docs/skill-loader.md).
+ATV Design loads skills with project > user > builtin priority:
 
-ATV Design ships both the runtime-loaded builtin entrypoints and the preserved source bundles they came from:
+1. **Built-in entrypoints** — 12 runtime-loaded skills at `packages/core/src/skills/builtin/*.md`:
+   - 4 upstream carryovers
+   - 7 `ui-ux-pro-max` ports (colors, layouts, components, grids, etc.)
+   - `emil-design-eng-inspired` (motion and animation guidance)
 
-1. **`packages/core/src/skills/builtin/*.md`** — the 12 runtime-loaded skill entrypoints the current loader discovers. This set includes four retained upstream carryovers, seven `uipromax-*` ports, and `emil-design-eng-inspired`.
+2. **ui-ux-pro-max source bundle** — full reference data, templates, and assets at `skills/ui-ux-pro-max/`. MIT-licensed; compiled into runtime entrypoints.
 
-2. **`skills/ui-ux-pro-max/`** — the preserved additive source bundle from `nextlevelbuilder/ui-ux-pro-max-skill`, including data, scripts, templates, references, and font assets. The runtime entrypoints live at `packages/core/src/skills/builtin/uipromax-*.md`. *Shipped.*
+3. **emil-design-eng-inspired source** — motion and design direction at `skills/emil-design-eng-inspired/`.
 
-3. **`skills/emil-design-eng-inspired/`** — the authored source/provenance bundle for the Emil-inspired motion and design guidance. The runtime entrypoint lives at `packages/core/src/skills/builtin/emil-design-eng-inspired.md`. *Shipped.*
-
----
-
-## Architecture decisions
-
-Important decisions are logged as ADRs under `docs/adr/`:
-
-- [`0001-byok-oauth-posture.md`](./docs/adr/0001-byok-oauth-posture.md) — Why atv-design uses a fork-published public GitHub OAuth client ID with PKCE, and how to opt out via self-registration.
+Custom skills can be added locally at `~/.config/atv-design/skills/` or `.codesign/skills/` in your workspace. See [`docs/skill-loader.md`](./docs/skill-loader.md) for the full contract.
 
 ---
 
-## Security
+## 🛠 Tech Stack
 
-atv-design uses **only the documented Copilot SDK OAuth flow** ([docs](https://docs.github.com/en/copilot/how-tos/copilot-sdk/set-up-copilot-sdk/github-oauth)). The undocumented `copilot_internal` token exchange used by some reverse-engineered third-party clients is forbidden by the security checklist and blocked by the CI grep at `.github/workflows/forbidden-endpoints.yml`. See [`docs/security-checklist.md`](./docs/security-checklist.md) for the full set of rules.
-
-To report a security issue, open a GitHub Security Advisory.
-
----
-
-## Known limitations (M1)
-
-This fork's M1 milestone explicitly does not ship:
-
-- Tagged releases or prebuilt binaries (`pnpm dev` only).
-- npm publish.
-- Hosted/SaaS deployment.
-- shadcn/ui MCP integration.
-- `uipro-cli` shim.
-
-See [`docs/known-issues.md`](./docs/known-issues.md) for the full catalog and the M2 follow-ups.
+- **Runtime**: Electron + Node 22 LTS
+- **UI Framework**: React 19 + Vite 6 + Tailwind v4 + CSS custom properties
+- **Language**: TypeScript (strict mode, `verbatimModuleSyntax`)
+- **State**: Zustand (no Redux, Recoil, or MobX)
+- **Components**: Radix primitives + shadcn-style wrappers in `packages/ui`
+- **Icons**: lucide-react
+- **Build**: Turborepo + pnpm (no npm/yarn)
+- **Linting & Formatting**: Biome
+- **Testing**: Vitest (unit), Playwright (E2E)
+- **Styling**: Tailwind v4 with CSS variables; transitions (no framer-motion)
 
 ---
 
-## Attribution
+## 📐 What Changed vs. Upstream
 
-This fork is built on the work of:
+| Area | Upstream (`open-codesign`) | atv-design |
+|------|---------------------------|-----------|
+| **Branding** | open-codesign | atv-design |
+| **Config dir** | `~/.config/open-codesign/` | `~/.config/atv-design/` |
+| **OAuth Flow** | (upstream's) | Loopback HTTP `http://127.0.0.1:<random-port>/oauth-callback` |
+| **Providers** | Anthropic, OpenAI, Gemini, DeepSeek, Kimi, GLM, Ollama, OpenAI-compatible | All above **+ GitHub Copilot SDK with PKCE** |
+| **Skills** | Upstream builtin set | 12 runtime-loaded (4 upstream + 7 `uipromax-*` + `emil-design-eng-inspired`) + preserved source bundles |
+| **License Hygiene** | Upstream MIT | NOTICE with full upstream text + per-bundle READMEs |
+| **CI** | Upstream | + `.github/workflows/forbidden-endpoints.yml` (blocks regressions to undocumented Copilot endpoints) |
+| **Auth Architecture** | Per-provider defaults | Documented BYOK posture (see `docs/adr/0001-byok-oauth-posture.md`) |
 
-- **OpenCoworkAI/open-codesign** — the base; MIT-licensed.
-- **nextlevelbuilder/ui-ux-pro-max-skill** — bundled as a verbatim port; MIT-licensed.
-- **Emil Kowalski's `emilkowalski/skill`** — inspired the `skills/emil-design-eng-inspired/` skill (paraphrase, original prose; no LICENSE on upstream at fork time).
-
-Full attribution and license text in [`ATTRIBUTION.md`](./ATTRIBUTION.md) and [`NOTICE`](./NOTICE).
+The upstream **Electron + TypeScript + React + Vite + Tailwind + pnpm/Turbo stack is unchanged**. We do not fork or migrate the build system.
 
 ---
 
-## License
+## 🔐 Security
 
-atv-design is distributed under the [MIT License](./NOTICE). The full text of every upstream license is preserved in [`NOTICE`](./NOTICE) per MIT's notice-preservation clause.
+**atv-design uses only the documented Copilot SDK OAuth flow** ([GitHub docs](https://docs.github.com/en/copilot/how-tos/copilot-sdk/set-up-copilot-sdk/github-oauth)). The undocumented `copilot_internal` token exchange used by some third-party reverse-engineered clients is **forbidden** by our security checklist and blocked by CI at `.github/workflows/forbidden-endpoints.yml`.
+
+See [`docs/security-checklist.md`](./docs/security-checklist.md) for the full audit rules.
+
+**To report a security issue**, open a [GitHub Security Advisory](https://github.com/All-The-Vibes/ATV-Design/security/advisories).
 
 ---
 
-## Contributing
+## 🗺 Roadmap & Known Limitations (M1)
 
-Before opening a PR, please:
+This fork's M1 milestone explicitly **does not ship**:
 
-1. Read [`docs/security-checklist.md`](./docs/security-checklist.md) if your change touches auth, OAuth, providers, or Copilot.
-2. Read [`ATTRIBUTION.md`](./ATTRIBUTION.md) if your change adds a new dependency or ported content.
-3. Run `pnpm typecheck && pnpm lint && pnpm test` (the three gates the pre-commit hook enforces). End-to-end tests are manual on M1.
+- ❌ Prebuilt binaries or tagged releases (`pnpm dev` only)
+- ❌ npm publish or artifact hosting
+- ❌ SaaS / hosted deployment
+- ❌ shadcn/ui MCP integration
+- ❌ `uipro-cli` shim
 
-The roadmap and acceptance criteria are documented in `.omc/specs/` and `.omc/plans/`. Bug reports and feature requests go in GitHub Issues.
+**M2 follow-ups** and the full issue catalog are documented in [`docs/known-issues.md`](./docs/known-issues.md).
+
+---
+
+## 📜 Attribution
+
+This fork builds on the excellent work of:
+
+- **[OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign)** — the base architecture; MIT-licensed.
+- **[nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)** — bundled as a verbatim port; MIT-licensed.
+- **[Emil Kowalski](https://github.com/emilkowalski)** — inspired the `skills/emil-design-eng-inspired/` skill (paraphrase and original prose; no explicit LICENSE on upstream at fork time).
+
+Full license text and per-bundle attribution in [`NOTICE`](./NOTICE) and [`ATTRIBUTION.md`](./ATTRIBUTION.md).
+
+---
+
+## 📄 License
+
+atv-design is distributed under the **[MIT License](./NOTICE)**. The full text of every upstream license is preserved in [`NOTICE`](./NOTICE) per MIT's notice-preservation clause.
+
+---
+
+## 🤝 Contributing
+
+Before opening a PR:
+
+1. **Read the security checklist** if your change touches auth, OAuth, providers, or Copilot: [`docs/security-checklist.md`](./docs/security-checklist.md).
+2. **Review attribution** if you add dependencies or ported code: [`ATTRIBUTION.md`](./ATTRIBUTION.md).
+3. **Run the pre-commit checks**:
+   ```bash
+   pnpm typecheck && pnpm lint && pnpm test
+   ```
+   End-to-end tests are manual on M1; see [AGENTS.md](./AGENTS.md).
+
+Roadmap and acceptance criteria are in `.omc/specs/` and `.omc/plans/`. Bug reports and feature requests go in [GitHub Issues](https://github.com/All-The-Vibes/ATV-Design/issues).
+
+---
+
+## 📖 About ATV Design
+
+**ATV Design** is an open-source, local-first AI design agent that turns natural-language prompts into polished design artifacts. Whether you're prototyping UI components, generating presentation slides, or exporting brand-consistent PDFs, ATV Design runs entirely on your machine with your chosen AI provider — no vendor lock-in, no telemetry, no accounts. It's a Figma alternative and Claude Design alternative that respects your privacy and gives you full control. Built on proven Electron and React patterns; extensible via skills and DESIGN.md brand systems. Pick Claude, GPT, Gemini, or any BYOK provider and start designing in seconds.
+
+---
+
+<!-- REPO_META
+description: Open-source AI design agent for your desktop. Prompt → prototype, slides, PDF. BYOK with Claude, GPT, Gemini, DeepSeek, Kimi, Ollama. Local-first, MIT-licensed Figma alternative. Electron + TypeScript + React.
+topics: ai-design, design-agent, claude, anthropic, openai, gpt, gemini, figma-alternative, local-first, byok, prompt-to-ui, design-to-code, ui-generator, electron, typescript, react, desktop-app, ollama, kimi, deepseek
+-->
