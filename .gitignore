@@ -105,6 +105,14 @@ website/public/demos/_speedup/
 .remember/
 .omc/prd.json
 
+# Intermediate render artifacts from HyperFrames demo pipeline.
+# The final muxed demo (assets/video/atv-design-demo.mp4) IS tracked;
+# the silent pre-mux video and the Kokoro model cache are not.
+assets/video/atv-design-demo-silent.mp4
+assets/video/hyperframes/node_modules/
+assets/video/hyperframes/.cache/
+assets/video/hyperframes/out/
+
 # Local agent / tooling scratch directories — not for public repo.
 .gstack/
 .playwright-cli/

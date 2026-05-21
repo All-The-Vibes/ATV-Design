@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px;
+        overflow: hidden; background: #0b0b0f;
+        font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: #fff;
+      }
+      .clip { position: absolute; }
+      .full { width: 1920px; height: 1080px; top: 0; left: 0; }
+
+      /* ── Scene 1 ── */
+      #s1-glow {
+        width: 900px; height: 600px; top: 240px; left: 510px;
+        background: radial-gradient(ellipse at center, rgba(31,111,235,0.22) 0%, transparent 70%);
+        border-radius: 50%;
+      }
+      /* wordmark: centered via width:1920px + text-align, no CSS transform */
+      #s1-wordmark {
+        top: 410px; left: 0; width: 1920px;
+        text-align: center;
+        font-size: 108px; font-weight: 800; letter-spacing: -3px; white-space: nowrap;
+      }
+      .acc { color: #1f6feb; }
+      /* copilot row: centered via width:1920px + text-align */
+      #s1-copilot-row {
+        top: 562px; left: 0; width: 1920px;
+        display: flex; align-items: center; justify-content: center; gap: 18px;
+      }
+      #s1-copilot-label { font-size: 22px; font-weight: 500; color: #8b949e; letter-spacing: 1px; }
+
+      /* ── Scene 2 ── */
+      #s2-wordmark-small {
+        top: 36px; left: 56px;
+        font-size: 32px; font-weight: 800; letter-spacing: -1px;
+      }
+      #s2-laptop {
+        top: 100px; left: 360px; width: 1200px; height: 760px;
+        border: 2px solid #21262d; border-radius: 20px; background: #0d1117;
+        box-shadow: 0 0 0 1px #30363d, 0 32px 80px rgba(0,0,0,0.7);
+        overflow: hidden;
+      }
+      #s2-laptop-topbar {
+        width: 100%; height: 44px; background: #161b22;
+        border-bottom: 1px solid #21262d;
+        display: flex; align-items: center; padding: 0 20px; gap: 10px;
+      }
+      .dot { width: 13px; height: 13px; border-radius: 50%; }
+      .dot-r { background: #ff5f56; } .dot-y { background: #ffbd2e; } .dot-g { background: #27c93f; }
+      #s2-prompt-area {
+        top: 100px; left: 360px; width: 1200px; height: 760px; pointer-events: none;
+      }
+      #s2-prompt-pill {
+        position: absolute; top: 340px; left: 220px;
+        width: 760px; height: 64px; background: #161b22;
+        border: 1.5px solid #30363d; border-radius: 32px;
+        display: flex; align-items: center; padding: 0 28px; gap: 14px;
+      }
+      #prompt-typed { font-size: 26px; color: #c9d1d9; flex: 1; }
+      #prompt-cursor {
+        display: inline-block; width: 2px; height: 30px; background: #1f6feb;
+        vertical-align: middle; margin-left: 2px;
+        animation: blink 1s step-end infinite;
+      }
+      @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+      #s2-hint {
+        position: absolute; top: 420px; left: 50%; transform: translateX(-50%);
+        font-size: 20px; color: #484f58; white-space: nowrap;
+      }
+
+      /* ── Scene 3 ── */
+      #s3-generate-btn {
+        top: 538px; left: 1380px;
+        width: 156px; height: 52px; background: #1f6feb;
+        border-radius: 26px; display: flex; align-items: center; justify-content: center;
+        font-size: 22px; font-weight: 600; color: #fff;
+      }
+      #s3-spinner {
+        position: absolute; top: 318px; left: 572px;
+        width: 56px; height: 56px;
+      }
+      #s3-spinner circle {
+        fill: none; stroke: #1f6feb; stroke-width: 5;
+        stroke-dasharray: 110 40; stroke-linecap: round;
+      }
+
+      /* ── Scene 4 ── */
+      #s4-hero-bg {
+        position: absolute; top: 44px; left: 0; width: 100%; height: 716px;
+        background: linear-gradient(135deg, #0d1117 0%, #0f2942 50%, #1a1a2e 100%);
+        border-radius: 0 0 18px 18px; overflow: hidden;
+      }
+      #s4-headline {
+        position: absolute; top: 180px; left: 80px;
+        font-size: 56px; font-weight: 800; line-height: 1.18; color: #f0f6fc; max-width: 580px;
+      }
+      #s4-sub {
+        position: absolute; top: 330px; left: 80px;
+        font-size: 24px; color: #8b949e; max-width: 520px; line-height: 1.5;
+      }
+      #s4-cta {
+        position: absolute; top: 430px; left: 80px;
+        padding: 18px 44px; background: #1f6feb; border-radius: 10px;
+        font-size: 24px; font-weight: 700; color: #fff;
+        box-shadow: 0 8px 32px rgba(31,111,235,0.4);
+      }
+
+      /* ── Scene 5 ── */
+      .action-chip {
+        padding: 16px 36px; border: 1.5px solid #30363d; border-radius: 40px;
+        font-size: 24px; font-weight: 600; color: #c9d1d9; background: #161b22; white-space: nowrap;
+      }
+      .action-chip.primary { border-color: #1f6feb; color: #58a6ff; }
+      #s5-dropdown {
+        bottom: 155px; right: 428px;
+        width: 230px; background: #161b22; border: 1.5px solid #30363d;
+        border-radius: 12px; overflow: hidden;
+        box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      }
+      .dd-item {
+        padding: 16px 22px; font-size: 21px; color: #c9d1d9;
+        border-bottom: 1px solid #21262d;
+        display: flex; align-items: center; gap: 12px;
+      }
+      .dd-item:last-child { border-bottom: none; }
+      .dd-check { color: #3fb950; font-size: 18px; opacity: 0; }
+
+      /* ── Scene 6 ── */
+      .provider-row {
+        display: flex; align-items: center; gap: 24px;
+        padding: 22px 32px; border-radius: 14px; margin-bottom: 16px;
+        background: #0d1117; border: 1.5px solid #21262d;
+      }
+      .provider-row.active {
+        border-color: #1f6feb; background: rgba(31,111,235,0.07);
+        box-shadow: 0 0 24px rgba(31,111,235,0.18);
+      }
+      .provider-row.muted .prov-name { color: #484f58; }
+      .provider-row.muted .prov-icon { opacity: 0.35; }
+      .prov-icon {
+        width: 44px; height: 44px; border-radius: 10px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .prov-name { font-size: 26px; font-weight: 600; flex: 1; }
+      .prov-badge {
+        font-size: 16px; padding: 4px 14px; border-radius: 20px;
+        background: rgba(31,111,235,0.2); color: #58a6ff;
+        border: 1px solid rgba(31,111,235,0.35);
+      }
+
+      /* ── Scene 7 ── */
+      .manifesto-line {
+        width: 1920px; left: 0;
+        display: flex; align-items: center; justify-content: center; gap: 32px;
+        font-size: 96px; font-weight: 800; color: #f0f6fc; letter-spacing: -2px;
+      }
+      #m1 { top: 230px; } #m2 { top: 430px; } #m3 { top: 630px; color: #1f6feb; }
+      .m-icon { width: 72px; height: 72px; flex-shrink: 0; }
+
+      /* ── Scene 8 ── */
+      .badge-pill {
+        padding: 14px 36px; border-radius: 40px;
+        font-size: 28px; font-weight: 700; border: 2px solid;
+      }
+      .badge-mit { background: rgba(230,180,80,0.12); border-color: #e6b450; color: #e6b450; }
+      .badge-oss { background: rgba(63,185,80,0.1); border-color: #3fb950; color: #3fb950; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="74"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!--
+        Track layout (no overlaps on any track):
+        T0  : global-bg (0–74)
+        T1  : s1-glow (0–3) | s6-bg (45–57) | s7-bg (57–67) | s8-bg (67–74)
+        T2  : s1-wordmark (0–3) | s2-wordmark-small (3–45)
+        T3  : s1-copilot-row (0–3) | s2-laptop (3–35) | s6-laptop (45–57)
+        T4  : s2-prompt-area (3–35) | s5-laptop-bg (35–45) | s6-providers (45–57)
+        T5  : s3-generate-btn (13–23) | s4-content (23–45)
+        T6  : s3-spinner-wrap (13–23) | s5-chips (35–45)
+        T7  : s5-dropdown (35–45) | s6-local (45–57)
+        T8  : m1 (57–67) | s8-badges (67–74)
+        T9  : m2 (57–67) | s8-cta (67–74)
+        T10 : m3 (57–67) | s8-tagline (67–74)
+        T11 : s8-logo (67–74)
+      -->
+
+      <!-- T0: persistent bg -->
+      <div id="global-bg" class="clip full"
+           data-start="0" data-duration="74" data-track-index="0"
+           style="background:#0b0b0f;"></div>
+
+      <!-- ══════════ SCENE 1 (0–3s) ══════════ -->
+      <!-- T1 slot -->
+      <div id="s1-glow" class="clip" data-start="0" data-duration="3" data-track-index="1"></div>
+      <!-- T2 slot -->
+      <div id="s1-wordmark" class="clip" data-start="0" data-duration="3" data-track-index="2">
+        ATV <span class="acc">Design</span>
+      </div>
+      <!-- T3 slot -->
+      <div id="s1-copilot-row" class="clip" data-start="0" data-duration="3" data-track-index="3">
+        <svg width="340" height="32" viewBox="0 0 340 32" style="overflow:visible;">
+          <line id="connect-line" x1="0" y1="16" x2="260" y2="16"
+            stroke="#1f6feb" stroke-width="1.5"
+            stroke-dasharray="260" stroke-dashoffset="260"/>
+          <g transform="translate(268,4)">
+            <circle cx="12" cy="14" r="10" fill="none" stroke="#58a6ff" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="5" fill="#58a6ff" opacity="0.7"/>
+            <path d="M5 20 Q2 26 4 28" stroke="#58a6ff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <path d="M12 22 Q12 27 12 29" stroke="#58a6ff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            <path d="M19 20 Q22 26 20 28" stroke="#58a6ff" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <span id="s1-copilot-label">GitHub Copilot</span>
+      </div>
+
+      <!-- ══════════ SCENE 2 (3–13s) ══════════ -->
+      <!-- T2 slot: adjacent to s1-wordmark -->
+      <div id="s2-wordmark-small" class="clip" data-start="3" data-duration="42" data-track-index="2">
+        ATV <span class="acc">Design</span>
+      </div>
+      <!-- T3 slot: adjacent to s1-copilot-row -->
+      <div id="s2-laptop" class="clip" data-start="3" data-duration="32" data-track-index="3">
+        <div id="s2-laptop-topbar">
+          <div class="dot dot-r"></div>
+          <div class="dot dot-y"></div>
+          <div class="dot dot-g"></div>
+        </div>
+      </div>
+      <!-- T4 slot -->
+      <div id="s2-prompt-area" class="clip" data-start="3" data-duration="32" data-track-index="4">
+        <div id="s2-prompt-pill">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+               stroke="#58a6ff" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;">
+            <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
+          </svg>
+          <span id="prompt-typed"></span><span id="prompt-cursor"></span>
+        </div>
+        <div id="s2-hint">Describe what you want to design…</div>
+      </div>
+
+      <!-- ══════════ SCENE 3 (13–23s) ══════════ -->
+      <!-- T5 slot -->
+      <div id="s3-generate-btn" class="clip" data-start="13" data-duration="10" data-track-index="5">
+        Generate →
+      </div>
+      <!-- T6 slot -->
+      <div id="s3-spinner-wrap" class="clip" data-start="13" data-duration="10" data-track-index="6"
+           style="top:100px; left:360px; width:1200px; height:760px; pointer-events:none;">
+        <svg id="s3-spinner" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="22"/>
+        </svg>
+      </div>
+
+      <!-- ══════════ SCENE 4 (23–35s) ══════════ -->
+      <!-- T5 slot: adjacent to s3-generate-btn -->
+      <div id="s4-content" class="clip" data-start="23" data-duration="22" data-track-index="5"
+           style="top:100px; left:360px; width:1200px; height:760px;
+                  overflow:hidden; border-radius:0 0 18px 18px; pointer-events:none;">
+        <div id="s4-hero-bg"></div>
+        <div id="s4-headline">Ship faster.<br>Design <span class="acc">anywhere.</span></div>
+        <div id="s4-sub">The AI-native design agent that runs entirely on your machine.</div>
+        <div id="s4-cta">Get Started →</div>
+        <svg id="s4-graphic" style="position:absolute;top:80px;right:60px;width:420px;height:560px;"
+             viewBox="0 0 420 560" fill="none">
+          <rect x="60" y="120" width="300" height="200" rx="16"
+            fill="#161b22" stroke="#30363d" stroke-width="1.5"/>
+          <rect x="30" y="80" width="300" height="200" rx="16"
+            fill="#0d1117" stroke="#21262d" stroke-width="1.5"/>
+          <rect x="0" y="40" width="300" height="200" rx="16"
+            fill="#1f6feb" fill-opacity="0.12" stroke="#1f6feb" stroke-width="1.5"/>
+          <rect x="24" y="70" width="160" height="10" rx="5" fill="#58a6ff" fill-opacity="0.6"/>
+          <rect x="24" y="92" width="110" height="8" rx="4" fill="#8b949e" fill-opacity="0.5"/>
+          <rect x="24" y="112" width="130" height="8" rx="4" fill="#8b949e" fill-opacity="0.4"/>
+          <rect x="24" y="152" width="80" height="28" rx="8" fill="#1f6feb" fill-opacity="0.8"/>
+          <circle cx="340" cy="60" r="60" fill="rgba(31,111,235,0.07)"/>
+          <circle cx="340" cy="60" r="36" fill="rgba(31,111,235,0.12)"/>
+          <circle cx="340" cy="60" r="16" fill="rgba(31,111,235,0.25)"/>
+        </svg>
+      </div>
+
+      <!-- ══════════ SCENE 5 (35–45s) ══════════ -->
+      <!-- T4 slot: adjacent to s2-prompt-area -->
+      <div id="s5-laptop-bg" class="clip" data-start="35" data-duration="10" data-track-index="4"
+           style="top:100px; left:360px; width:1200px; height:760px;
+                  background:#0d1117; border-radius:0 0 18px 18px; border-top:1px solid #21262d;">
+        <div style="position:absolute;top:30px;left:40px;right:40px;height:400px;
+                    background:linear-gradient(135deg,#0d1117,#0f2942,#1a1a2e);
+                    border-radius:12px;overflow:hidden;">
+          <div style="position:absolute;top:60px;left:40px;font-size:32px;font-weight:800;
+                      color:#f0f6fc;line-height:1.2;">
+            Ship faster.<br>
+            <span style="color:#58a6ff;">Design anywhere.</span>
+          </div>
+          <div style="position:absolute;bottom:40px;left:40px;padding:10px 28px;
+                      background:#1f6feb;border-radius:8px;font-size:18px;font-weight:700;">
+            Get Started →
+          </div>
+        </div>
+      </div>
+      <!-- T6 slot: gap from s3-spinner-wrap (13–23) to here (35–45) -->
+      <div id="s5-chips" class="clip" data-start="35" data-duration="10" data-track-index="6"
+           style="bottom:80px; left:50%; width:700px; margin-left:-350px;
+                  display:flex; gap:24px;">
+        <div class="action-chip" id="chip-tweak">✦ Tweak Layout</div>
+        <div class="action-chip" id="chip-colors">◎ Adjust Colors</div>
+        <div class="action-chip primary" id="chip-export">↗ Export</div>
+      </div>
+      <!-- T7 slot -->
+      <div id="s5-dropdown" class="clip" data-start="35" data-duration="10" data-track-index="7"
+           style="bottom:155px; right:428px;">
+        <div class="dd-item"><span class="dd-check" id="chk-html">✓</span> HTML</div>
+        <div class="dd-item"><span class="dd-check" id="chk-jsx">✓</span> React JSX</div>
+        <div class="dd-item"><span class="dd-check" id="chk-pdf">✓</span> PDF</div>
+      </div>
+
+      <!-- ══════════ SCENE 6 (45–57s) ══════════ -->
+      <!-- T1 slot: adjacent to s1-glow (0–3) -->
+      <div id="s6-bg" class="clip full" data-start="45" data-duration="12" data-track-index="1"
+           style="background:#0b0b0f;"></div>
+      <!-- T3 slot: gap from s2-laptop (3–35) -->
+      <div id="s6-laptop" class="clip" data-start="45" data-duration="12" data-track-index="3"
+           style="top:80px; left:60px; width:880px; height:560px;
+                  border:1.5px solid #21262d; border-radius:16px; background:#0d1117;
+                  box-shadow:0 0 0 1px #30363d,0 20px 60px rgba(0,0,0,0.6); overflow:hidden;">
+        <div style="height:40px;background:#161b22;border-bottom:1px solid #21262d;
+                    display:flex;align-items:center;padding:0 16px;gap:8px;">
+          <div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div>
+        </div>
+        <div style="margin:20px;background:linear-gradient(135deg,#0d1117,#0f2942);
+                    border-radius:10px;height:460px;overflow:hidden;position:relative;">
+          <div style="position:absolute;top:40px;left:30px;font-size:28px;font-weight:800;
+                      color:#f0f6fc;line-height:1.2;">
+            Ship faster.<br><span style="color:#58a6ff;">Design anywhere.</span>
+          </div>
+          <div style="position:absolute;bottom:30px;left:30px;padding:10px 24px;
+                      background:#1f6feb;border-radius:8px;font-size:17px;font-weight:700;">
+            Get Started →
+          </div>
+        </div>
+      </div>
+      <!-- T4 slot: adjacent to s5-laptop-bg (35–45) -->
+      <div id="s6-providers" class="clip" data-start="45" data-duration="12" data-track-index="4"
+           style="top:100px; left:1020px; width:720px;">
+        <div class="provider-row active" id="prov-copilot">
+          <div class="prov-icon" style="background:rgba(31,111,235,0.15);">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="11" r="7" stroke="#58a6ff" stroke-width="1.6"/>
+              <circle cx="12" cy="10" r="3.5" fill="#58a6ff" opacity="0.8"/>
+              <path d="M7 17 Q5 21 6 23" stroke="#58a6ff" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+              <path d="M12 18 Q12 22 12 23" stroke="#58a6ff" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+              <path d="M17 17 Q19 21 18 23" stroke="#58a6ff" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="prov-name">GitHub Copilot</span>
+          <span class="prov-badge">Default</span>
+        </div>
+        <div class="provider-row muted" id="prov-claude">
+          <div class="prov-icon" style="background:#161b22;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#484f58" stroke-width="1.5"/>
+              <path d="M8 15 Q12 8 16 15" stroke="#484f58" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="prov-name">Claude</span>
+        </div>
+        <div class="provider-row muted" id="prov-gpt">
+          <div class="prov-icon" style="background:#161b22;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#484f58" stroke-width="1.5"/>
+              <text x="7" y="16" font-size="9" fill="#484f58" font-family="monospace">AI</text>
+            </svg>
+          </div>
+          <span class="prov-name">GPT-4o</span>
+        </div>
+        <div class="provider-row muted" id="prov-gemini">
+          <div class="prov-icon" style="background:#161b22;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <polygon points="12,3 21,20 3,20" stroke="#484f58" stroke-width="1.5" fill="none"/>
+            </svg>
+          </div>
+          <span class="prov-name">Gemini</span>
+        </div>
+        <div class="provider-row muted" id="prov-ollama">
+          <div class="prov-icon" style="background:#161b22;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="5" width="14" height="14" rx="3" stroke="#484f58" stroke-width="1.5"/>
+              <circle cx="12" cy="12" r="3" fill="#484f58" opacity="0.5"/>
+            </svg>
+          </div>
+          <span class="prov-name">Ollama (local)</span>
+        </div>
+      </div>
+      <!-- T7 slot: adjacent to s5-dropdown (35–45) -->
+      <div id="s6-local" class="clip" data-start="45" data-duration="12" data-track-index="7"
+           style="bottom:180px; left:1060px; display:flex; align-items:center; gap:14px;">
+        <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+          <rect x="6" y="12" width="32" height="22" rx="4" stroke="#3fb950" stroke-width="1.8"/>
+          <rect x="10" y="16" width="10" height="8" rx="2" fill="#3fb950" opacity="0.5"/>
+          <rect x="24" y="16" width="10" height="2" rx="1" fill="#484f58"/>
+          <rect x="24" y="20" width="7" height="2" rx="1" fill="#484f58"/>
+          <line x1="22" y1="34" x2="22" y2="40" stroke="#3fb950" stroke-width="1.8"/>
+          <line x1="14" y1="40" x2="30" y2="40" stroke="#3fb950" stroke-width="1.8"/>
+        </svg>
+        <span style="font-size:22px;color:#3fb950;font-weight:600;">Local-first. No cloud sync.</span>
+      </div>
+
+      <!-- ══════════ SCENE 7 (57–67s) ══════════ -->
+      <!-- T1 slot: adjacent to s6-bg (45–57) -->
+      <div id="s7-bg" class="clip full" data-start="57" data-duration="10" data-track-index="1"
+           style="background:#0b0b0f;"></div>
+      <!-- T8 slot -->
+      <div id="m1" class="clip manifesto-line" data-start="57" data-duration="10" data-track-index="8">
+        <svg class="m-icon" viewBox="0 0 72 72" fill="none">
+          <rect x="16" y="26" width="40" height="28" rx="6" stroke="#1f6feb" stroke-width="2.5"/>
+          <path d="M26 26v-6a4 4 0 014-4h12a4 4 0 014 4v6" stroke="#1f6feb" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="16" y1="42" x2="56" y2="42" stroke="#1f6feb" stroke-width="2" stroke-dasharray="4 4"/>
+        </svg>
+        Your designs.
+      </div>
+      <!-- T9 slot -->
+      <div id="m2" class="clip manifesto-line" data-start="57" data-duration="10" data-track-index="9">
+        <svg class="m-icon" viewBox="0 0 72 72" fill="none">
+          <rect x="18" y="32" width="36" height="26" rx="6" stroke="#1f6feb" stroke-width="2.5"/>
+          <path d="M26 32v-8a10 10 0 0120 0v8" stroke="#1f6feb" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="36" cy="46" r="4" fill="#1f6feb"/>
+        </svg>
+        Your credentials.
+      </div>
+      <!-- T10 slot -->
+      <div id="m3" class="clip manifesto-line" data-start="57" data-duration="10" data-track-index="10">
+        <svg class="m-icon" viewBox="0 0 72 72" fill="none">
+          <circle cx="36" cy="36" r="26" stroke="#1f6feb" stroke-width="2.5"/>
+          <path d="M22 37 l10 10 18-20" stroke="#1f6feb" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Your rules.
+      </div>
+
+      <!-- ══════════ SCENE 8 (67–74s) ══════════ -->
+      <!-- T1 slot: adjacent to s7-bg (57–67) -->
+      <div id="s8-bg" class="clip full" data-start="67" data-duration="7" data-track-index="1"
+           style="background:#0b0b0f;"></div>
+      <!-- T8 slot: adjacent to m1 (57–67) -->
+      <div id="s8-badges" class="clip" data-start="67" data-duration="7" data-track-index="8"
+           style="top:200px; left:810px; display:flex; gap:28px;">
+        <div class="badge-pill badge-mit">MIT Licensed</div>
+        <div class="badge-pill badge-oss">Open Source</div>
+      </div>
+      <!-- T9 slot: adjacent to m2 (57–67) -->
+      <div id="s8-cta" class="clip" data-start="67" data-duration="7" data-track-index="9"
+           style="top:360px; left:560px;
+                  padding:28px 80px; background:#1f6feb; border-radius:56px;
+                  font-size:44px; font-weight:800; color:#fff; white-space:nowrap;">
+        Run it Locally Today →
+      </div>
+      <!-- T10 slot: adjacent to m3 (57–67) -->
+      <div id="s8-tagline" class="clip" data-start="67" data-duration="7" data-track-index="10"
+           style="top:540px; left:0; width:1920px; text-align:center;
+                  font-size:30px; color:#484f58;">
+        Free. MIT-licensed. No account needed.
+      </div>
+      <!-- T11 slot -->
+      <div id="s8-logo" class="clip" data-start="67" data-duration="7" data-track-index="11"
+           style="bottom:48px; right:64px;
+                  font-size:28px; font-weight:800; color:#21262d; letter-spacing:-1px;">
+        ATV <span style="color:#1f6feb;opacity:0.6;">Design</span>
+      </div>
+
+    </div><!-- /root -->
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // ── SCENE 1 (0–3s) ─────────────────────────────────────────────────
+      tl.from("#s1-glow",     { opacity: 0, scale: 0.6, duration: 1.4, ease: "power2.out" }, 0);
+      // Use fromTo to preserve y baseline without CSS transform conflict
+      tl.fromTo("#s1-wordmark",
+        { opacity: 0, y: 30 },
+        { opacity: 1, y: 0, duration: 1.2, ease: "power3.out" }, 0.15);
+      tl.from("#s1-copilot-row", { opacity: 0, duration: 0.5, ease: "power2.out" }, 1.5);
+      tl.to("#connect-line",     { strokeDashoffset: 0, duration: 0.8, ease: "power2.inOut" }, 1.55);
+      tl.from("#s1-copilot-label", { opacity: 0, x: 10, duration: 0.4 }, 2.05);
+      // Fade out before clip ends
+      tl.to(["#s1-glow","#s1-wordmark","#s1-copilot-row"], { opacity: 0, duration: 0.4 }, 2.5);
+
+      // ── SCENE 2 (3–13s) ─────────────────────────────────────────────────
+      tl.from("#s2-wordmark-small", { opacity: 0, x: -20, duration: 0.4, ease: "power2.out" }, 3.0);
+      tl.from("#s2-laptop",         { opacity: 0, y: 40,  duration: 0.7, ease: "power3.out" }, 3.2);
+      tl.from("#s2-prompt-area",    { opacity: 0, y: 20,  duration: 0.8, ease: "power2.out" }, 4.0);
+      tl.to("#s2-hint",             { opacity: 0, duration: 0.4 }, 12.8);
+
+      // ── SCENE 3 (13–23s) ─────────────────────────────────────────────────
+      // Typewriter — safe DOM: textContent only, no innerHTML
+      (function buildTypewriter() {
+        const phrase = "SaaS landing page hero";
+        const typed  = document.getElementById("prompt-typed");
+        const ms = 2000 / phrase.length;
+        for (let i = 0; i < phrase.length; i++) {
+          const ch = phrase[i];
+          tl.call(function(c) { typed.textContent += c; }, [ch], 13.0 + i * (ms / 1000));
+        }
+      })();
+
+      tl.from("#s3-generate-btn", { opacity: 0, scale: 0.85, duration: 0.5, ease: "back.out(1.5)" }, 15.4);
+      tl.to("#s3-generate-btn",   {
+        boxShadow: "0 0 0 8px rgba(31,111,235,0.35)", duration: 0.5, yoyo: true, repeat: 2
+      }, 16.0);
+      // "Click" — dim prompt, scale btn
+      tl.to("#s2-prompt-area",  { opacity: 0.3, duration: 0.4 }, 17.1);
+      tl.to("#s3-generate-btn", { scale: 0.92, duration: 0.08, yoyo: true, repeat: 1 }, 17.0);
+      // Spinner
+      tl.from("#s3-spinner-wrap", { opacity: 0, duration: 0.4 }, 17.5);
+      tl.to("#s3-generate-btn",   { opacity: 0, duration: 0.3 }, 17.6);
+      tl.to("#s3-spinner", {
+        rotation: 1080, transformOrigin: "28px 28px", duration: 5.0, ease: "linear"
+      }, 17.5);
+      tl.to(["#s3-spinner-wrap","#s2-prompt-area"], { opacity: 0, duration: 0.5 }, 22.5);
+
+      // ── SCENE 4 (23–35s) ─────────────────────────────────────────────────
+      tl.from("#s4-hero-bg",  { opacity: 0, scaleY: 0.4, transformOrigin: "top center", duration: 1.0, ease: "power3.out" }, 23.2);
+      tl.from("#s4-headline", { opacity: 0, y: 24, duration: 0.7, ease: "power2.out" }, 24.4);
+      tl.from("#s4-sub",      { opacity: 0, y: 16, duration: 0.5, ease: "power2.out" }, 25.1);
+      tl.from("#s4-cta",      { opacity: 0, scale: 0.88, duration: 0.5, ease: "back.out(1.4)" }, 25.7);
+      tl.from("#s4-graphic",  { opacity: 0, x: 80, duration: 1.2, ease: "power3.out" }, 24.2);
+      // Fade before scene 5
+      tl.to(["#s2-laptop","#s4-content"], { opacity: 0, duration: 0.4 }, 34.6);
+
+      // ── SCENE 5 (35–45s) ─────────────────────────────────────────────────
+      tl.to("#s2-laptop", { opacity: 1, duration: 0.5 }, 35.0);
+      tl.from(["#chip-tweak","#chip-colors","#chip-export"], {
+        opacity: 0, y: 30, stagger: 0.15, duration: 0.5, ease: "back.out(1.3)"
+      }, 35.4);
+      tl.to("#chip-export", {
+        boxShadow: "0 0 0 3px rgba(31,111,235,0.4)", duration: 0.4, yoyo: true, repeat: 2
+      }, 37.2);
+      tl.from("#s5-dropdown", { opacity: 0, y: -16, duration: 0.4, ease: "power2.out" }, 38.2);
+      tl.to("#chk-html", { opacity: 1, duration: 0.3 }, 39.2);
+      tl.to("#chk-jsx",  { opacity: 1, duration: 0.3 }, 40.4);
+      tl.to("#chk-pdf",  { opacity: 1, duration: 0.3 }, 41.6);
+      tl.to(["#s5-laptop-bg","#s2-laptop","#s5-chips","#s5-dropdown","#s2-wordmark-small"],
+            { opacity: 0, duration: 0.5 }, 44.5);
+
+      // ── SCENE 6 (45–57s) ─────────────────────────────────────────────────
+      tl.from("#s6-laptop", { opacity: 0, x: -60, duration: 0.7, ease: "power3.out" }, 45.2);
+      tl.from(["#prov-copilot","#prov-claude","#prov-gpt","#prov-gemini","#prov-ollama"], {
+        opacity: 0, x: 40, stagger: 0.12, duration: 0.5, ease: "power2.out"
+      }, 45.6);
+      tl.to("#prov-copilot", {
+        boxShadow: "0 0 32px rgba(31,111,235,0.35)", duration: 1.0, yoyo: true, repeat: 3
+      }, 46.5);
+      tl.from("#s6-local", { opacity: 0, scale: 0.8, duration: 0.5, ease: "back.out(1.5)" }, 50.0);
+      tl.to("#s6-local",   { scale: 1.08, duration: 0.3, yoyo: true, repeat: 1 }, 51.2);
+      tl.to(["#s6-bg","#s6-laptop","#s6-providers","#s6-local"], { opacity: 0, duration: 0.5 }, 56.5);
+
+      // ── SCENE 7 (57–67s) ─────────────────────────────────────────────────
+      tl.from("#m1", { opacity: 0, y: 20, duration: 0.9, ease: "power2.out" }, 57.4);
+      tl.from("#m2", { opacity: 0, y: 20, duration: 0.9, ease: "power2.out" }, 59.0);
+      tl.from("#m3", { opacity: 0, y: 20, duration: 0.9, ease: "power2.out" }, 60.6);
+      tl.to(["#s7-bg","#m1","#m2","#m3"], { opacity: 0, duration: 0.5 }, 66.5);
+
+      // ── SCENE 8 (67–74s) ─────────────────────────────────────────────────
+      tl.from("#s8-badges", { opacity: 0, scale: 0.7, duration: 0.6, ease: "back.out(1.8)" }, 67.3);
+      tl.from("#s8-cta",    { opacity: 0, scale: 0.8, duration: 0.7, ease: "back.out(1.6)" }, 68.2);
+      tl.to("#s8-cta", {
+        boxShadow: "0 0 40px 8px rgba(31,111,235,0.45)",
+        duration: 1.0, yoyo: true, repeat: 3, ease: "sine.inOut"
+      }, 69.0);
+      // Use fromTo to avoid CSS transform conflict (text-align centering via left:0/width:1920)
+      tl.fromTo("#s8-tagline",
+        { opacity: 0, y: 12 },
+        { opacity: 1, y: 0, duration: 0.5 }, 69.4);
+      tl.from("#s8-logo", { opacity: 0, duration: 0.6 }, 70.2);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

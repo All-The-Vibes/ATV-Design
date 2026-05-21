@@ -1,0 +1,11 @@
+Your GitHub Copilot subscription. Your laptop. Real design artifacts.
+
+Meet ATV Design—an open-source AI agent that turns your design prompts into HTML, JSX, and slides. No web accounts. No API handshakes. Just Copilot, connected locally via OAuth, generating the prototypes you need.
+
+Imagine: you describe a SaaS landing page hero. You hit generate. And… there it is. A live, interactive prototype. Right on your machine. Tweak the layout. Adjust the colors. Export it as a web component, a React JSX file, or a PDF—all without leaving your workspace.
+
+ATV Design works with Copilot out of the box. Plus Claude, GPT, Gemini, and Ollama if you prefer.
+
+It's local-first. No subscriptions. No tracking. Your designs, your credentials, your rules.
+
+Open source. MIT-licensed. Run it locally today.

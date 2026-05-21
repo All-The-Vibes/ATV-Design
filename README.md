@@ -6,19 +6,28 @@
 [![Node 22](https://img.shields.io/badge/node-%3E%3D22-green.svg)](https://nodejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
 
-**ATV Design** is an open-source AI design agent for your desktop. Turn natural-language prompts into production-ready design artifacts — HTML/JSX prototypes, PPTX slides, or PDFs — in seconds. BYOK (Bring Your Own Key) end-to-end: all credentials stay local, and you choose your AI provider: Claude, GPT, Gemini, DeepSeek, Kimi, GLM, Ollama, or GitHub Copilot (OAuth+PKCE).
+**ATV Design** is an open-source AI design agent for your desktop, built for GitHub Copilot. Turn natural-language prompts into production-ready design artifacts — HTML/JSX prototypes, PPTX slides, or PDFs — in seconds using your Copilot subscription via OAuth+PKCE. All credentials stay local, all processing on your machine. Also supports BYOK for Claude, GPT, Gemini, DeepSeek, Kimi, GLM, and Ollama.
 
-A fast, privacy-first Figma alternative and Claude Design alternative that runs on your laptop. Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT); ships with premium skill bundles including **ui-ux-pro-max** and **emil-design-eng-inspired**.
+A fast, privacy-first Figma alternative that runs on your laptop, powered by GitHub Copilot. Built on [OpenCoworkAI/open-codesign](https://github.com/OpenCoworkAI/open-codesign) (MIT); ships with premium skill bundles including **ui-ux-pro-max** and **emil-design-eng-inspired**.
 
 See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attribution and license text.
 
 ---
 
+## 🎬 Watch the 73-second demo
+
+[![ATV Design demo](./assets/video/preview-frame.jpg)](./assets/video/atv-design-demo.mp4)
+
+> Prompt → SaaS landing hero, rendered in your Electron app — narrated walkthrough. Click the still to play locally (`assets/video/atv-design-demo.mp4`), or watch it embedded in the GitHub README on the web.
+
+---
+
 ## ✨ Why ATV Design
 
+- **GitHub Copilot native** — design with your Copilot subscription via OAuth+PKCE. Official SDK, documented flow, no reverse engineering.
 - **Prompt-to-prototype in seconds** — describe your design idea; the AI agent generates interactive HTML/JSX, editable PPTX, or PDF exports instantly.
 - **100% local-first, BYOK** — no accounts, no proxied APIs, no telemetry. Credentials live in plain-text config on your machine. Self-hosted or bring your own provider credentials.
-- **Multi-model support** — use Claude, GPT-4o, Gemini, DeepSeek, Kimi, GLM, Ollama, or GitHub Copilot. Switch providers in settings without losing work.
+- **Also supports BYOK for other providers** — Claude, GPT-4o, Gemini, DeepSeek, Kimi, GLM, Ollama. Switch providers in settings without losing work.
 - **Design system first** — generates and refines `DESIGN.md` brand systems automatically. Consistent tokens across all designs; edit once, regenerate everywhere.
 - **Extensible with skills** — ship with curated skill bundles (UI/UX pro patterns, animation design, and more). Load project-specific or user custom skills on demand.
 - **Real workspace, real files** — designs live in your filesystem alongside `DESIGN.md`, assets, and exports. Edit with your favorite tools; re-run to regenerate.
@@ -27,13 +36,14 @@ See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attri
 
 ## 🚀 Features
 
-### Agentic Design
+### GitHub Copilot Integration (Default)
+- **Official Copilot SDK** — uses documented OAuth+PKCE flow. Use your Copilot subscription directly; no reverse-engineered tokens, no account creation.
 - **Interactive sessions** — long-running design conversations with preview, tweak, and regenerate controls.
 - **Structured input** — ask the agent questions; get answers with follow-up suggestions.
 - **Live preview** — see HTML/JSX/CSS render in real-time with error reporting and metrics.
 
-### Multi-Provider & Multi-Model
-- **10+ supported providers**: Anthropic Claude (3.5 Sonnet, Opus, Haiku), OpenAI (GPT-4o, GPT-4 Turbo), Google Gemini, DeepSeek, Kimi, GLM, Ollama (local), OpenAI-compatible APIs, and GitHub Copilot SDK with PKCE.
+### Multi-Provider Support
+- **Also supports BYOK providers**: Anthropic Claude, OpenAI (GPT-4o / GPT-4 Turbo), Google Gemini, DeepSeek, Kimi, GLM, Ollama (local), and OpenAI-compatible APIs.
 - **Switch seamlessly** — pick providers in **Settings**; session history stays with the design workspace.
 
 ### Local-First & BYOK
@@ -62,6 +72,7 @@ See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attri
 
 | Provider | Models | Auth | Status |
 |----------|--------|------|--------|
+| **GitHub Copilot** ⭐ | Copilot Chat | OAuth + PKCE | ✓ Default |
 | **Anthropic** | Claude 3.5 Sonnet, Opus, Haiku | API key | ✓ BYOK |
 | **OpenAI** | GPT-4o, GPT-4 Turbo, GPT-4 | API key | ✓ BYOK |
 | **Google Gemini** | Gemini 2.0, 1.5 Pro, 1.5 Flash | API key | ✓ BYOK |
@@ -70,7 +81,6 @@ See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attri
 | **GLM** | GLM-4, GLM-3 | API key | ✓ BYOK |
 | **Ollama** | Any local Ollama model | Localhost | ✓ BYOK |
 | **OpenAI-compatible** | Any OpenAI-compatible endpoint | Custom | ✓ BYOK |
-| **GitHub Copilot** | Copilot Chat | OAuth + PKCE | ✓ Official SDK |
 
 ---
 
@@ -80,7 +90,7 @@ See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attri
 
 - **Node.js 22 LTS** (see `.nvmrc`) and **pnpm 9.15+** (pinned in `package.json`).
 - **Git**.
-- *(Optional)* A GitHub Copilot subscription if you plan to use the Copilot provider. Other BYOK providers work with just an API key.
+- *(Optional)* A GitHub Copilot subscription if you plan to use the default Copilot provider. BYOK providers work with their respective API keys.
 
 ### Run from Source
 
@@ -151,7 +161,7 @@ Custom skills can be added locally at `~/.config/atv-design/skills/` or `.codesi
 | **Branding** | open-codesign | atv-design |
 | **Config dir** | `~/.config/open-codesign/` | `~/.config/atv-design/` |
 | **OAuth Flow** | (upstream's) | Loopback HTTP `http://127.0.0.1:<random-port>/oauth-callback` |
-| **Providers** | Anthropic, OpenAI, Gemini, DeepSeek, Kimi, GLM, Ollama, OpenAI-compatible | All above **+ GitHub Copilot SDK with PKCE** |
+| **Providers** | Anthropic, OpenAI, Gemini, DeepSeek, Kimi, GLM, Ollama, OpenAI-compatible | All above **+ GitHub Copilot SDK with PKCE (default)** |
 | **Skills** | Upstream builtin set | 12 runtime-loaded (4 upstream + 7 `uipromax-*` + `emil-design-eng-inspired`) + preserved source bundles |
 | **License Hygiene** | Upstream MIT | NOTICE with full upstream text + per-bundle READMEs |
 | **CI** | Upstream | + `.github/workflows/forbidden-endpoints.yml` (blocks regressions to undocumented Copilot endpoints) |
@@ -221,11 +231,11 @@ Roadmap and acceptance criteria are in `.omc/specs/` and `.omc/plans/`. Bug repo
 
 ## 📖 About ATV Design
 
-**ATV Design** is an open-source, local-first AI design agent that turns natural-language prompts into polished design artifacts. Whether you're prototyping UI components, generating presentation slides, or exporting brand-consistent PDFs, ATV Design runs entirely on your machine with your chosen AI provider — no vendor lock-in, no telemetry, no accounts. It's a Figma alternative and Claude Design alternative that respects your privacy and gives you full control. Built on proven Electron and React patterns; extensible via skills and DESIGN.md brand systems. Pick Claude, GPT, Gemini, or any BYOK provider and start designing in seconds.
+**ATV Design** is an open-source, local-first GitHub Copilot AI design agent that turns natural-language prompts into polished design artifacts. Whether you're prototyping UI components, generating presentation slides, or exporting brand-consistent PDFs, ATV Design runs entirely on your machine with GitHub Copilot (or your chosen BYOK provider) — no vendor lock-in, no telemetry, no accounts. It's a Figma alternative that respects your privacy and gives you full control. Built on proven Electron and React patterns; extensible via skills and DESIGN.md brand systems. Start designing in seconds with your Copilot subscription.
 
 ---
 
 <!-- REPO_META
-description: Open-source AI design agent for your desktop. Prompt → prototype, slides, PDF. BYOK with Claude, GPT, Gemini, DeepSeek, Kimi, Ollama. Local-first, MIT-licensed Figma alternative. Electron + TypeScript + React.
-topics: ai-design, design-agent, claude, anthropic, openai, gpt, gemini, figma-alternative, local-first, byok, prompt-to-ui, design-to-code, ui-generator, electron, typescript, react, desktop-app, ollama, kimi, deepseek
+description: ATV Design — the GitHub Copilot-native AI design agent for your desktop. Prompt → prototype, slides, PDF with your Copilot subscription via OAuth+PKCE. Local-first, BYOK for other providers, MIT-licensed. Electron + TypeScript + React.
+topics: github-copilot, copilot, copilot-sdk, copilot-extension, ai-design, design-agent, figma-alternative, local-first, byok, prompt-to-ui, design-to-code, desktop-app, electron, typescript, react, ui-generator, oauth-pkce, anthropic, openai
 -->
