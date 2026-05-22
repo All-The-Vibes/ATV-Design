@@ -2,5 +2,5 @@
 // core tools (read_brand, capture_element) without coupling core → exporters.
 // Re-exported here so existing imports (./chrome-discovery from pdf.ts and
 // its vi.mock target in pdf.test.ts) continue to work unchanged.
-export { findSystemChrome } from '@atv-design/shared';
-export type { ChromeDiscoveryDeps } from '@atv-design/shared';
+export { findSystemChrome } from '@atv-design/shared/node';
+export type { ChromeDiscoveryDeps } from '@atv-design/shared/node';

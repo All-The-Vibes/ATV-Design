@@ -13,7 +13,8 @@
  */
 
 import type { StoredDesignSystem } from '@atv-design/shared';
-import { STORED_DESIGN_SYSTEM_SCHEMA_VERSION, findSystemChrome } from '@atv-design/shared';
+import { STORED_DESIGN_SYSTEM_SCHEMA_VERSION } from '@atv-design/shared';
+import { findSystemChrome } from '@atv-design/shared/node';
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
 import { Type } from '@sinclair/typebox';
 import type { DesignToken } from '../brand/index.js';

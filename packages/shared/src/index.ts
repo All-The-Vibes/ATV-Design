@@ -223,8 +223,8 @@ export type ProjectDraft = z.infer<typeof ProjectDraft>;
 
 export { CodesignError } from './codesign-error';
 
-export { findSystemChrome } from './chrome-discovery';
-export type { ChromeDiscoveryDeps } from './chrome-discovery';
+// NOTE: `findSystemChrome` and other Node-only utilities live in
+// `@atv-design/shared/node` so they never leak into the renderer bundle.
 
 export {
   BUILTIN_PROVIDERS,

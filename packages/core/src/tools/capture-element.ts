@@ -21,7 +21,7 @@
  * Lib is file-scoped — does not affect any other module's lib resolution.
  */
 
-import { findSystemChrome } from '@atv-design/shared';
+import { findSystemChrome } from '@atv-design/shared/node';
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
 import { Type } from '@sinclair/typebox';
 
