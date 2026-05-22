@@ -119,6 +119,15 @@ if (process.env['ELECTRON_USER_DATA_DIR']) {
   app.setPath('userData', process.env['ELECTRON_USER_DATA_DIR']);
 }
 
+// E2E test hook: enable Chrome DevTools Protocol on the requested port so
+// external automation (puppeteer-core / playwright) can attach to the
+// renderer. Must run before app.whenReady(). Opt-in only — no behaviour
+// change unless ATV_REMOTE_DEBUG_PORT is set.
+if (process.env['ATV_REMOTE_DEBUG_PORT']) {
+  app.commandLine.appendSwitch('remote-debugging-port', process.env['ATV_REMOTE_DEBUG_PORT']);
+  app.commandLine.appendSwitch('remote-debugging-address', '127.0.0.1');
+}
+
 const defaultUserDataDir = app.getPath('userData');
 const storageLocations = initStorageSettings(defaultUserDataDir);
 if (storageLocations.dataDir !== undefined) {

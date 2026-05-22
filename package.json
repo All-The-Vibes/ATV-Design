@@ -20,6 +20,7 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:app": "pnpm --filter @atv-design/desktop dev",
     "test": "turbo run test",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
