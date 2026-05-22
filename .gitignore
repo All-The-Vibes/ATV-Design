@@ -137,5 +137,3 @@ apps/desktop/apps/
 !/.github/
 !/.husky/
 !/.vscode/
-!/.claude/
-!/.omc/
