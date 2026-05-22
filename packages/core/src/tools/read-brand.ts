@@ -17,6 +17,8 @@ import { STORED_DESIGN_SYSTEM_SCHEMA_VERSION, findSystemChrome } from '@atv-desi
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
 import { Type } from '@sinclair/typebox';
 import type { DesignToken } from '../brand/index.js';
+import { type SpacingScale, inferSpacingScale } from '../brand/spacingInferrer.js';
+import { type TypeRamp, inferTypeRamp } from '../brand/typographyInferrer.js';
 
 // ── Params ────────────────────────────────────────────────────────────────────
 
@@ -115,10 +117,251 @@ export function synthesizeBrand(
   };
 }
 
+// ── Conflict detection ────────────────────────────────────────────────────────
+
+/**
+ * A single token-name conflict: the same `name` was extracted with two or more
+ * distinct `value`s. Per-value `source` labels are derived from the token's
+ * `origin` field (css-vars, tailwind-config, dtcg-json, …) — finer file-path
+ * attribution would require threading file context through the fetchers, which
+ * isn't worth the added surface area for v1 of this report.
+ *
+ * FIXME(slice-2.2): once fetchers can attach a file path per token (e.g.
+ * `_sourceFile`), surface that here instead of `origin` for clearer reports.
+ */
+export interface TokenConflict {
+  name: string;
+  values: Array<{ value: string; source: string }>;
+}
+
+export function detectTokenConflicts(tokens: DesignToken[]): TokenConflict[] {
+  // name → value → set of origin labels
+  const byName = new Map<string, Map<string, Set<string>>>();
+  for (const t of tokens) {
+    const byValue = byName.get(t.name) ?? new Map<string, Set<string>>();
+    const sources = byValue.get(t.value) ?? new Set<string>();
+    sources.add(t.origin);
+    byValue.set(t.value, sources);
+    byName.set(t.name, byValue);
+  }
+
+  const out: TokenConflict[] = [];
+  for (const [name, byValue] of byName) {
+    if (byValue.size < 2) continue;
+    const values = Array.from(byValue, ([value, sources]) => ({
+      value,
+      source: Array.from(sources).sort().join(', '),
+    }));
+    out.push({ name, values });
+  }
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// ── Numeric extraction helpers (for ramp / spacing inference) ────────────────
+
+const REM_BASE_PX = 16;
+
+/** Convert "16px" / "1rem" / "1.5em" to a px number. Returns null when the
+ *  value isn't a single dimension we understand (multi-value, %, unitless, …). */
+export function dimensionToPx(value: string): number | null {
+  const m = /^\s*(-?\d*\.?\d+)\s*(px|rem|em)?\s*$/i.exec(value);
+  if (!m) return null;
+  const num = Number.parseFloat(m[1] as string);
+  if (!Number.isFinite(num)) return null;
+  const unit = (m[2] ?? 'px').toLowerCase();
+  if (unit === 'px') return num;
+  if (unit === 'rem' || unit === 'em') return num * REM_BASE_PX;
+  return null;
+}
+
+function extractFontSizesPx(tokens: DesignToken[]): number[] {
+  const out: number[] = [];
+  for (const t of tokens) {
+    if (t.type !== 'fontSize') continue;
+    const px = dimensionToPx(t.value);
+    if (px !== null) out.push(px);
+  }
+  return out;
+}
+
+function extractSpacingsPx(tokens: DesignToken[]): number[] {
+  const out: number[] = [];
+  for (const t of tokens) {
+    if (t.type !== 'spacing') continue;
+    const px = dimensionToPx(t.value);
+    if (px !== null) out.push(px);
+  }
+  return out;
+}
+
 // ── DESIGN.md helpers ─────────────────────────────────────────────────────────
 
-function buildDesignMd(ds: StoredDesignSystem): string {
+const DESIGN_MD_SCHEMA_VERSION = 1;
+const MAX_FRONTMATTER_SOURCES = 10;
+
+interface DesignMdFrontmatter {
+  schemaVersion: number;
+  extractedAt: string;
+  sources: string[];
+}
+
+interface BuildDesignMdOpts {
+  /** Current invocation's source — appended to the frontmatter sources list. */
+  source: { kind: 'url' | 'repo' | 'image'; value: string };
+  /** Previous frontmatter parsed from an existing DESIGN.md, if any. */
+  existingFrontmatter?: DesignMdFrontmatter | null;
+  conflicts?: TokenConflict[];
+  typeRamp?: TypeRamp | null;
+  spacingScale?: SpacingScale | null;
+}
+
+function formatSourceLabel(s: { kind: string; value: string }): string {
+  return `${s.kind}:${s.value}`;
+}
+
+function mergeFrontmatterSources(
+  existing: string[] | undefined,
+  current: { kind: string; value: string },
+): string[] {
+  const formatted = formatSourceLabel(current);
+  const merged = (existing ?? []).filter((s) => s !== formatted);
+  merged.push(formatted);
+  return merged.slice(-MAX_FRONTMATTER_SOURCES);
+}
+
+function buildFrontmatter(opts: BuildDesignMdOpts, extractedAt: string): DesignMdFrontmatter {
+  return {
+    schemaVersion: DESIGN_MD_SCHEMA_VERSION,
+    extractedAt,
+    sources: mergeFrontmatterSources(opts.existingFrontmatter?.sources, opts.source),
+  };
+}
+
+function serializeFrontmatter(fm: DesignMdFrontmatter): string {
   const lines: string[] = [
+    '---',
+    `schemaVersion: ${fm.schemaVersion}`,
+    `extractedAt: ${fm.extractedAt}`,
+  ];
+  if (fm.sources.length === 0) {
+    lines.push('sources: []');
+  } else {
+    lines.push('sources:');
+    for (const s of fm.sources) lines.push(`  - ${s}`);
+  }
+  lines.push('---', '');
+  return lines.join('\n');
+}
+
+/**
+ * Permissive YAML-frontmatter parser tuned for the keys we actually write
+ * (`schemaVersion`, `extractedAt`, `sources`). Anything else is ignored.
+ * Returns `null` when the frontmatter is missing, malformed, or missing a
+ * required field — callers should rewrite from current invocation in that case.
+ */
+export function parseDesignMdFrontmatter(content: string): {
+  frontmatter: DesignMdFrontmatter | null;
+  body: string;
+  malformed: boolean;
+} {
+  if (!/^---\r?\n/.test(content)) {
+    return { frontmatter: null, body: content, malformed: false };
+  }
+  const lines = content.split(/\r?\n/);
+  let endIdx = -1;
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i]?.trim() === '---') {
+      endIdx = i;
+      break;
+    }
+  }
+  if (endIdx === -1) {
+    // Opener `---` but no closer → treat as malformed
+    return { frontmatter: null, body: content, malformed: true };
+  }
+
+  const fmLines = lines.slice(1, endIdx);
+  let schemaVersion: number | undefined;
+  let extractedAt: string | undefined;
+  const sources: string[] = [];
+  let inSources = false;
+
+  for (const raw of fmLines) {
+    const line = raw ?? '';
+    if (/^\s+-\s+/.test(line) && inSources) {
+      const m = /^\s+-\s+(.+?)\s*$/.exec(line);
+      if (m?.[1]) sources.push(m[1]);
+      continue;
+    }
+    inSources = false;
+    const kv = /^(\w+):\s*(.*)$/.exec(line);
+    if (!kv) continue;
+    const key = kv[1];
+    const value = (kv[2] ?? '').trim();
+    if (key === 'schemaVersion') {
+      const n = Number(value);
+      if (Number.isFinite(n)) schemaVersion = n;
+    } else if (key === 'extractedAt') {
+      if (value) extractedAt = value;
+    } else if (key === 'sources') {
+      if (value === '' || value === '[]') {
+        inSources = true;
+      }
+    }
+  }
+
+  const body = lines
+    .slice(endIdx + 1)
+    .join('\n')
+    .replace(/^\n+/, '');
+
+  if (typeof schemaVersion !== 'number' || typeof extractedAt !== 'string') {
+    return { frontmatter: null, body, malformed: true };
+  }
+
+  return {
+    frontmatter: { schemaVersion, extractedAt, sources },
+    body,
+    malformed: false,
+  };
+}
+
+function renderConflictsSection(conflicts: TokenConflict[]): string {
+  const lines: string[] = [
+    'The following tokens were defined with different values across sources. First-source-wins is the current resolution; review and pick the canonical value.',
+    '',
+  ];
+  for (const c of conflicts) {
+    lines.push(`- \`${c.name}\``);
+    for (const v of c.values) lines.push(`  - \`${v.value}\` (from ${v.source})`);
+  }
+  return lines.join('\n');
+}
+
+function renderTypeRampSection(ramp: TypeRamp): string {
+  return [
+    `Inferred from observed font sizes. Base unit: \`${ramp.baseUnit}px\`.`,
+    '',
+    `- h1: \`${ramp.h1}px\``,
+    `- h2: \`${ramp.h2}px\``,
+    `- h3: \`${ramp.h3}px\``,
+    `- body: \`${ramp.body}px\``,
+    `- small: \`${ramp.small}px\``,
+  ].join('\n');
+}
+
+function renderSpacingScaleSection(scale: SpacingScale): string {
+  return [
+    `Inferred from observed spacing values. Base unit: \`${scale.baseUnit}px\`.`,
+    '',
+    `- scale: ${scale.scale.map((v) => `\`${v}px\``).join(', ')}`,
+  ].join('\n');
+}
+
+function buildDesignMd(ds: StoredDesignSystem, opts: BuildDesignMdOpts): string {
+  const fm = buildFrontmatter(opts, ds.extractedAt);
+  const lines: string[] = [
+    serializeFrontmatter(fm),
     '# Design System',
     '',
     `> ${ds.summary}`,
@@ -139,6 +382,15 @@ function buildDesignMd(ds: StoredDesignSystem): string {
   }
   if (ds.shadows.length > 0) {
     lines.push('## Shadows', '', ds.shadows.map((s) => `- \`${s}\``).join('\n'), '');
+  }
+  if (opts.typeRamp) {
+    lines.push('## Type Ramp', '', renderTypeRampSection(opts.typeRamp), '');
+  }
+  if (opts.spacingScale) {
+    lines.push('## Spacing Scale', '', renderSpacingScaleSection(opts.spacingScale), '');
+  }
+  if (opts.conflicts && opts.conflicts.length > 0) {
+    lines.push('## Conflicts', '', renderConflictsSection(opts.conflicts), '');
   }
   return lines.join('\n');
 }
@@ -168,8 +420,25 @@ function replaceSection(existing: string, heading: string, newContent: string): 
   return [...before, ...newSection, '', ...after].join('\n').replace(/\n{3,}/g, '\n\n');
 }
 
-function mergeDesignMd(existing: string, ds: StoredDesignSystem): string {
-  let out = existing;
+function mergeDesignMd(
+  existing: string,
+  ds: StoredDesignSystem,
+  opts: BuildDesignMdOpts,
+): { content: string; warnings: string[] } {
+  const warnings: string[] = [];
+  const parsed = parseDesignMdFrontmatter(existing);
+  if (parsed.malformed) {
+    warnings.push(
+      'Existing DESIGN.md frontmatter was malformed; rewriting it with the current invocation as the sole source.',
+    );
+  }
+  const mergeOpts: BuildDesignMdOpts = {
+    ...opts,
+    existingFrontmatter: parsed.frontmatter,
+  };
+  const fm = buildFrontmatter(mergeOpts, ds.extractedAt);
+
+  let out = parsed.body.length > 0 ? parsed.body : existing;
   if (ds.colors.length > 0) {
     out = replaceSection(out, 'Colors', ds.colors.map((c) => `- \`${c}\``).join('\n'));
   }
@@ -185,7 +454,16 @@ function mergeDesignMd(existing: string, ds: StoredDesignSystem): string {
   if (ds.shadows.length > 0) {
     out = replaceSection(out, 'Shadows', ds.shadows.map((s) => `- \`${s}\``).join('\n'));
   }
-  return out;
+  if (opts.typeRamp) {
+    out = replaceSection(out, 'Type Ramp', renderTypeRampSection(opts.typeRamp));
+  }
+  if (opts.spacingScale) {
+    out = replaceSection(out, 'Spacing Scale', renderSpacingScaleSection(opts.spacingScale));
+  }
+  if (opts.conflicts && opts.conflicts.length > 0) {
+    out = replaceSection(out, 'Conflicts', renderConflictsSection(opts.conflicts));
+  }
+  return { content: `${serializeFrontmatter(fm)}${out}`, warnings };
 }
 
 // ── Fetchers ──────────────────────────────────────────────────────────────────
@@ -460,19 +738,104 @@ async function fetchFromRepo(
   }
 }
 
-/** Image fetcher — v1 stub. Returns instructions for the agent to handle the
- *  image itself in the next turn via its native vision capability. */
-function fetchFromImage(value: string): FetchResult {
+/**
+ * Image fetcher — two modes:
+ *  1. **Vision request** (default): `value` is a path to a screenshot. We
+ *     return a structured instruction to the agent asking it to extract
+ *     brand tokens with its vision capability and call `read_brand` again
+ *     with the JSON-stringified token bag.
+ *  2. **JSON ingest** (followup): `value` is a JSON string of the shape
+ *     `{ colors: string[], fonts: string[], spacings: number[] }`. We parse
+ *     it into DesignTokens and feed them through the normal synthesis
+ *     pipeline.
+ *
+ *  Backwards-compat: an unparseable JSON-looking value falls back to the
+ *  vision request stub with a warning rather than crashing.
+ */
+async function fetchFromImage(value: string): Promise<FetchResult> {
+  const warnings: string[] = [];
+  const trimmed = value.trim();
+
+  // Mode 2: JSON ingest. Detect by leading `{` to avoid accidentally parsing
+  // paths that happen to be valid JSON tokens (e.g. just a number).
+  if (trimmed.startsWith('{')) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+        return imageJsonToTokens(parsed as Record<string, unknown>);
+      }
+      warnings.push('Image JSON value was not an object; falling back to vision-extraction stub.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      warnings.push(`Image JSON parse failed (${msg}); falling back to vision-extraction stub.`);
+    }
+  }
+
+  // Mode 1: vision request. Check whether the path is a real file so we can
+  // tailor the agent-facing message; either way the result is text-only.
+  const { existsSync } = await import('node:fs');
+  const pathExists = existsSync(trimmed);
+  const visionMsg = pathExists
+    ? `Image-based brand extraction: an image is attached at \`${trimmed}\`. Look at the image with your vision capability, then call \`read_brand\` again with \`kind: "image"\` and \`value\` set to a JSON string of the extracted tokens, e.g. \`{"colors":["#1a73e8","#202124"],"fonts":["Inter","Helvetica"],"spacings":[4,8,16,24,32]}\`. Use raw px numbers for spacings.`
+    : 'Image-based brand extraction (v1 stub): attach the image in the next user message. The agent will use its vision capability to extract brand tokens from the screenshot and then call read_brand again with kind:"image" and value set to a JSON object {"colors":[...],"fonts":[...],"spacings":[...]}.';
+
   return {
     tokens: [],
-    sourceFiles: [value],
-    warnings: [
-      'Image-based brand extraction (v1 stub): attach the image in the next user message. ' +
-        'The agent will use its vision capability to extract brand tokens from the screenshot ' +
-        'and then call read_brand again with kind:"repo" or supply tokens manually. ' +
-        'Full image-to-DESIGN.md pipeline is planned for a future version.',
-    ],
+    sourceFiles: pathExists ? [trimmed] : [],
+    warnings: [...warnings, visionMsg],
   };
+}
+
+function imageJsonToTokens(obj: Record<string, unknown>): FetchResult {
+  const tokens: DesignToken[] = [];
+  const colors = Array.isArray(obj['colors']) ? obj['colors'] : [];
+  for (let i = 0; i < colors.length; i++) {
+    const c = colors[i];
+    if (typeof c === 'string' && c.length > 0) {
+      tokens.push({
+        schemaVersion: 1,
+        type: 'color',
+        name: `image-color-${i}`,
+        value: c,
+        origin: 'manual',
+      });
+    }
+  }
+  const fonts = Array.isArray(obj['fonts']) ? obj['fonts'] : [];
+  for (let i = 0; i < fonts.length; i++) {
+    const f = fonts[i];
+    if (typeof f === 'string' && f.length > 0) {
+      tokens.push({
+        schemaVersion: 1,
+        type: 'fontFamily',
+        name: `image-font-${i}`,
+        value: f,
+        origin: 'manual',
+      });
+    }
+  }
+  const spacings = Array.isArray(obj['spacings']) ? obj['spacings'] : [];
+  for (let i = 0; i < spacings.length; i++) {
+    const s = spacings[i];
+    if (typeof s === 'number' && Number.isFinite(s)) {
+      tokens.push({
+        schemaVersion: 1,
+        type: 'spacing',
+        name: `image-spacing-${i}`,
+        value: `${s}px`,
+        origin: 'manual',
+      });
+    } else if (typeof s === 'string' && s.length > 0) {
+      tokens.push({
+        schemaVersion: 1,
+        type: 'spacing',
+        name: `image-spacing-${i}`,
+        value: s,
+        origin: 'manual',
+      });
+    }
+  }
+  return { tokens, sourceFiles: [], warnings: [] };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -579,7 +942,7 @@ export function makeReadBrandTool(
       } else if (source.kind === 'repo') {
         result = await fetchFromRepo(source.value, signal, log);
       } else {
-        result = fetchFromImage(source.value);
+        result = await fetchFromImage(source.value);
       }
 
       const { tokens, sourceFiles, warnings } = result;
@@ -591,6 +954,12 @@ export function makeReadBrandTool(
         sourceFiles,
       });
 
+      // Slice 2.2 — within-invocation conflict detection (informational only).
+      const conflicts = detectTokenConflicts(tokens);
+      // Slice 2.3 / 2.4 — type ramp and spacing scale inference.
+      const typeRamp = inferTypeRamp(extractFontSizesPx(tokens));
+      const spacingScale = inferSpacingScale(extractSpacingsPx(tokens));
+
       let designMdPath: string | null = null;
 
       // Write DESIGN.md if workspace + fs deps are available
@@ -601,12 +970,20 @@ export function makeReadBrandTool(
 
         try {
           let content: string;
+          const buildOpts: BuildDesignMdOpts = {
+            source: { kind: source.kind, value: source.value },
+            conflicts,
+            typeRamp,
+            spacingScale,
+          };
           const exists = await deps.fs.exists(mdPath);
           if (!exists || mergeMode === 'replace') {
-            content = buildDesignMd(ds);
+            content = buildDesignMd(ds, buildOpts);
           } else {
             const existing = await deps.fs.readFile(mdPath);
-            content = mergeDesignMd(existing, ds);
+            const merged = mergeDesignMd(existing, ds, buildOpts);
+            content = merged.content;
+            for (const w of merged.warnings) warnings.push(w);
           }
           await deps.fs.writeFile(mdPath, content);
           log?.info('[read_brand] DESIGN.md written', { path: mdPath, mode: mergeMode });
@@ -631,6 +1008,13 @@ export function makeReadBrandTool(
         `- Shadows: ${ds.shadows.length}`,
         '',
       ];
+
+      if (conflicts.length > 0) {
+        lines.push(
+          `**Conflicts:** ${conflicts.length} token name${conflicts.length === 1 ? '' : 's'} defined with different values — see Conflicts section in DESIGN.md.`,
+          '',
+        );
+      }
 
       if (designMdPath) {
         lines.push(`**DESIGN.md updated** at \`${designMdPath}\` (mode: ${mergeMode})`);

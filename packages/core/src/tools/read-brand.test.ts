@@ -9,7 +9,13 @@
 import { StoredDesignSystem } from '@atv-design/shared';
 import { describe, expect, it } from 'vitest';
 import type { DesignToken } from '../brand/index.js';
-import { makeReadBrandTool, synthesizeBrand } from './read-brand.js';
+import {
+  detectTokenConflicts,
+  dimensionToPx,
+  makeReadBrandTool,
+  parseDesignMdFrontmatter,
+  synthesizeBrand,
+} from './read-brand.js';
 
 // ── synthesizeBrand ───────────────────────────────────────────────────────────
 
@@ -312,7 +318,7 @@ This content must survive the merge.
   });
 });
 
-// ── Image fetcher stub ──────────────────────────────��─────────────────────────
+// ── Image fetcher stub ────────────────────────────────────────────────────────
 
 describe('image fetcher stub', () => {
   it('returns a helpful warning about the v1 stub', async () => {
@@ -336,5 +342,428 @@ describe('image fetcher stub', () => {
     expect(text).toContain('Warnings');
     expect(result.details?.warnings.length).toBeGreaterThan(0);
     expect(result.details?.warnings[0]).toContain('v1 stub');
+  });
+
+  it('parses a JSON value into tokens and feeds the normal pipeline', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const workspaceDir = await mkdtemp(join(tmpdir(), 'atv-image-json-'));
+    const memFs: Record<string, string> = {};
+    const mockFs = {
+      readFile: async (p: string) => memFs[p] ?? '',
+      writeFile: async (p: string, content: string) => {
+        memFs[p] = content;
+      },
+      exists: async (p: string) => p in memFs,
+    };
+
+    const tool = makeReadBrandTool({
+      workspacePath: workspaceDir,
+      fs: mockFs,
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+    });
+
+    const json = JSON.stringify({
+      colors: ['#1a73e8', '#202124'],
+      fonts: ['Inter', 'Helvetica'],
+      spacings: [4, 8, 16, 24, 32],
+    });
+
+    const result = await tool.execute(
+      'test-id',
+      {
+        source: { kind: 'image', value: json },
+      },
+      undefined,
+    );
+
+    expect(result.details?.colorsFound).toBe(2);
+    expect(result.details?.fontsFound).toBe(2);
+    expect(result.details?.spacingFound).toBe(5);
+
+    const mdPath = join(workspaceDir, 'DESIGN.md');
+    expect(memFs[mdPath]).toBeDefined();
+    expect(memFs[mdPath]).toContain('#1a73e8');
+    expect(memFs[mdPath]).toContain('Inter');
+
+    await rm(workspaceDir, { recursive: true, force: true });
+  });
+
+  it('falls back to vision stub on malformed JSON without crashing', async () => {
+    const tool = makeReadBrandTool({
+      workspacePath: null,
+      fs: null,
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+    });
+
+    const result = await tool.execute(
+      'test-id',
+      {
+        // Starts with { so we attempt JSON.parse, but it's malformed.
+        source: { kind: 'image', value: '{not valid json' },
+      },
+      undefined,
+    );
+
+    expect(result.details?.warnings.some((w) => w.includes('JSON'))).toBe(true);
+    // And we still emit the fallback stub message
+    expect(result.details?.warnings.some((w) => w.includes('v1 stub'))).toBe(true);
+  });
+});
+
+// ── detectTokenConflicts ──────────────────────────────────────────────────────
+
+describe('detectTokenConflicts()', () => {
+  it('returns empty when no name collisions exist', () => {
+    const tokens: DesignToken[] = [
+      { schemaVersion: 1, type: 'color', name: 'a', value: '#fff', origin: 'css-vars' },
+      { schemaVersion: 1, type: 'color', name: 'b', value: '#000', origin: 'css-vars' },
+    ];
+    expect(detectTokenConflicts(tokens)).toEqual([]);
+  });
+
+  it('returns empty when same name has the same value across sources', () => {
+    const tokens: DesignToken[] = [
+      { schemaVersion: 1, type: 'color', name: 'a', value: '#fff', origin: 'css-vars' },
+      { schemaVersion: 1, type: 'color', name: 'a', value: '#fff', origin: 'dtcg-json' },
+    ];
+    expect(detectTokenConflicts(tokens)).toEqual([]);
+  });
+
+  it('reports a conflict when one name has two distinct values', () => {
+    const tokens: DesignToken[] = [
+      { schemaVersion: 1, type: 'color', name: '--primary', value: '#1a73e8', origin: 'css-vars' },
+      {
+        schemaVersion: 1,
+        type: 'color',
+        name: '--primary',
+        value: '#1e88e5',
+        origin: 'dtcg-json',
+      },
+    ];
+    const conflicts = detectTokenConflicts(tokens);
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]?.name).toBe('--primary');
+    expect(conflicts[0]?.values).toHaveLength(2);
+    const sources = conflicts[0]?.values.map((v) => v.source) ?? [];
+    expect(sources).toContain('css-vars');
+    expect(sources).toContain('dtcg-json');
+  });
+
+  it('sorts conflicts by name for stable output', () => {
+    const tokens: DesignToken[] = [
+      { schemaVersion: 1, type: 'color', name: 'z', value: '#1', origin: 'css-vars' },
+      { schemaVersion: 1, type: 'color', name: 'z', value: '#2', origin: 'dtcg-json' },
+      { schemaVersion: 1, type: 'color', name: 'a', value: '#3', origin: 'css-vars' },
+      { schemaVersion: 1, type: 'color', name: 'a', value: '#4', origin: 'dtcg-json' },
+    ];
+    const conflicts = detectTokenConflicts(tokens);
+    expect(conflicts.map((c) => c.name)).toEqual(['a', 'z']);
+  });
+});
+
+// ── dimensionToPx ─────────────────────────────────────────────────────────────
+
+describe('dimensionToPx()', () => {
+  it('parses px values', () => {
+    expect(dimensionToPx('16px')).toBe(16);
+    expect(dimensionToPx('  4px  ')).toBe(4);
+  });
+
+  it('converts rem to px (1rem = 16px)', () => {
+    expect(dimensionToPx('1rem')).toBe(16);
+    expect(dimensionToPx('1.5rem')).toBe(24);
+  });
+
+  it('converts em to px', () => {
+    expect(dimensionToPx('2em')).toBe(32);
+  });
+
+  it('treats unitless numbers as px', () => {
+    expect(dimensionToPx('12')).toBe(12);
+  });
+
+  it('returns null for unsupported values', () => {
+    expect(dimensionToPx('100%')).toBeNull();
+    expect(dimensionToPx('4px 8px')).toBeNull();
+    expect(dimensionToPx('auto')).toBeNull();
+    expect(dimensionToPx('')).toBeNull();
+  });
+});
+
+// ── parseDesignMdFrontmatter ──────────────────────────────────────────────────
+
+describe('parseDesignMdFrontmatter()', () => {
+  it('returns null frontmatter when content has no leading ---', () => {
+    const { frontmatter, body, malformed } = parseDesignMdFrontmatter('# Design System\n\nHi');
+    expect(frontmatter).toBeNull();
+    expect(body).toContain('# Design System');
+    expect(malformed).toBe(false);
+  });
+
+  it('parses a complete frontmatter block', () => {
+    const md = [
+      '---',
+      'schemaVersion: 1',
+      'extractedAt: 2025-01-15T12:34:56.789Z',
+      'sources:',
+      '  - url:https://example.com',
+      '  - repo:/path/to/repo',
+      '---',
+      '',
+      '# Design System',
+      'body',
+    ].join('\n');
+    const { frontmatter, body, malformed } = parseDesignMdFrontmatter(md);
+    expect(malformed).toBe(false);
+    expect(frontmatter).not.toBeNull();
+    expect(frontmatter?.schemaVersion).toBe(1);
+    expect(frontmatter?.extractedAt).toBe('2025-01-15T12:34:56.789Z');
+    expect(frontmatter?.sources).toEqual(['url:https://example.com', 'repo:/path/to/repo']);
+    expect(body.startsWith('# Design System')).toBe(true);
+  });
+
+  it('flags malformed frontmatter (missing closer) without crashing', () => {
+    const md = '---\nschemaVersion: 1\n# Design System\nbody';
+    const { frontmatter, malformed } = parseDesignMdFrontmatter(md);
+    expect(frontmatter).toBeNull();
+    expect(malformed).toBe(true);
+  });
+
+  it('flags malformed frontmatter (missing required fields)', () => {
+    const md = '---\nfoo: bar\n---\n\n# Design System\n';
+    const { frontmatter, malformed } = parseDesignMdFrontmatter(md);
+    expect(frontmatter).toBeNull();
+    expect(malformed).toBe(true);
+  });
+});
+
+// ── Full execute() — frontmatter / conflicts / ramp / scale sections ─────────
+
+describe('execute() — DESIGN.md sections from new helpers', () => {
+  it('writes schemaVersion frontmatter when DESIGN.md is fresh', async () => {
+    const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const workspaceDir = await mkdtemp(join(tmpdir(), 'atv-fm-'));
+    const tempDir = await mkdtemp(join(tmpdir(), 'atv-fm-repo-'));
+    await writeFile(
+      join(tempDir, 'tokens.json'),
+      JSON.stringify({
+        color: { primary: { $value: '#635BFF', $type: 'color' } },
+      }),
+      'utf-8',
+    );
+
+    const memFs: Record<string, string> = {};
+    const mockFs = {
+      readFile: async (p: string) => memFs[p] ?? '',
+      writeFile: async (p: string, content: string) => {
+        memFs[p] = content;
+      },
+      exists: async (p: string) => p in memFs,
+    };
+
+    const tool = makeReadBrandTool({
+      workspacePath: workspaceDir,
+      fs: mockFs,
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+    });
+
+    await tool.execute('test-id', { source: { kind: 'repo', value: tempDir } }, undefined);
+
+    const mdPath = join(workspaceDir, 'DESIGN.md');
+    const content = memFs[mdPath] ?? '';
+    expect(content.startsWith('---\n')).toBe(true);
+    expect(content).toMatch(/schemaVersion: 1/);
+    expect(content).toMatch(/extractedAt: \d{4}-\d{2}-\d{2}T/);
+    expect(content).toMatch(/sources:/);
+    expect(content).toContain(`- repo:${tempDir}`);
+
+    await Promise.all([
+      rm(tempDir, { recursive: true, force: true }),
+      rm(workspaceDir, { recursive: true, force: true }),
+    ]);
+  });
+
+  it('accumulates frontmatter sources across re-runs and caps at 10', async () => {
+    const { mkdtemp, rm } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const workspaceDir = await mkdtemp(join(tmpdir(), 'atv-acc-'));
+
+    // Seed an existing DESIGN.md with 10 prior sources.
+    const memFs: Record<string, string> = {};
+    const mdPath = join(workspaceDir, 'DESIGN.md');
+    const priorSources = Array.from({ length: 10 }, (_, i) => `repo:/prior-${i}`);
+    memFs[mdPath] = [
+      '---',
+      'schemaVersion: 1',
+      'extractedAt: 2025-01-01T00:00:00.000Z',
+      'sources:',
+      ...priorSources.map((s) => `  - ${s}`),
+      '---',
+      '',
+      '# Design System',
+      '',
+      '> seed',
+      '',
+    ].join('\n');
+
+    const mockFs = {
+      readFile: async (p: string) => memFs[p] ?? '',
+      writeFile: async (p: string, content: string) => {
+        memFs[p] = content;
+      },
+      exists: async (p: string) => p in memFs,
+    };
+
+    const tool = makeReadBrandTool({
+      workspacePath: workspaceDir,
+      fs: mockFs,
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+    });
+
+    // Image kind with JSON value — avoids needing a real repo.
+    await tool.execute(
+      'test-id',
+      {
+        source: {
+          kind: 'image',
+          value: JSON.stringify({ colors: ['#abc123'], fonts: [], spacings: [] }),
+        },
+      },
+      undefined,
+    );
+
+    const content = memFs[mdPath] ?? '';
+    const parsed = parseDesignMdFrontmatter(content);
+    expect(parsed.frontmatter).not.toBeNull();
+    expect(parsed.frontmatter?.sources.length).toBe(10);
+    // Oldest dropped, new one appended last.
+    expect(parsed.frontmatter?.sources[0]).toBe('repo:/prior-1');
+    expect(parsed.frontmatter?.sources[9]).toMatch(/^image:/);
+
+    await rm(workspaceDir, { recursive: true, force: true });
+  });
+
+  it('emits a Conflicts section when token names disagree across origins', async () => {
+    const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const workspaceDir = await mkdtemp(join(tmpdir(), 'atv-conflict-'));
+    const tempDir = await mkdtemp(join(tmpdir(), 'atv-conflict-repo-'));
+
+    // Build a repo where tokens.json AND a CSS file both define --primary
+    // with different values → fetcher emits two tokens with the same name.
+    await writeFile(
+      join(tempDir, 'tokens.json'),
+      JSON.stringify({
+        primary: { $value: '#1a73e8', $type: 'color' },
+      }),
+      'utf-8',
+    );
+    await writeFile(join(tempDir, 'app.css'), ':root {\n  --primary: #1e88e5;\n}\n', 'utf-8');
+
+    const memFs: Record<string, string> = {};
+    const mockFs = {
+      readFile: async (p: string) => memFs[p] ?? '',
+      writeFile: async (p: string, content: string) => {
+        memFs[p] = content;
+      },
+      exists: async (p: string) => p in memFs,
+    };
+
+    const tool = makeReadBrandTool({
+      workspacePath: workspaceDir,
+      fs: mockFs,
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+    });
+
+    await tool.execute('test-id', { source: { kind: 'repo', value: tempDir } }, undefined);
+
+    const mdPath = join(workspaceDir, 'DESIGN.md');
+    const content = memFs[mdPath] ?? '';
+    expect(content).toContain('## Conflicts');
+    expect(content).toContain('primary');
+    expect(content).toContain('#1a73e8');
+    expect(content).toContain('#1e88e5');
+    // First-source-wins is unchanged: both values still appear in the Colors
+    // list — Conflicts is purely informational.
+    expect(content).toContain('## Colors');
+
+    await Promise.all([
+      rm(tempDir, { recursive: true, force: true }),
+      rm(workspaceDir, { recursive: true, force: true }),
+    ]);
+  });
+
+  it('emits Type Ramp and Spacing Scale sections when enough signal is present', async () => {
+    const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+    const { join } = await import('node:path');
+    const { tmpdir } = await import('node:os');
+
+    const workspaceDir = await mkdtemp(join(tmpdir(), 'atv-ramp-'));
+    const tempDir = await mkdtemp(join(tmpdir(), 'atv-ramp-repo-'));
+
+    // DTCG file with multiple font sizes (typed as dimension under a fontSize
+    // group, so the importer's path-based resolver picks them up as fontSize)
+    // and multiple spacing values.
+    await writeFile(
+      join(tempDir, 'tokens.json'),
+      JSON.stringify({
+        fontSize: {
+          xs: { $value: '12px', $type: 'fontSize' },
+          sm: { $value: '14px', $type: 'fontSize' },
+          base: { $value: '16px', $type: 'fontSize' },
+          lg: { $value: '20px', $type: 'fontSize' },
+          xl: { $value: '24px', $type: 'fontSize' },
+          xxl: { $value: '32px', $type: 'fontSize' },
+        },
+        spacing: {
+          1: { $value: '4px', $type: 'dimension' },
+          2: { $value: '8px', $type: 'dimension' },
+          3: { $value: '16px', $type: 'dimension' },
+          4: { $value: '24px', $type: 'dimension' },
+          5: { $value: '32px', $type: 'dimension' },
+        },
+      }),
+      'utf-8',
+    );
+
+    const memFs: Record<string, string> = {};
+    const mockFs = {
+      readFile: async (p: string) => memFs[p] ?? '',
+      writeFile: async (p: string, content: string) => {
+        memFs[p] = content;
+      },
+      exists: async (p: string) => p in memFs,
+    };
+
+    const tool = makeReadBrandTool({
+      workspacePath: workspaceDir,
+      fs: mockFs,
+      log: { info: () => undefined, warn: () => undefined, error: () => undefined },
+    });
+
+    await tool.execute('test-id', { source: { kind: 'repo', value: tempDir } }, undefined);
+
+    const mdPath = join(workspaceDir, 'DESIGN.md');
+    const content = memFs[mdPath] ?? '';
+    expect(content).toContain('## Type Ramp');
+    expect(content).toMatch(/h1: `\d+px`/);
+    expect(content).toMatch(/body: `\d+px`/);
+    expect(content).toContain('## Spacing Scale');
+    expect(content).toMatch(/Base unit: `\d+px`/);
+
+    await Promise.all([
+      rm(tempDir, { recursive: true, force: true }),
+      rm(workspaceDir, { recursive: true, force: true }),
+    ]);
   });
 });
