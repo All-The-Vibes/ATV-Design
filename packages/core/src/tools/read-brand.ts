@@ -13,7 +13,7 @@
  */
 
 import type { StoredDesignSystem } from '@atv-design/shared';
-import { STORED_DESIGN_SYSTEM_SCHEMA_VERSION } from '@atv-design/shared';
+import { STORED_DESIGN_SYSTEM_SCHEMA_VERSION, findSystemChrome } from '@atv-design/shared';
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
 import { Type } from '@sinclair/typebox';
 import type { DesignToken } from '../brand/index.js';
@@ -206,12 +206,10 @@ async function fetchFromUrl(
   const warnings: string[] = [];
   let executablePath: string;
 
-  // Lazy-import chrome discovery inline to avoid coupling core → exporters at
-  // module level. We duplicate the essential logic here.
+  // Use shared chrome-discovery (packages/shared/src/chrome-discovery.ts) so
+  // we don't duplicate platform-specific path heuristics with packages/exporters.
   try {
-    // Try the system chrome paths directly via puppeteer-core's own resolver
-    // first; fall back to a minimal inline scan.
-    executablePath = await findChrome();
+    executablePath = await findSystemChrome();
   } catch {
     return {
       tokens: [],
@@ -524,61 +522,6 @@ async function walkForFiles(
 
   await walk(dir, 0);
   return results;
-}
-
-/** Minimal inline Chrome finder so we don't import packages/exporters. */
-async function findChrome(): Promise<string> {
-  const { existsSync } = await import('node:fs');
-  const { execFileSync } = await import('node:child_process');
-
-  const platform = process.platform;
-
-  if (platform === 'darwin') {
-    const paths = [
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    ];
-    for (const p of paths) {
-      if (existsSync(p)) return p;
-    }
-  } else if (platform === 'win32') {
-    const env = process.env;
-    const bases = [
-      env['PROGRAMFILES'] ?? 'C:\\Program Files',
-      env['PROGRAMFILES(X86)'] ?? 'C:\\Program Files (x86)',
-      env['LOCALAPPDATA'] ?? '',
-    ];
-    const rel = [
-      'Google\\Chrome\\Application\\chrome.exe',
-      'Microsoft\\Edge\\Application\\msedge.exe',
-      'Chromium\\Application\\chromium.exe',
-    ];
-    for (const base of bases) {
-      for (const r of rel) {
-        const full = `${base}\\${r}`;
-        if (existsSync(full)) return full;
-      }
-    }
-  } else {
-    // Linux
-    for (const bin of [
-      'google-chrome-stable',
-      'google-chrome',
-      'chromium-browser',
-      'chromium',
-      'microsoft-edge',
-    ]) {
-      try {
-        const result = execFileSync('which', [bin], { encoding: 'utf-8', timeout: 2000 }).trim();
-        if (result) return result;
-      } catch {
-        // not found
-      }
-    }
-  }
-
-  throw new Error('Chrome not found');
 }
 
 function inferTokenType(rawType: string, name: string, value: string): DesignToken['type'] {

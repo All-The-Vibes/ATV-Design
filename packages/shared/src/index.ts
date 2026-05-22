@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { CodesignErrorCode } from './error-codes';
 
 export const ProviderId = z.enum([
   'anthropic',
@@ -222,17 +221,10 @@ export const ProjectDraft = z.object({
 });
 export type ProjectDraft = z.infer<typeof ProjectDraft>;
 
-export class CodesignError extends Error {
-  constructor(
-    message: string,
-    // Accept a known registry code (preferred) or a free-form string (backward compat).
-    public readonly code: CodesignErrorCode | string,
-    options?: { cause?: unknown },
-  ) {
-    super(message, options);
-    this.name = 'CodesignError';
-  }
-}
+export { CodesignError } from './codesign-error';
+
+export { findSystemChrome } from './chrome-discovery';
+export type { ChromeDiscoveryDeps } from './chrome-discovery';
 
 export {
   BUILTIN_PROVIDERS,
