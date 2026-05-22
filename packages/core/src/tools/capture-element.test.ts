@@ -29,8 +29,12 @@ const mocks: {
   close: vi.fn<(...args: unknown[]) => Promise<void>>(),
 };
 
-vi.mock('@atv-design/shared', async () => {
-  const actual = await vi.importActual<typeof import('@atv-design/shared')>('@atv-design/shared');
+// capture-element.ts imports findSystemChrome from the /node subpath
+// (the renderer-safe split). The mock must target that exact specifier —
+// mocking '@atv-design/shared' alone leaves the real implementation in place.
+vi.mock('@atv-design/shared/node', async () => {
+  const actual =
+    await vi.importActual<typeof import('@atv-design/shared/node')>('@atv-design/shared/node');
   return {
     ...actual,
     findSystemChrome: (...args: unknown[]) => mocks.findSystemChrome(...args),
