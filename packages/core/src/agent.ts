@@ -62,6 +62,7 @@ import type {
 import { reasoningForModel } from './index.js';
 import { type CoreLogger, NOOP_LOGGER } from './logger.js';
 import { composeSystemPrompt } from './prompts/index.js';
+import { makeCaptureElementTool } from './tools/capture-element.js';
 import { makeDeclareTweakSchemaTool } from './tools/declare-tweak-schema.js';
 import { type DoneRuntimeVerifier, makeDoneTool } from './tools/done.js';
 import {
@@ -442,6 +443,11 @@ const AGENTIC_TOOL_GUIDANCE = [
   '- When the artifact establishes or changes reusable decisions (palette, type scale, component rules, motion, accessibility constraints), update `DESIGN.md` with `str_replace_based_edit_tool` before `done`.',
   '- Do not let `DESIGN.md` drift behind the artifact. A polished artifact with stale system rules is incomplete.',
   '- If no workspace `DESIGN.md` exists, use the default design-system summary as a starting point; do not invent third-party brand values from memory.',
+  '',
+  '### Live element capture (capture_element)',
+  '- When the user names a real-world reference ("like the Stripe pricing card", "match this nav from linear.app"), use `capture_element` to fetch the exact element instead of guessing from memory. Pass `url` (http or https), `selector` (CSS), and `format`: `"png"` for a screenshot path, `"dom"` for trimmed outerHTML, `"styles"` for curated computed styles (color, font, spacing, border-radius, box-shadow, etc.), or `"all"` for the lot.',
+  '- PNG captures land at `<workspace>/assets/captures/<hash>.png` — reference that path in `<img src="...">` for moodboards or pixel-pull comparisons. Captures inherit attribution discipline from `read_brand`: do not pass them off as the user\'s own brand assets.',
+  '- This tool launches system Chrome (no bundled browser). If discovery fails the call returns an error result with an install hint — drop down to `read_brand` (repo / local) or proceed without the reference.',
   '',
   '### Token-budget discipline (CRITICAL)',
   '- `view("index.html")` WITHOUT `view_range` returns the ENTIRE file — each call accumulates in your context window.',
@@ -849,6 +855,16 @@ export async function generateViaAgent(
       makeReadBrandTool({
         workspacePath: deps.workspacePath,
         fs: brandFs,
+        log,
+      }) as unknown as AgentTool<TSchema, unknown>,
+    );
+    // capture_element shares Chrome discovery with read_brand. designId stays
+    // null for now — the existing wiring uses workspacePath as the design
+    // root, so capture_element falls back to `<workspace>/assets/captures/...`.
+    defaultTools.push(
+      makeCaptureElementTool({
+        workspacePath: deps.workspacePath,
+        designId: null,
         log,
       }) as unknown as AgentTool<TSchema, unknown>,
     );

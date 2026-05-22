@@ -64,6 +64,13 @@ export {
   type DoneError,
   type DoneRuntimeVerifier,
 } from './tools/done.js';
+export {
+  makeCaptureElementTool,
+  type CaptureElementDeps,
+  type CaptureElementDetails,
+  type CaptureElementFs,
+  type CaptureElementResult,
+} from './tools/capture-element.js';
 
 export interface AttachmentContext {
   name: string;
