@@ -58,11 +58,12 @@ The v0.2 tool surface is pi's seven built-ins plus Open CoDesign design tools:
 - `preview(path)` renders artifacts and returns console errors, asset errors, DOM outline, metrics, and screenshots for vision models.
 - `gen_image(prompt, path)` writes generated images to disk when capability and provider config allow it.
 - `read_brand(source)` ingests brand identity from a live URL, Git repo, or screenshot image and writes/updates the workspace DESIGN.md with extracted color, font, and spacing tokens.
+- `capture_element(url, selector, format)` fetches a single live element from an external URL via system Chrome and returns its PNG screenshot path, outer HTML, or computed-style tokens. Lazy-loaded (HC #6) and gated through the same permission UI as `read_brand`.
 - `tweaks(blocks)` declares editable controls across files.
 - `todos(items)` shows task state for complex turns.
 - `done(path)` ends a turn after preview self-check.
 
-Do not reintroduce a verifier subagent, snip tool, custom bash tool, custom list-files tool, or agent-written working memory for v0.2 unless the plan changes.
+Do not reintroduce a verifier subagent, agent-side artifact snip tool, custom bash tool, custom list-files tool, or agent-written working memory for v0.2 unless the plan changes. The "snip tool" here is the historical v0.1 tool the *agent* used to clip pieces of its own generated artifact — it is **not** the user-side inline-comment / Comment Mode feature (which is allowed and already implemented in `apps/desktop`) nor the agent-side `capture_element` tool above (which captures pieces from *external* URLs, not the agent's own output).
 
 ### Design System
 
