@@ -1,4 +1,8 @@
-import { CodesignError, GITHUB_COPILOT_PROVIDER_ID } from '@atv-design/shared';
+import {
+  AZURE_OPENAI_PROVIDER_ID,
+  CodesignError,
+  GITHUB_COPILOT_PROVIDER_ID,
+} from '@atv-design/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { resolveActiveApiKey, resolveApiKeyWithKeylessFallback } from './resolve-api-key';
 
@@ -8,6 +12,7 @@ function makeDeps(
   return {
     getCodexAccessToken: vi.fn().mockResolvedValue('oauth-token'),
     getCopilotSessionToken: vi.fn().mockResolvedValue('copilot-session-token'),
+    getAzureAccessToken: vi.fn().mockResolvedValue('azure-entra-token'),
     getApiKeyForProvider: vi.fn().mockReturnValue('stored-key'),
     ...overrides,
   };
@@ -77,6 +82,25 @@ describe('resolveActiveApiKey', () => {
     });
   });
 
+  it('azure: returns the refreshed Entra access token', async () => {
+    const deps = makeDeps();
+    const token = await resolveActiveApiKey(AZURE_OPENAI_PROVIDER_ID, deps);
+    expect(token).toBe('azure-entra-token');
+    expect(deps.getAzureAccessToken).toHaveBeenCalledTimes(1);
+    expect(deps.getApiKeyForProvider).not.toHaveBeenCalled();
+  });
+
+  it('azure: wraps a credential failure in CodesignError(PROVIDER_AUTH_MISSING)', async () => {
+    const deps = makeDeps({
+      getAzureAccessToken: vi.fn().mockRejectedValue(new Error('az login required')),
+    });
+    await expect(resolveActiveApiKey(AZURE_OPENAI_PROVIDER_ID, deps)).rejects.toMatchObject({
+      name: 'CodesignError',
+      code: 'PROVIDER_AUTH_MISSING',
+      message: 'az login required',
+    });
+  });
+
   it('non-codex: returns the stored API key', async () => {
     const deps = makeDeps();
     const key = await resolveActiveApiKey('anthropic', deps);
@@ -143,6 +167,7 @@ describe('resolveApiKeyWithKeylessFallback', () => {
     return {
       getCodexAccessToken: vi.fn().mockResolvedValue('oauth-token'),
       getCopilotSessionToken: vi.fn().mockResolvedValue('copilot-session-token'),
+      getAzureAccessToken: vi.fn().mockResolvedValue('azure-entra-token'),
       getApiKeyForProvider: vi.fn().mockReturnValue('stored-key'),
       ...overrides,
     };

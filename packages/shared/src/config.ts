@@ -36,6 +36,13 @@ export const WireApiSchema = z.enum([
   'openai-responses',
   'anthropic',
   'openai-codex-responses',
+  // Azure OpenAI / AI Foundry. Routed to pi-ai's native `azure-openai-responses`
+  // provider, which wraps the official AzureOpenAI SDK so the
+  // `/openai/deployments/{deployment}/responses?api-version=…` URL is built
+  // correctly. The plain `openai-chat` wire cannot serve Azure: the OpenAI SDK
+  // appends `/chat/completions` AFTER any baseUrl query string, corrupting the
+  // required api-version param (verified empirically).
+  'azure-openai-responses',
 ]);
 export type WireApi = z.infer<typeof WireApiSchema>;
 
@@ -48,6 +55,22 @@ export type WireApi = z.infer<typeof WireApiSchema>;
  */
 export const CHATGPT_CODEX_PROVIDER_ID = 'chatgpt-codex';
 export const GITHUB_COPILOT_PROVIDER_ID = 'github-copilot';
+/**
+ * System-managed provider id for Azure OpenAI / AI Foundry via Entra ID.
+ * Authenticates with a per-turn-refreshed Microsoft Entra bearer token
+ * (scope `https://cognitiveservices.azure.com/.default`) injected as
+ * `Authorization: Bearer …`, since Foundry resources commonly disable
+ * api-key auth (`disableLocalAuth: true`). Treated as a dynamic-bearer
+ * provider, like Copilot and Codex.
+ */
+export const AZURE_OPENAI_PROVIDER_ID = 'azure-openai';
+/**
+ * Azure api-version for the Responses API. pi-ai's azure provider normalizes
+ * the base URL to the `/openai/v1` path, which accepts ONLY `api-version=preview`
+ * (or none) — dated versions like `2025-04-01-preview` return 400 "API version
+ * not supported" on that path. Verified against a live Foundry resource.
+ */
+export const AZURE_OPENAI_DEFAULT_API_VERSION = 'preview';
 export const GITHUB_COPILOT_MODELS_HINT = [
   'gpt-5.5',
   'claude-opus-4.7',

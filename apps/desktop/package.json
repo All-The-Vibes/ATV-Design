@@ -26,6 +26,7 @@
     "test:e2e:ui": "node scripts/e2e-run.cjs --ui"
   },
   "dependencies": {
+    "@azure/identity": "^4.13.1",
     "better-sqlite3": "^12.9.0",
     "electron-log": "^5",
     "electron-updater": "^6.3.9",

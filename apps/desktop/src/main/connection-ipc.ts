@@ -16,6 +16,7 @@ import {
   stripInferenceEndpointSuffix,
 } from '@atv-design/shared';
 import { buildAuthHeaders, buildAuthHeadersForWire } from './auth-headers';
+import { getAzureAccessToken } from './azure-identity-ipc';
 import { getCodexTokenStore } from './codex-oauth-ipc';
 import { getCopilotSessionToken } from './copilot-oauth-ipc';
 import { ipcMain } from './electron-runtime';
@@ -417,6 +418,7 @@ export function resolveCredentialsForProvider(
   return resolveApiKeyWithKeylessFallback(providerId, resolved.allowKeyless, {
     getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
     getCopilotSessionToken,
+    getAzureAccessToken,
     getApiKeyForProvider,
   })
     .then((apiKey) => ({
@@ -990,6 +992,7 @@ export function registerConnectionIpc(): void {
         apiKey = await resolveApiKeyWithKeylessFallback(raw, isKeylessProviderAllowed(raw, entry), {
           getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
           getCopilotSessionToken,
+          getAzureAccessToken,
           getApiKeyForProvider,
         });
       } catch (err) {

@@ -7,6 +7,7 @@
  */
 
 import {
+  AZURE_OPENAI_DEFAULT_API_VERSION,
   type ChatMessage,
   CodesignError,
   ERROR_CODES,
@@ -209,7 +210,9 @@ function synthesizeWireModel(
         ? 'openai-responses'
         : wire === 'openai-codex-responses'
           ? 'openai-codex-responses'
-          : 'openai-completions';
+          : wire === 'azure-openai-responses'
+            ? 'azure-openai-responses'
+            : 'openai-completions';
   const base: PiModel = {
     id: modelId,
     name: modelId,
@@ -315,6 +318,19 @@ export async function complete(
   if (opts.reasoning !== undefined) piOpts.reasoning = opts.reasoning;
   if (opts.httpHeaders !== undefined) piOpts.headers = { ...opts.httpHeaders };
 
+  // Azure / Foundry with Entra ID: the bearer must ride in the Authorization
+  // header, not the api-key. pi-ai's azure-openai-responses provider passes
+  // `apiKey` to the AzureOpenAI SDK as the `api-key` header — which Foundry
+  // rejects for an Entra token (verified: 401). It DOES merge options.headers
+  // into the SDK's defaultHeaders, so we move the resolved Entra token (carried
+  // here as `apiKey` via the dynamic-bearer getApiKey path) into
+  // `Authorization: Bearer …`, where Azure accepts it (verified: 200). The
+  // api-key header still goes out with the placeholder, but Azure ignores it
+  // when a valid bearer is present.
+  if (opts.wire === 'azure-openai-responses' && apiKey && apiKey !== 'atv-design-keyless') {
+    piOpts.headers = { Authorization: `Bearer ${apiKey}`, ...(piOpts.headers ?? {}) };
+  }
+
   // Covers both registry-looked-up models (piModel.api) and custom-endpoint
   // models where the wire is passed explicitly via opts.wire.
   if (
@@ -338,6 +354,20 @@ export async function complete(
   }
 
   validateCodexImageInputs(opts);
+
+  // Azure OpenAI / Foundry: pi-ai's azure-openai-responses provider reads the
+  // api-version from `AZURE_OPENAI_API_VERSION` (or its azureApiVersion option,
+  // which completeSimple does not forward) and defaults the deployment name to
+  // model.id — which is exactly our modelId. The Entra bearer is carried in
+  // piOpts.headers (httpHeaders) since Foundry rejects the token as an api-key;
+  // pi-ai still requires a non-empty apiKey string to construct the client, so
+  // `apiKey` stays a placeholder and the Authorization header wins.
+  if (opts.wire === 'azure-openai-responses') {
+    if (!process.env['AZURE_OPENAI_API_VERSION']) {
+      process.env['AZURE_OPENAI_API_VERSION'] = AZURE_OPENAI_DEFAULT_API_VERSION;
+    }
+  }
+
   const result = await pi.completeSimple(piModel, piContext, piOpts);
 
   if (result.stopReason === 'error') {
