@@ -79,7 +79,8 @@ export type CanonicalWire =
   | 'anthropic'
   | 'openai-chat'
   | 'openai-responses'
-  | 'openai-codex-responses';
+  | 'openai-codex-responses'
+  | 'azure-openai-responses';
 
 /**
  * Canonical base URL to persist in config and hand to SDK clients (pi-ai,
@@ -98,10 +99,12 @@ export type CanonicalWire =
  *     version-padding would break it.
  */
 export function canonicalBaseUrl(baseUrl: string, wire: CanonicalWire): string {
-  if (wire === 'openai-codex-responses') {
-    // Non-regex trailing-slash trim. CodeQL flags `/\/+$/` as a polynomial
-    // regex (ReDoS-adjacent on long all-slash inputs). A plain while-loop
-    // is O(n) with no backtracking and makes the bound obvious to readers.
+  if (wire === 'openai-codex-responses' || wire === 'azure-openai-responses') {
+    // Pass the URL through untouched (trailing-slash trim only). For Azure the
+    // base is the bare resource endpoint (https://<res>.openai.azure.com);
+    // pi-ai's azure provider appends `/openai/v1/deployments/<deploy>/…` and
+    // the api-version itself, so version-padding here would corrupt it.
+    // Non-regex trim avoids the CodeQL polynomial-regex flag on all-slash input.
     let out = baseUrl;
     while (out.endsWith('/')) out = out.slice(0, -1);
     return out;
@@ -125,6 +128,11 @@ export function modelsEndpointUrl(baseUrl: string, wire: CanonicalWire): string 
   if (wire === 'openai-codex-responses') {
     throw new Error(
       'openai-codex-responses has no discoverable /models endpoint; use ProviderEntry.modelsHint',
+    );
+  }
+  if (wire === 'azure-openai-responses') {
+    throw new Error(
+      'azure-openai-responses has no portable /models endpoint; use ProviderEntry.modelsHint (Azure deployments are listed via the management plane, not the inference endpoint)',
     );
   }
   const base = canonicalBaseUrl(baseUrl, wire);

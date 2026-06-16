@@ -17,6 +17,7 @@ import {
 } from '@atv-design/core';
 import { detectProviderFromKey, generateImage } from '@atv-design/providers';
 import {
+  AZURE_OPENAI_PROVIDER_ID,
   ApplyCommentPayload,
   BRAND,
   CancelGenerationPayloadV1,
@@ -32,6 +33,7 @@ import type { BrowserWindow as ElectronBrowserWindow } from 'electron';
 import electronUpdater from 'electron-updater';
 import type { AgentStreamEvent } from '../preload/index';
 import { registerAppMenu } from './app-menu';
+import { getAzureAccessToken } from './azure-identity-ipc';
 import { showBootDialog, writeBootErrorSync } from './boot-fallback';
 import { registerChatMessagesIpc, registerChatMessagesUnavailableIpc } from './chat-messages-ipc';
 import {
@@ -244,6 +246,7 @@ function resolveActiveApiKeyFromState(providerId: string): Promise<string> {
   return resolveActiveApiKey(providerId, {
     getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
     getCopilotSessionToken,
+    getAzureAccessToken,
     getApiKeyForProvider,
   });
 }
@@ -252,6 +255,7 @@ function resolveApiKeyForActive(providerId: string, allowKeyless: boolean): Prom
   return resolveApiKeyWithKeylessFallback(providerId, allowKeyless, {
     getCodexAccessToken: () => getCodexTokenStore().getValidAccessToken(),
     getCopilotSessionToken,
+    getAzureAccessToken,
     getApiKeyForProvider,
   });
 }
@@ -288,7 +292,11 @@ async function maybeResolveCopilotTransport(
 }
 
 function providerUsesDynamicBearer(providerId: string): boolean {
-  return providerId === CHATGPT_CODEX_PROVIDER_ID || providerId === GITHUB_COPILOT_PROVIDER_ID;
+  return (
+    providerId === CHATGPT_CODEX_PROVIDER_ID ||
+    providerId === GITHUB_COPILOT_PROVIDER_ID ||
+    providerId === AZURE_OPENAI_PROVIDER_ID
+  );
 }
 
 function escapeRegExp(input: string): string {

@@ -1,4 +1,5 @@
 import {
+  AZURE_OPENAI_PROVIDER_ID,
   CHATGPT_CODEX_PROVIDER_ID,
   CodesignError,
   ERROR_CODES,
@@ -15,6 +16,8 @@ export interface ResolveActiveApiKeyDeps {
   getCodexAccessToken: () => Promise<string>;
   /** Returns a fresh GitHub Copilot session token. Throws when not signed in. */
   getCopilotSessionToken: () => Promise<string>;
+  /** Returns a fresh Azure Entra bearer token. Throws when `az login` is absent. */
+  getAzureAccessToken: () => Promise<string>;
   /** Returns the stored API key for the given provider. Throws when missing. */
   getApiKeyForProvider: (providerId: string) => string;
 }
@@ -61,6 +64,17 @@ export async function resolveActiveApiKey(
       );
     }
   }
+  if (providerId === AZURE_OPENAI_PROVIDER_ID) {
+    try {
+      return await deps.getAzureAccessToken();
+    } catch (err) {
+      throw new CodesignError(
+        err instanceof Error ? err.message : 'Azure sign-in required (run `az login`)',
+        ERROR_CODES.PROVIDER_AUTH_MISSING,
+        { cause: err },
+      );
+    }
+  }
   try {
     return deps.getApiKeyForProvider(providerId);
   } catch (err) {
@@ -100,6 +114,7 @@ export async function resolveApiKeyWithKeylessFallback(
       allowKeyless &&
       providerId !== CHATGPT_CODEX_PROVIDER_ID &&
       providerId !== GITHUB_COPILOT_PROVIDER_ID &&
+      providerId !== AZURE_OPENAI_PROVIDER_ID &&
       err instanceof CodesignError &&
       (err.code === ERROR_CODES.PROVIDER_AUTH_MISSING ||
         err.code === ERROR_CODES.PROVIDER_KEY_MISSING)
