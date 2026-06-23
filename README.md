@@ -16,9 +16,9 @@ See [NOTICE](./NOTICE) and [ATTRIBUTION.md](./ATTRIBUTION.md) for upstream attri
 
 ## 🎬 Watch the 73-second demo
 
-[![ATV Design demo](./assets/video/preview-frame.jpg)](./assets/video/atv-design-demo.mp4)
+<video src="https://github.com/All-The-Vibes/ATV-Design/releases/download/demo-assets/atv-design-demo.mp4" poster="https://raw.githubusercontent.com/All-The-Vibes/ATV-Design/main/assets/video/preview-frame.jpg" controls width="100%"></video>
 
-> Prompt → SaaS landing hero, rendered in your Electron app — narrated walkthrough. Click the still to play locally (`assets/video/atv-design-demo.mp4`), or watch it embedded in the GitHub README on the web.
+> Prompt → SaaS landing hero, rendered in your Electron app — narrated walkthrough. The player above streams inline on GitHub; if your viewer doesn't render it, [watch the MP4 directly](https://github.com/All-The-Vibes/ATV-Design/releases/download/demo-assets/atv-design-demo.mp4).
 
 ---
 
