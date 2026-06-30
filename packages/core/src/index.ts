@@ -18,7 +18,7 @@ import type {
   StoredDesignSystem,
   WireApi,
 } from '@atv-design/shared';
-import { CodesignError, ERROR_CODES } from '@atv-design/shared';
+import { CodesignError, ERROR_CODES, GITHUB_COPILOT_PROVIDER_ID } from '@atv-design/shared';
 import { remapProviderError } from './errors.js';
 import { type CoreLogger, NOOP_LOGGER } from './logger.js';
 import { type PromptComposeOptions, composeSystemPrompt } from './prompts/index.js';
@@ -385,6 +385,11 @@ async function runModel(input: ModelRunInput): Promise<GenerateOutput> {
   let reasoning =
     input.reasoningLevel ??
     (inferredReasoning ? reasoningForModel(input.model, input.baseUrl) : undefined);
+  // GitHub Copilot buffers extended reasoning and never streams it, tripping
+  // the gateway idle timeout (bare `terminated` after ~10 min). Pin reasoning
+  // models to 'low' — the only effort that streams on this transport.
+  const reasoningOverride = reasoningOverrideForProvider(input.model.provider, inferredReasoning);
+  if (reasoningOverride !== null) reasoning = reasoningOverride;
   // Self-healing: if the upstream rejects on reasoning mismatch, flip the
   // knob once and retry. Handles new reasoning-mandatory models (and
   // not-supported models) without code changes.
@@ -658,6 +663,32 @@ export function reasoningForModel(
     default:
       return undefined;
   }
+}
+
+/**
+ * GitHub Copilot's gateway buffers a reasoning model's entire thinking phase
+ * and streams nothing back until the model finishes thinking. On a real
+ * (non-trivial) design task that silence outlasts the gateway's idle timeout,
+ * so the upstream socket is killed mid-stream and the SDK surfaces a bare
+ * `terminated` error after ~10 minutes of zero output.
+ *
+ * Empirically — verified against api.githubcopilot.com with
+ * claude-sonnet-4.x — the only reasoning effort that streams promptly through
+ * Copilot is 'low'. Omitting the knob ('off') is just as fatal: Copilot then
+ * applies its own (extended) default, which hangs exactly like 'high' /
+ * 'medium'. So for any reasoning-capable Copilot model we pin the level to
+ * 'low', overriding both the inferred default and an explicit Settings value
+ * (no other value is usable on this transport).
+ *
+ * Returns the forced level, or `null` when no override applies and the caller
+ * should keep its own resolved reasoning value.
+ */
+export function reasoningOverrideForProvider(
+  provider: string,
+  reasoningCapable: boolean,
+): ReasoningLevel | null {
+  if (provider === GITHUB_COPILOT_PROVIDER_ID && reasoningCapable) return 'low';
+  return null;
 }
 
 export async function generate(input: GenerateInput): Promise<GenerateOutput> {
