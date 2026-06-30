@@ -1,0 +1,32 @@
+packages/core/src/index.ts
+  s_f105c332637ad9::t_983ae779186502 21
+  s_f105c332637ad9::t_fa684e81c2457d 668-693
+  s_f105c332637ad9::t_27854de890f840 388-392
+packages/core/src/generate.test.ts
+  s_f105c332637ad9::t_91fc9e0d89155e 215-235
+.changeset/fix-copilot-reasoning-terminated.md
+  s_f105c332637ad9::t_631af898d242db 1-9
+packages/core/src/agent.ts
+  s_f105c332637ad9::t_22b98829fa718c 62
+  s_f105c332637ad9::t_5ad4ad06804fa2 899-905,908,910-915
+  s_f105c332637ad9::t_f998d3ef96e1bf 26
+  s_f105c332637ad9::t_667d884a5fdd1b 906
+packages/core/src/agent.test.ts
+  s_f105c332637ad9::t_918f91132c7694 512-550
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.4",
+  "base_commit_sha": "07b180e7bac425be6045a95d3295d8159a05754e",
+  "prompts": {},
+  "sessions": {
+    "s_f105c332637ad9": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "eadade3e-02f2-43dd-84bd-6e61f565e4d3",
+        "model": "unknown"
+      },
+      "human_author": "dc995 <dc995@hotmail.com>"
+    }
+  }
+}
