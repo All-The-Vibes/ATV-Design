@@ -42,6 +42,52 @@ describe('buildSrcdoc', () => {
   });
 });
 
+describe('buildSrcdoc — static (script-less) artifact tweaks', () => {
+  const staticArtifact = `<!doctype html><html><head><style>
+    :root { --color-accent: #CC785C; --radius-base: 8px; }
+    body { background: #fff; }
+  </style></head><body><h1>Hi</h1></body></html>`;
+
+  it('injects the static CSS-var tweak bridge into a script-less HTML doc with :root vars', () => {
+    const out = buildSrcdoc(staticArtifact);
+    // Bridge present + still rendered as a plain HTML doc (not JSX-wrapped).
+    expect(out).toContain('CODESIGN_STATIC_TWEAKS');
+    expect(out).toContain('codesign:tweaks:update');
+    expect(out).toContain('<h1>Hi</h1>');
+    expect(out).not.toContain('AGENT_BODY_BEGIN');
+    // The overlay still goes in too.
+    expect(out).toContain('CODESIGN_OVERLAY_SCRIPT');
+  });
+
+  it('seeds the bridge with the extracted :root tokens so a panel can read defaults', () => {
+    const out = buildSrcdoc(staticArtifact);
+    expect(out).toContain('--color-accent');
+    expect(out).toContain('#CC785C');
+    expect(out).toContain('--radius-base');
+  });
+
+  it('does NOT inject the static tweak bridge when the doc has no :root vars', () => {
+    const noVars = '<!doctype html><html><body><p>x</p></body></html>';
+    const out = buildSrcdoc(noVars);
+    expect(out).not.toContain('CODESIGN_STATIC_TWEAKS');
+    // Overlay still injected — only the tweak bridge degrades away.
+    expect(out).toContain('CODESIGN_OVERLAY_SCRIPT');
+  });
+
+  it('does not duplicate the static bridge when a built doc is rebuilt', () => {
+    const once = buildSrcdoc(staticArtifact);
+    const twice = buildSrcdoc(once);
+    expect(twice).toBe(once);
+  });
+
+  it('does not add a static bridge on the JSX path (scripted artifacts use the React tweaks bridge)', () => {
+    const jsx = `const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"a":1}/*EDITMODE-END*/;
+ReactDOM.createRoot(document.getElementById('root')).render(<div/>);`;
+    const out = buildSrcdoc(jsx);
+    expect(out).not.toContain('CODESIGN_STATIC_TWEAKS');
+  });
+});
+
 describe('buildSrcdoc — JSX path', () => {
   const jsxArtifact = `const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"a":1}/*EDITMODE-END*/;
 function App() { return <div>hi</div>; }
@@ -65,6 +111,30 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App/>);`;
     const src = `function App() { return <div/>; } ReactDOM.createRoot(document.getElementById("root")).render(<App/>);`;
     const out = buildSrcdoc(src);
     expect(out).toContain('AGENT_BODY_BEGIN');
+  });
+
+  it('escapes spec-legal </script variants in the embedded originalScript string literal', () => {
+    // The agent source is JSON-embedded as a STRING into the
+    // `window.__codesign_tweaks__.originalScript="…"` assignment. That literal is
+    // data (the tweaks bridge re-compiles it later), so a `</script `/`</script/`/
+    // mixed-case closer inside it must be escaped or it breaks out of that
+    // wrapper <script>. (The agent's own executable JSX in the AGENT_BODY babel
+    // block is a separate, intentionally-verbatim concern.)
+    const malicious = `const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"x":"</script <img onerror=alert(1)>"}/*EDITMODE-END*/;
+ReactDOM.createRoot(document.getElementById('root')).render(<div/>);`;
+    const out = buildSrcdoc(malicious);
+    const line = out.split('\n').find((l) => l.includes('originalScript=')) ?? '';
+    // Isolate just the embedded string VALUE (between originalScript=" and the
+    // closing ";} ), so the wrapper's own legitimate trailing </script> is not
+    // counted.
+    const value = line.slice(
+      line.indexOf('originalScript="') + 'originalScript="'.length,
+      line.lastIndexOf('";}'),
+    );
+    expect(value.length).toBeGreaterThan(0);
+    // The script-closer inside the embedded literal must be neutralized.
+    expect(value).not.toMatch(/<\/script[\s/>]/i);
+    expect(value).toContain('<\\/script');
   });
 
   it('extractAndUpgradeArtifact wraps JSX payloads', () => {

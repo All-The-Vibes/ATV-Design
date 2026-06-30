@@ -529,3 +529,6 @@ export {
   replaceTweakSchema,
 } from './editmode';
 export type { EditmodeBlock, TokenSchemaEntry, TweakSchema } from './editmode';
+
+export { extractRootCssVars } from './css-vars';
+export type { RootCssVars } from './css-vars';
