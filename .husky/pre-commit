@@ -1,1 +1,34 @@
-pnpm lint
+#!/usr/bin/env sh
+# Lint staged files before commit.
+#
+# Previously this ran `pnpm lint` (`biome check .`). That is a silent no-op in
+# any git worktree: biome resolves the VCS root to the main checkout where
+# `.claude/worktrees/` is gitignored, matches the worktree's own path, finds 0
+# files, and exits 1 ("No files were processed") — so the gate cannot pass from
+# a worktree at all. Linting the explicit staged paths is the standard
+# pre-commit pattern, is faster, and works identically in the main checkout and
+# in worktrees. CI still runs the full-tree `pnpm lint` (.github/workflows/ci.yml),
+# so whole-repo coverage is preserved there.
+#
+# Implementation notes (each guards a real footgun found in review):
+#  - Do NOT pre-filter extensions with `grep`. `grep -z` is non-portable: on
+#    hosts where `grep` is ugrep, `-z` means "search compressed files", not
+#    "NUL-delimited", and silently matches nothing — so the hook would lint
+#    nothing and pass everything. Instead, hand ALL staged paths to biome and
+#    let it decide what it lints (`--files-ignore-unknown=true` skips files of
+#    types biome doesn't handle; this also covers CSS, which biome DOES lint).
+#  - NUL-delimited end to end (`git -z` | `xargs -0`). The path list is never
+#    captured into a shell variable — command substitution strips NUL bytes and
+#    would concatenate paths like `a.tsb.ts`, linting nothing.
+#  - `-r` (the portable short spelling of `--no-run-if-empty`) so biome is not
+#    invoked when nothing is staged. Do NOT use the GNU-only long form
+#    `--no-run-if-empty`: BSD/macOS xargs rejects unknown long options with
+#    "illegal option" and aborts the commit for every macOS contributor, while
+#    Linux/GNU CI stays green and hides the break. `-r` works on GNU and modern
+#    BSD/macOS xargs (and BSD xargs skips empty input by default regardless).
+#  - `--no-errors-on-unmatched` so a commit whose staged files are all
+#    biome-ignored (vendored/dist paths) does not fail with "No files processed".
+
+git diff --cached --name-only --diff-filter=ACMR -z \
+  | xargs -0 -r pnpm exec biome check \
+      --files-ignore-unknown=true --no-errors-on-unmatched
