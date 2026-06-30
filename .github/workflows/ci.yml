@@ -40,6 +40,17 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test (scripts tooling)
+        run: pnpm test:scripts
+
+      # Model-smoke harness self-check. No provider keys in CI, so every model
+      # is skipped and the run must exit 0. This guards the harness's own
+      # bootstrap (ESM entry + ?raw loader + tsx chain): if `pnpm smoke` ever
+      # regresses to the ERR_PACKAGE_PATH_NOT_EXPORTED / unresolved-?raw crash,
+      # this step fails loudly instead of the smoke gate silently dying.
+      - name: Smoke harness self-check (no keys → graceful skip)
+        run: pnpm smoke --prompt "ci harness self-check"
+
       # Build smoke — bundle the Electron main + renderer so broken imports,
       # missing assets, or bad vite config fail here instead of only during a
       # tag release. Skip electron-builder packaging (that's release.yml's job).
