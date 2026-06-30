@@ -212,6 +212,27 @@ describe('generate()', () => {
     });
   });
 
+  it('pins GitHub Copilot reasoning models to low (Copilot buffers extended reasoning → terminated)', async () => {
+    completeMock.mockResolvedValueOnce({
+      content: RESPONSE,
+      inputTokens: 0,
+      outputTokens: 0,
+      costUsd: 0,
+    });
+
+    await generate({
+      prompt: 'design a meditation app',
+      history: [],
+      model: { provider: 'github-copilot', modelId: 'claude-sonnet-4-6' },
+      apiKey: 'sk-test',
+      wire: 'openai-chat',
+      baseUrl: 'https://api.githubcopilot.com',
+    });
+
+    const opts = completeMock.mock.calls[0]?.[2] as { reasoning?: string };
+    expect(opts.reasoning).toBe('low');
+  });
+
   it('passes reasoning=high for OpenAI gpt-5 (whitelisted reasoning model)', async () => {
     completeMock.mockResolvedValueOnce({
       content: RESPONSE,

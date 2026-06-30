@@ -23,7 +23,7 @@
  */
 
 import { type ArtifactEvent, createArtifactParser } from '@atv-design/artifacts';
-import type { RetryDecision, RetryReason } from '@atv-design/providers';
+import type { ReasoningLevel, RetryDecision, RetryReason } from '@atv-design/providers';
 import {
   classifyError,
   claudeCodeIdentityHeaders,
@@ -59,7 +59,7 @@ import type {
   GenerateOutput,
   ReferenceUrlContext,
 } from './index.js';
-import { reasoningForModel } from './index.js';
+import { reasoningForModel, reasoningOverrideForProvider } from './index.js';
 import { type CoreLogger, NOOP_LOGGER } from './logger.js';
 import { composeSystemPrompt } from './prompts/index.js';
 import { makeCaptureElementTool } from './tools/capture-element.js';
@@ -896,18 +896,23 @@ export async function generateViaAgent(
   // neither yields a value the agent runs with 'off', matching
   // pi-agent-core's default.
   const effectiveBaseUrl = piModel.baseUrl;
-  const thinkingLevel =
+  const reasoningCapable = inferReasoning(
+    input.wire,
+    input.model.modelId,
+    effectiveBaseUrl,
+    input.explicitCapabilities ?? input.capabilities,
+    input.model.provider,
+  );
+  let thinkingLevel: ReasoningLevel | 'off' =
     input.reasoningLevel ??
-    (inferReasoning(
-      input.wire,
-      input.model.modelId,
-      effectiveBaseUrl,
-      input.explicitCapabilities ?? input.capabilities,
-      input.model.provider,
-    )
-      ? reasoningForModel(input.model, effectiveBaseUrl)
-      : undefined) ??
+    (reasoningCapable ? reasoningForModel(input.model, effectiveBaseUrl) : undefined) ??
     'off';
+  // GitHub Copilot buffers extended reasoning and never streams it, tripping
+  // the gateway idle timeout (bare `terminated` after ~10 min of zero output).
+  // Pin reasoning-capable Copilot models to 'low' — the only effort that
+  // streams on this transport ('off' lets Copilot apply its hanging default).
+  const reasoningOverride = reasoningOverrideForProvider(input.model.provider, reasoningCapable);
+  if (reasoningOverride !== null) thinkingLevel = reasoningOverride;
 
   // Build the Agent. convertToLlm narrows AgentMessage (may include custom
   // types) to the LLM-visible Message subset.
