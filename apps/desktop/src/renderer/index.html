@@ -12,11 +12,15 @@
     <div id="root"></div>
     <script>
       (function () {
+        // Merge Q1: Terminal 42 dark pro-tool is the single identity. Default to
+        // dark; only an explicit 'light' choice opts out. FOUC-prevention runs
+        // before paint so the canvas never flashes the wrong theme.
         try {
           var t = localStorage.getItem('atv-design:theme');
-          if (t === 'dark') document.documentElement.classList.add('dark');
+          if (t !== 'light') document.documentElement.classList.add('dark');
         } catch (e) {
-          /* localStorage unavailable; default light theme */
+          /* localStorage unavailable; default to the dark pro-tool identity */
+          document.documentElement.classList.add('dark');
         }
       })();
     </script>
