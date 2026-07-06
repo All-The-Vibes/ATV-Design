@@ -147,4 +147,47 @@ describe('extractRootCssVars', () => {
     expect(extractRootCssVars(':root /* } */ { --a: 1; }')).toEqual({ '--a': '1' });
     expect(extractRootCssVars(':root[data-x="}"] { --a: 1; }')).toEqual({ '--a': '1' });
   });
+
+  it('extracts :root nested inside conditional-group at-rules', () => {
+    // The canonical dark-mode / responsive token pattern (Tailwind v4, shadcn).
+    expect(extractRootCssVars('@media (prefers-color-scheme: dark) { :root { --a: 1 } }')).toEqual({
+      '--a': '1',
+    });
+    expect(extractRootCssVars('@layer base { :root { --brand: #fff } }')).toEqual({
+      '--brand': '#fff',
+    });
+    expect(extractRootCssVars('@supports (display: grid) { :root { --x: 2 } }')).toEqual({
+      '--x': '2',
+    });
+    expect(extractRootCssVars('@container (min-width: 0) { :root { --c: 3 } }')).toEqual({
+      '--c': '3',
+    });
+    // Nested groups.
+    expect(extractRootCssVars('@media a { @media b { :root { --deep: 9 } } }')).toEqual({
+      '--deep': '9',
+    });
+    // A media-scoped :root overrides an earlier top-level one (cascade order).
+    expect(extractRootCssVars(':root { --a: 1 } @media x { :root { --a: 2 } }')).toEqual({
+      '--a': '2',
+    });
+  });
+
+  it('does not descend into declaration at-rules or ordinary style rules', () => {
+    // @font-face / @keyframes bodies and normal selectors are NOT conditional
+    // groups; a `--a` inside them must not be mistaken for a :root token.
+    expect(extractRootCssVars('@font-face { font-family: x } :root { --a: 1 }')).toEqual({
+      '--a': '1',
+    });
+    expect(extractRootCssVars('@keyframes k { from { --a: 99 } } :root { --a: 1 }')).toEqual({
+      '--a': '1',
+    });
+    expect(extractRootCssVars('.card { --a: 99 } :root { --a: 1 }')).toEqual({ '--a': '1' });
+  });
+
+  it('stays linear even with deeply nested conditional-group at-rules', () => {
+    const nested = `${'@media a{'.repeat(100_000)}:root{--a:1}`;
+    const t0 = performance.now();
+    expect(extractRootCssVars(nested)).toEqual({ '--a': '1' });
+    expect(performance.now() - t0).toBeLessThan(500);
+  });
 });

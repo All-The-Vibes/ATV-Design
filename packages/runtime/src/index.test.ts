@@ -86,6 +86,23 @@ ReactDOM.createRoot(document.getElementById('root')).render(<div/>);`;
     const out = buildSrcdoc(jsx);
     expect(out).not.toContain('CODESIGN_STATIC_TWEAKS');
   });
+
+  it('does not splice document tail into the bridge via a $-pattern in a :root value', () => {
+    // The bridge is injected with String.replace(/<\/body>/, `${script}...`).
+    // A string replacement would interpret `$'` (and `$&`, `` $` ``) in the
+    // script as special patterns, splicing UNescaped document text after the
+    // match into the <script>. A :root value containing `$'` plus a trailing
+    // `</script>` after </body> would then break out. A function replacer (used
+    // now) inserts the payload verbatim, so nothing is spliced.
+    const evil = `<!doctype html><html><head><style>
+      :root { --x: "$'end"; }
+    </style></head><body><h1>Hi</h1></body></html><script>alert('tail')</script>`;
+    const out = buildSrcdoc(evil);
+    // The original trailing script's content must not have been hoisted into the
+    // injected bridge script — i.e. no `alert('tail')` appears before </body>.
+    const beforeBody = out.slice(0, out.indexOf('</body>'));
+    expect(beforeBody).not.toContain("alert('tail')");
+  });
 });
 
 describe('buildSrcdoc — JSX path', () => {

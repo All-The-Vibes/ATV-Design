@@ -110,11 +110,14 @@ function injectOverlayIntoHtmlDocument(html: string): string {
     return html;
   }
   const script = staticInjectionPayload(html);
+  // Use FUNCTION replacers: a string replacement would interpret `$'`/`$&`/`` $` ``
+  // inside `script` as special patterns and could splice unescaped document text
+  // into the injected <script>. A function replacer inserts the value verbatim.
   if (/<\/body\s*>/i.test(html)) {
-    return html.replace(/<\/body\s*>/i, `${script}</body>`);
+    return html.replace(/<\/body\s*>/i, () => `${script}</body>`);
   }
   if (/<\/html\s*>/i.test(html)) {
-    return html.replace(/<\/html\s*>/i, `${script}</html>`);
+    return html.replace(/<\/html\s*>/i, () => `${script}</html>`);
   }
   return `${html}${script}`;
 }

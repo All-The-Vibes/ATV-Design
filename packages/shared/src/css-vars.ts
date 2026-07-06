@@ -8,10 +8,12 @@
  * Those custom properties ARE the tweakable surface for a static artifact.
  *
  * This parser pulls the declared `--name: value` pairs out of every `:root`
- * block in a source string (raw CSS or a full HTML document). The runtime's
- * static-tweak bridge turns the result into live `setProperty` updates, and
- * TweakPanel can render controls for them — giving static artifacts the same
- * tweak affordance scripted ones get from TWEAK_DEFAULTS.
+ * block in a source string (raw CSS or a full HTML document), including a
+ * `:root` nested inside a conditional-group at-rule (`@media`/`@supports`/
+ * `@layer`/`@container`) — the canonical dark-mode / responsive token pattern.
+ * The runtime's static-tweak bridge turns the result into live `setProperty`
+ * updates, and TweakPanel can render controls for them — giving static artifacts
+ * the same tweak affordance scripted ones get from TWEAK_DEFAULTS.
  *
  * Trust model: pure string scanning, no `eval`, no DOM, no regex backtracking
  * on untrusted input. A SINGLE linear forward pass over `source` (O(n) in its
@@ -143,10 +145,18 @@ function parseRootBody(body: string, into: RootCssVars): void {
  * a bounded number of times. This runs synchronously in the Electron main
  * process on model-generated artifact HTML, so it must not be super-linear.
  *
- * Model: track whether the selector currently being scanned (the text since the
- * last top-level `{`/`}`) contains a `:root` token at the top level. When a
- * top-level `{` opens a block, parse it as a :root block iff that flag is set.
+ * Model: track the selector currently being scanned (the text since the last
+ * top-level `{`/`}`). When a `{` opens a block:
+ *   - if the selector contains a top-level `:root` token → parse it as a :root
+ *     block;
+ *   - else if the selector is a conditional-group at-rule prelude
+ *     (`@media`/`@supports`/`@layer`/`@container`/`@scope`) → DESCEND into the
+ *     body (keep scanning inside it) so a nested `:root` — the canonical
+ *     dark-mode / responsive pattern — is still found;
+ *   - else → skip the whole block (an ordinary style rule or a declaration
+ *     at-rule like `@font-face`/`@keyframes`).
  */
+const GROUP_AT_RULE = /@(?:media|supports|layer|container|scope)\b/i;
 export function extractRootCssVars(source: string): RootCssVars {
   const out: RootCssVars = {};
   if (!source) return out;
@@ -159,6 +169,9 @@ export function extractRootCssVars(source: string): RootCssVars {
   let inComment = false;
   // Does the selector we are currently accumulating contain a `:root` token?
   let selectorHasRoot = false;
+  // Start index of the current selector/at-rule prelude (reset after each
+  // top-level `{`/`}`), so a `{` can inspect its prelude for a group at-rule.
+  let selectorStart = 0;
 
   while (i < n) {
     const ch = scan[i];
@@ -192,26 +205,40 @@ export function extractRootCssVars(source: string): RootCssVars {
     }
 
     if (ch === '{') {
-      const endIdx = findBlockEnd(scan, i);
       if (selectorHasRoot) {
+        const endIdx = findBlockEnd(scan, i);
         if (endIdx > i) {
           parseRootBody(scan.slice(i + 1, endIdx), out);
+          i = endIdx + 1;
         } else {
           // Unbalanced/truncated — parse what we can to the end, then stop.
           parseRootBody(scan.slice(i + 1), out);
           break;
         }
+        selectorHasRoot = false;
+        selectorStart = i;
+        continue;
       }
-      // Advance past the whole block (endIdx points at its closing `}`); a new
-      // selector starts fresh after it.
+      // Not a :root rule. If the prelude is a conditional-group at-rule, DESCEND
+      // into its body (a nested :root may live inside); otherwise skip the block.
+      const prelude = scan.slice(selectorStart, i);
+      if (GROUP_AT_RULE.test(prelude)) {
+        // Enter the body: just step past `{` and keep scanning; the matching `}`
+        // is handled by the `}` branch, which resets the selector context.
+        i += 1;
+        selectorStart = i;
+        continue;
+      }
+      const endIdx = findBlockEnd(scan, i);
       i = endIdx > i ? endIdx + 1 : n;
-      selectorHasRoot = false;
+      selectorStart = i;
       continue;
     }
     if (ch === '}') {
-      // A stray `}` (or the end of an at-rule body) resets the selector context.
+      // Close of a descended group body (or a stray `}`): reset selector context.
       selectorHasRoot = false;
       i += 1;
+      selectorStart = i;
       continue;
     }
 
