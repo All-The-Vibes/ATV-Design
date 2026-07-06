@@ -184,6 +184,28 @@ describe('extractRootCssVars', () => {
     expect(extractRootCssVars('.card { --a: 99 } :root { --a: 1 }')).toEqual({ '--a': '1' });
   });
 
+  it('does not descend on an at-rule keyword hidden in a comment or attribute string', () => {
+    // The group-at-rule decision is made from a REAL `@` token, so an `@media`
+    // inside a comment or an attribute-selector string must not spoof a descent
+    // into an ordinary style rule.
+    expect(extractRootCssVars('/* @media */ .x { :root { --evil: 9 } }')).toEqual({});
+    expect(extractRootCssVars('[data-q="@supports"] { :root { --evil: 9 } }')).toEqual({});
+  });
+
+  it('descends into a group at-rule whose prelude itself contains :root', () => {
+    // `@supports selector(:root)` has `:root` in its PRELUDE; the group check
+    // must win so the nested :root block is still extracted.
+    expect(extractRootCssVars('@supports selector(:root) { :root { --b: 2 } }')).toEqual({
+      '--b': '2',
+    });
+  });
+
+  it('does not treat a longer at-rule as a group (e.g. @media-foo)', () => {
+    expect(extractRootCssVars('@media-foo { :root { --a: 9 } } :root { --a: 1 }')).toEqual({
+      '--a': '1',
+    });
+  });
+
   it('stays linear even with deeply nested conditional-group at-rules', () => {
     const nested = `${'@media a{'.repeat(100_000)}:root{--a:1}`;
     const t0 = performance.now();

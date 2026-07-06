@@ -156,7 +156,7 @@ function parseRootBody(body: string, into: RootCssVars): void {
  *   - else → skip the whole block (an ordinary style rule or a declaration
  *     at-rule like `@font-face`/`@keyframes`).
  */
-const GROUP_AT_RULE = /@(?:media|supports|layer|container|scope)\b/i;
+const GROUP_AT_RULE = /^@(?:media|supports|layer|container|scope)(?![\w-])/i;
 export function extractRootCssVars(source: string): RootCssVars {
   const out: RootCssVars = {};
   if (!source) return out;
@@ -169,6 +169,11 @@ export function extractRootCssVars(source: string): RootCssVars {
   let inComment = false;
   // Does the selector we are currently accumulating contain a `:root` token?
   let selectorHasRoot = false;
+  // Did the current selector/prelude open with a conditional-group at-rule
+  // (`@media`/`@supports`/`@layer`/`@container`/`@scope`)? Detected from a real
+  // (non-string, non-comment) `@` token, so a keyword inside a comment or string
+  // cannot spoof a descent. Reset at each block boundary.
+  let preludeIsGroupAtRule = false;
   // Start index of the current selector/at-rule prelude (reset after each
   // top-level `{`/`}`), so a `{` can inspect its prelude for a group at-rule.
   let selectorStart = 0;
@@ -205,6 +210,18 @@ export function extractRootCssVars(source: string): RootCssVars {
     }
 
     if (ch === '{') {
+      // A conditional-group at-rule always DESCENDS, even when `:root` appears in
+      // its own prelude (e.g. `@supports selector(:root) { :root { … } }`) — the
+      // group check wins over the prelude `:root` token.
+      if (preludeIsGroupAtRule) {
+        // Enter the body: step past `{` and keep scanning; the matching `}` is
+        // handled by the `}` branch, which resets the selector context.
+        i += 1;
+        selectorStart = i;
+        selectorHasRoot = false;
+        preludeIsGroupAtRule = false;
+        continue;
+      }
       if (selectorHasRoot) {
         const endIdx = findBlockEnd(scan, i);
         if (endIdx > i) {
@@ -219,16 +236,8 @@ export function extractRootCssVars(source: string): RootCssVars {
         selectorStart = i;
         continue;
       }
-      // Not a :root rule. If the prelude is a conditional-group at-rule, DESCEND
-      // into its body (a nested :root may live inside); otherwise skip the block.
-      const prelude = scan.slice(selectorStart, i);
-      if (GROUP_AT_RULE.test(prelude)) {
-        // Enter the body: just step past `{` and keep scanning; the matching `}`
-        // is handled by the `}` branch, which resets the selector context.
-        i += 1;
-        selectorStart = i;
-        continue;
-      }
+      // Ordinary style rule or declaration at-rule (`@font-face`/`@keyframes`) —
+      // skip the whole block.
       const endIdx = findBlockEnd(scan, i);
       i = endIdx > i ? endIdx + 1 : n;
       selectorStart = i;
@@ -237,8 +246,20 @@ export function extractRootCssVars(source: string): RootCssVars {
     if (ch === '}') {
       // Close of a descended group body (or a stray `}`): reset selector context.
       selectorHasRoot = false;
+      preludeIsGroupAtRule = false;
       i += 1;
       selectorStart = i;
+      continue;
+    }
+
+    // A real `@` at the start of a fresh prelude: is it a conditional-group
+    // at-rule? Only whitespace may precede it (comments/strings are already
+    // consumed by the branches above, so this `@` is genuinely top-level).
+    if (ch === '@' && scan.slice(selectorStart, i).trim() === '') {
+      if (GROUP_AT_RULE.test(scan.slice(i, i + 12))) {
+        preludeIsGroupAtRule = true;
+      }
+      i += 1;
       continue;
     }
 
