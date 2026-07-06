@@ -214,49 +214,60 @@ pre,
 }
 
 .dark {
-  /* Warm dark — not blue-black */
-  --color-background: oklch(0.18 0.015 50);
-  --color-background-secondary: oklch(0.22 0.015 50);
-  --color-surface: oklch(0.22 0.015 50);
-  --color-surface-hover: oklch(0.26 0.018 50);
-  --color-surface-active: oklch(0.29 0.018 50);
-  --color-surface-muted: oklch(0.22 0.015 50);
-  --color-surface-elevated: oklch(0.26 0.018 50);
+  /* Terminal 42 dark pro-tool ladder (merge Q1). sRGB -> OKLCH from T42
+     globals.css. Cool near-black canvas, three-step surface ladder, cool
+     neutrals (chroma ~0), sky-blue accent (runtime-overridable). ATV token
+     NAMES preserved so the 9 consumers need no edits — only the VALUES change. */
+  /* --bg 8 8 10 → canvas / page background */
+  --color-background: oklch(0.1354 0.0047 285.8);
+  /* --surface 18 18 22 → toolbars, rails, inspector */
+  --color-background-secondary: oklch(0.184 0.0081 285.6);
+  --color-surface: oklch(0.184 0.0081 285.6);
+  --color-surface-hover: oklch(0.2291 0.0115 285.5);
+  --color-surface-active: oklch(0.2711 0.011 285.6);
+  --color-surface-muted: oklch(0.184 0.0081 285.6);
+  /* --elevated 28 28 34 → chips, hover states, popovers */
+  --color-surface-elevated: oklch(0.2291 0.0115 285.5);
   --color-artifact-bg: #ffffff;
 
-  --color-border: oklch(0.3 0.012 50);
-  --color-border-muted: oklch(0.27 0.01 50);
-  --color-border-subtle: oklch(0.24 0.01 50);
-  --color-border-strong: oklch(0.4 0.015 55);
+  /* --border 38 38 44 / --border-strong 56 56 64 */
+  --color-border: oklch(0.2711 0.011 285.6);
+  --color-border-muted: oklch(0.2291 0.0115 285.5);
+  --color-border-subtle: oklch(0.2105 0.01 285.6);
+  --color-border-strong: oklch(0.3438 0.0139 285.6);
 
-  --color-accent: oklch(0.68 0.16 35);
-  --color-accent-hover: oklch(0.74 0.16 35);
-  --color-accent-muted: oklch(0.28 0.06 35);
-  --color-accent-soft: oklch(0.68 0.16 35 / 0.12);
+  /* --accent 56 189 248 (sky) → default; user-overridable at runtime per Q1 */
+  --color-accent: oklch(0.7535 0.139 232.7);
+  --color-accent-hover: oklch(0.81 0.12 232.7);
+  --color-accent-muted: oklch(0.3 0.06 232.7);
+  --color-accent-soft: oklch(0.7535 0.139 232.7 / 0.12);
   --color-accent-tint: color-mix(in srgb, var(--color-accent) 8%, var(--color-surface));
-  --color-focus-ring: oklch(0.68 0.16 35 / 0.35);
-  --color-on-accent: oklch(0.18 0.015 50);
+  --color-focus-ring: oklch(0.7535 0.139 232.7 / 0.4);
+  /* --accent-text 10 10 10 → text/icon on top of the accent fill */
+  --color-on-accent: oklch(0.1448 0 89.9);
 
-  --color-text-primary: oklch(0.95 0.01 70); /* warm off-white */
-  --color-text-secondary: oklch(0.7 0.015 60);
-  --color-text-muted: oklch(0.55 0.012 58);
+  /* --text-primary 245 / --text-secondary 161 / --text-muted 110 */
+  --color-text-primary: oklch(0.9702 0 89.9);
+  --color-text-secondary: oklch(0.709 0 89.9);
+  --color-text-muted: oklch(0.5382 0 89.9);
 
-  --color-success: #6b9c6e;
-  --color-warning: #d4a04a;
-  --color-error: #d96050;
-  --color-mcp: #6a8aab;
+  /* --success 34 197 94 / --warning 245 158 11 / --error 239 68 68 */
+  --color-success: oklch(0.7227 0.192 149.6);
+  --color-warning: oklch(0.7686 0.1647 70.1);
+  --color-error: oklch(0.6368 0.2078 25.3);
+  --color-mcp: oklch(0.7535 0.139 232.7);
 
-  --color-toast-success: #6b9c6e;
-  --color-toast-error: #d96050;
+  --color-toast-success: oklch(0.7227 0.192 149.6);
+  --color-toast-error: oklch(0.6368 0.2078 25.3);
   --color-overlay: oklch(0 0 0 / 0.6);
 
-  /* Phone body — slightly lighter than dark bg so the device still reads as an object. */
-  --color-phone-body: oklch(0.32 0.005 280);
+  /* Phone body — cool dark, slightly above canvas so the device reads as an object. */
+  --color-phone-body: oklch(0.2711 0.011 285.6);
   --color-phone-island: oklch(0.05 0 0);
 
-  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.3);
-  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.25), 0 4px 16px oklch(0 0 0 / 0.35);
-  --shadow-elevated: 0 2px 4px oklch(0 0 0 / 0.3), 0 12px 32px oklch(0 0 0 / 0.5);
+  --shadow-soft: 0 1px 2px oklch(0 0 0 / 0.4);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.35), 0 4px 16px oklch(0 0 0 / 0.45);
+  --shadow-elevated: 0 2px 4px oklch(0 0 0 / 0.4), 0 12px 32px oklch(0 0 0 / 0.6);
   --shadow-inset-soft: inset 0 0 0 1px var(--color-border-subtle);
 }
 

@@ -15,7 +15,7 @@
  * valid JSX, Babel will surface a syntax error via the iframe error overlay.
  */
 
-import { ensureEditmodeMarkers } from '@atv-design/shared';
+import { ensureEditmodeMarkers, extractRootCssVars } from '@atv-design/shared';
 
 import BABEL_STANDALONE from '../vendor/babel.standalone.js?raw';
 import DESIGN_CANVAS_JSX from '../vendor/design-canvas.jsx?raw';
@@ -24,6 +24,7 @@ import REACT_DOM_UMD from '../vendor/react-dom.umd.js?raw';
 import REACT_UMD from '../vendor/react.umd.js?raw';
 
 import { OVERLAY_SCRIPT } from './overlay';
+import { buildStaticTweaksBridge } from './static-tweaks-bridge';
 import { TWEAKS_BRIDGE_LISTENER, TWEAKS_BRIDGE_SETUP } from './tweaks-bridge';
 
 export { OVERLAY_SCRIPT, isOverlayMessage, isElementRectsMessage } from './overlay';
@@ -36,10 +37,12 @@ const JSX_TEMPLATE_END = '<!-- AGENT_BODY_END -->';
 const OVERLAY_MARKER = '<!-- CODESIGN_OVERLAY_SCRIPT -->';
 
 function escapeForScriptLiteral(jsx: string): string {
-  // JSON.stringify handles quotes/newlines; the </script> escape prevents the
-  // outer <script> from being closed early if the agent's source happens to
-  // contain that literal string.
-  return JSON.stringify(jsx).replace(/<\/script>/g, '<\\/script>');
+  // JSON.stringify handles quotes/newlines; the `</script` escape prevents the
+  // outer <script> from being closed early. Per the HTML spec a script element
+  // ends at `</script` followed by whitespace, `/`, or `>` (case-insensitive),
+  // so we escape the `<` of ANY `</script` occurrence — not just `</script>` —
+  // otherwise `</script <img onerror=…>` would break out of the element.
+  return JSON.stringify(jsx).replace(/<(\/script)/gi, '<\\$1');
 }
 
 function wrapJsxAsSrcdoc(jsx: string): string {
@@ -85,16 +88,36 @@ function overlayScriptTag(): string {
   return `${OVERLAY_MARKER}<script>${OVERLAY_SCRIPT}</script>`;
 }
 
+/**
+ * Build the trailing-injection payload for a static (script-less) HTML
+ * document: the preview overlay, plus — when the doc declares `:root` custom
+ * properties — a CSS-variable tweak bridge so the artifact is live-tweakable
+ * even without a script. Returns just the overlay when there are no vars
+ * (graceful degradation: the artifact stays previewable, only the tweak
+ * affordance drops away).
+ */
+function staticInjectionPayload(html: string): string {
+  const overlay = overlayScriptTag();
+  const vars = extractRootCssVars(html);
+  if (Object.keys(vars).length === 0) return overlay;
+  return `${overlay}${buildStaticTweaksBridge(vars)}`;
+}
+
 function injectOverlayIntoHtmlDocument(html: string): string {
+  // Idempotent: a rebuilt doc already carries the overlay (and, if it had
+  // tweakable vars, the static bridge) — return it untouched.
   if (html.includes(OVERLAY_MARKER) || html.includes("type: 'ELEMENT_SELECTED'")) {
     return html;
   }
-  const script = overlayScriptTag();
+  const script = staticInjectionPayload(html);
+  // Use FUNCTION replacers: a string replacement would interpret `$'`/`$&`/`` $` ``
+  // inside `script` as special patterns and could splice unescaped document text
+  // into the injected <script>. A function replacer inserts the value verbatim.
   if (/<\/body\s*>/i.test(html)) {
-    return html.replace(/<\/body\s*>/i, `${script}</body>`);
+    return html.replace(/<\/body\s*>/i, () => `${script}</body>`);
   }
   if (/<\/html\s*>/i.test(html)) {
-    return html.replace(/<\/html\s*>/i, `${script}</html>`);
+    return html.replace(/<\/html\s*>/i, () => `${script}</html>`);
   }
   return `${html}${script}`;
 }

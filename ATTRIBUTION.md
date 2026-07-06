@@ -35,6 +35,33 @@ This project, **atv-design**, is a hard fork of [OpenCoworkAI/open-codesign](htt
 - **What atv-design did:** authored a NEW SKILL.md ([`skills/emil-design-eng-inspired/SKILL.md`](./skills/emil-design-eng-inspired/SKILL.md)) capturing the same animation *principles* in original prose. **Zero verbatim text from the upstream SKILL.md was copied.** The original repository is credited as inspiration in the SKILL.md body and in the per-bundle README.
 - **Open question (tracked):** an issue has been opened on `emilkowalski/skill` requesting a permissive license (MIT or CC0). If granted, this fork can swap from paraphrase to direct attribution + verbatim if doing so improves the developer experience.
 
+## Ported Frontend — Terminal 42
+
+### akwasijr/terminal42
+
+- **Source:** https://github.com/akwasijr/terminal42
+- **License:** MIT (treated as such per the author's stated intent; see note below).
+- **Use:** Frontend craft ported onto atv-design's tested SDK backend behind a
+  data-model + event translation layer
+  (`apps/desktop/src/renderer/src/lib/design-stream-adapter.ts`). Ported so far:
+  - **DesignCanvas split units** — the kind-aware viewport `PROFILES` registry
+    (`apps/desktop/src/renderer/src/lib/viewport-profiles.ts`) and the live
+    design-token inspector (`apps/desktop/src/renderer/src/lib/token-inspector.ts`),
+    lifted from `src/renderer/src/components/DesignCanvas.tsx` and split out of
+    the 2,249-line god-component into tested modules.
+  - The **dark pro-tool design system** — token ladder reconciled into
+    `packages/ui/src/tokens.css` (`.dark`), converted from T42 `globals.css`
+    sRGB rgb-channel vars to atv-design's OKLCH token plumbing.
+- **License note (merge decision Q5):** at the time of the merge the upstream
+  repository shipped **no LICENSE file**, though its README states MIT. Per the
+  project owner's direction, the author intended MIT and simply omitted the file,
+  so the source is used under MIT with attribution here and in per-module headers.
+  If upstream later clarifies the license, this entry will be updated to match.
+- **What atv-design did NOT take:** T42's Copilot-CLI backend, the
+  `~/.copilot/session-state` coupling, the Brain-via-PTY mechanism, the raw
+  xterm terminal, and dead/incomplete code (`looms*`, unmounted
+  `StatusBar`/`ChipsRow`) — all dropped per the merge plan (decisions Q2/Q3).
+
 ## Trademarks
 
 GitHub®, Copilot®, and any other third-party names referenced in this fork are trademarks of their respective owners. Their mention in atv-design's documentation, configuration files, or UI strings is purely descriptive and does not imply endorsement.

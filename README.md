@@ -111,12 +111,48 @@ For OAuth providers (GitHub Copilot), see [`docs/oauth-setup.md`](./docs/oauth-s
 ### Development Commands
 
 ```bash
-pnpm test              # Run unit tests (Vitest)
-pnpm typecheck         # TypeScript strict mode
+pnpm test              # Run unit tests (Vitest) across all packages
+pnpm typecheck         # TypeScript strict mode (all packages)
 pnpm lint              # Biome format & lint
-pnpm build             # Build all packages
-pnpm test:e2e          # Playwright end-to-end tests
+pnpm build             # Build all packages (electron-vite compile + package)
+pnpm test:e2e          # Playwright end-to-end tests (builds first)
 ```
+
+### Running the App
+
+```bash
+pnpm install           # first time only (downloads sqlite/electron prebuilds)
+pnpm dev               # launches the Electron desktop app via electron-vite
+```
+
+On a headless Linux box (CI, containers, WSL without a display), wrap the GUI in
+a virtual framebuffer:
+
+```bash
+xvfb-run -a --server-args="-screen 0 1440x900x24" pnpm dev
+```
+
+### Testing
+
+**Unit tests (Vitest, ~2,100 tests across 10 packages):**
+
+```bash
+pnpm test                          # everything
+pnpm --filter @atv-design/desktop test   # one package
+```
+
+**End-to-end (Playwright drives the real built Electron app):**
+
+```bash
+pnpm --filter @atv-design/desktop build         # E2E loads out/main/index.js
+pnpm --filter @atv-design/desktop test:e2e      # or test:e2e:headed to watch
+```
+
+E2E specs live in `apps/desktop/e2e/`. They launch the actual main process via
+Playwright's `_electron.launch` and seed a keyless Ollama config so the app boots
+past onboarding without a network call (`e2e/fixtures/`). On headless Linux,
+prefix with `xvfb-run -a`. Screenshot captures are written to
+`apps/desktop/test-results/screenshots/`.
 
 See [AGENTS.md](./AGENTS.md) for contributor setup and guidelines.
 
@@ -168,6 +204,48 @@ Custom skills can be added locally at `~/.config/atv-design/skills/` or `.codesi
 | **Auth Architecture** | Per-provider defaults | Documented BYOK posture (see `docs/adr/0001-byok-oauth-posture.md`) |
 
 The upstream **Electron + TypeScript + React + Vite + Tailwind + pnpm/Turbo stack is unchanged**. We do not fork or migrate the build system.
+
+---
+
+## 🎨 Terminal 42 × ATV Design
+
+ATV Design pairs **Terminal 42's design-canvas UX and dark pro-tool visual
+language** with **ATV Design's tested, secure, provider-rich backend**. The two
+apps started from different places — Terminal 42 is a `copilot`-CLI-driven design
+studio with a superb canvas; ATV Design is a client-side SDK app with a hardened,
+BYOK-rich engine — so this is a **port behind a translation layer, not a frontend
+swap**.
+
+**What came from Terminal 42:**
+
+- **Design-token inspector + viewport registry** — the two most valuable pieces
+  of T42's `DesignCanvas`, extracted into tested units
+  (`token-inspector.ts`, `viewport-profiles.ts`).
+- **Dark pro-tool reskin** — T42's cool near-black canvas, three-step surface
+  ladder, and sky-blue accent, mapped onto ATV's OKLCH token names in
+  `packages/ui/src/tokens.css` (`.dark`). ATV's light theme (warm cream) is
+  unchanged.
+
+**What stayed ATV Design (the trunk):**
+
+- Providers (GitHub Copilot SDK via OAuth+PKCE, Azure OpenAI/Foundry via Entra
+  ID, and BYOK for Claude/GPT/Gemini/DeepSeek/Kimi/GLM/Ollama), agent
+  orchestration, prompt intelligence, skills, SQLite+workspace storage, the
+  security posture, and the full test suite.
+
+**The seam** is `apps/desktop/src/renderer/src/lib/design-stream-adapter.ts` — a
+stateful adapter that projects ATV's one-file-at-a-time `AgentStreamEvent`s into
+the whole-`versions[]` callback contract T42's canvas expects (dedupe +
+modified-time ordering, 31 tests). It, the token inspector, and the viewport
+profiles land as **tested-but-not-yet-wired donor units** — the live renderer
+still runs ATV's existing stream hook; wiring the ported canvas onto this seam is
+a follow-up slice (see the assessment doc for the honest gap list). Terminal 42's
+Copilot-CLI backend, PTY Brain, and raw terminal were **not** taken.
+
+See [`analysis/MERGE-ARCHITECTURE.md`](./analysis/MERGE-ARCHITECTURE.md) for the
+contributor-facing walkthrough, [`analysis/T42-ON-ATV-ASSESSMENT.md`](./analysis/T42-ON-ATV-ASSESSMENT.md)
+for an honest scope assessment, and [`ATTRIBUTION.md`](./ATTRIBUTION.md) for the
+Terminal 42 license/attribution record.
 
 ---
 

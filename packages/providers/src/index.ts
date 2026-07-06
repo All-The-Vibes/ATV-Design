@@ -16,6 +16,11 @@ import {
   type WireApi,
 } from '@atv-design/shared';
 import {
+  type AzureResponseSignal,
+  enrichAzureThrottleError,
+  normalizeResponseHeaders,
+} from './azure/throttle';
+import {
   claudeCodeIdentityHeaders,
   looksLikeClaudeOAuthToken,
   shouldForceClaudeCodeIdentity,
@@ -262,6 +267,7 @@ export async function complete(
         reasoning?: ReasoningLevel;
         headers?: Record<string, string>;
         onPayload?: (payload: unknown) => unknown;
+        onResponse?: (response: { status: number; headers: unknown }) => void;
       },
     ) => Promise<PiAssistantMessage>;
   };
@@ -309,6 +315,7 @@ export async function complete(
     reasoning?: ReasoningLevel;
     headers?: Record<string, string>;
     onPayload?: (payload: unknown) => unknown;
+    onResponse?: (response: { status: number; headers: unknown }) => void;
   } = {
     apiKey,
   };
@@ -329,6 +336,23 @@ export async function complete(
   // when a valid bearer is present.
   if (opts.wire === 'azure-openai-responses' && apiKey && apiKey !== 'atv-design-keyless') {
     piOpts.headers = { Authorization: `Bearer ${apiKey}`, ...(piOpts.headers ?? {}) };
+  }
+
+  // Azure / Foundry: capture the HTTP status + headers via pi-ai's onResponse
+  // hook (fires after the response is received, before the SSE body is read).
+  // Azure throttles by returning HTTP 200, opening the stream, then emitting a
+  // detail-less `response.failed` — pi-ai flattens that to an opaque "Unknown
+  // error" string. The captured signal (x-ms-fe-error, retry-after, rate-limit
+  // headers) lets us rewrite that into an actionable capacity/TPM message
+  // below. See ./azure/throttle.ts.
+  let azureSignal: AzureResponseSignal | undefined;
+  if (opts.wire === 'azure-openai-responses') {
+    piOpts.onResponse = (response) => {
+      azureSignal = {
+        status: response.status,
+        headers: normalizeResponseHeaders(response.headers),
+      };
+    };
   }
 
   // Covers both registry-looked-up models (piModel.api) and custom-endpoint
@@ -371,10 +395,15 @@ export async function complete(
   const result = await pi.completeSimple(piModel, piContext, piOpts);
 
   if (result.stopReason === 'error') {
-    throw new CodesignError(
-      result.errorMessage ?? 'Provider returned an error',
-      ERROR_CODES.PROVIDER_ERROR,
-    );
+    const rawMessage = result.errorMessage ?? 'Provider returned an error';
+    // Azure / Foundry: pi-ai flattens a detail-less `response.failed` to an
+    // opaque "Unknown error" — rewrite it into an actionable capacity/TPM
+    // throttle message using the response signal captured above.
+    const message =
+      opts.wire === 'azure-openai-responses'
+        ? enrichAzureThrottleError(rawMessage, azureSignal)
+        : rawMessage;
+    throw new CodesignError(message, ERROR_CODES.PROVIDER_ERROR);
   }
 
   const text = result.content
@@ -508,6 +537,18 @@ export type {
 } from './retry';
 
 export { looksLikeGatewayMissingMessagesApi } from './gateway-compat';
+
+// Azure / Foundry throttle enrichment — turn pi-ai's opaque "Unknown error"
+// (detail-less response.failed) into an actionable capacity/TPM message. Used
+// by core's agent path to enrich the flattened failure message too.
+export {
+  AZURE_OPAQUE_FAILURE_SENTINEL,
+  enrichAzureThrottleError,
+  isOpaqueAzureFailure,
+  normalizeResponseHeaders,
+  parseRetryAfterSeconds,
+} from './azure/throttle';
+export type { AzureResponseSignal } from './azure/throttle';
 
 export { injectSkillsIntoMessages, formatSkillsForPrompt, filterActive } from './skill-injector';
 

@@ -82,6 +82,12 @@ interface AgentScript {
    * behavior that flattens getApiKey throws into `errorMessage: string`).
    */
   invokeGetApiKey?: boolean;
+  /**
+   * When set, the mock invokes `options.onResponse` with status 200 and these
+   * headers before emitting the assistant response — simulating pi-ai's
+   * onResponse hook firing on an Azure HTTP-200-then-`response.failed` throttle.
+   */
+  invokeOnResponseHeaders?: Record<string, string>;
   /** Optional per-prompt overrides for multi-prompt agent runs. */
   promptRuns?: AgentPromptRun[];
 }
@@ -177,6 +183,20 @@ vi.mock('@mariozechner/pi-agent-core', () => {
           this.emit({ type: 'agent_end', messages: [failMsg] });
           return;
         }
+      }
+
+      // Simulate pi-ai's onResponse hook firing with the Azure throttle signal
+      // (HTTP 200 + rate-limit headers) before the SSE body fails.
+      if (this.call.options.onResponse && scriptedAgent.invokeOnResponseHeaders) {
+        this.call.options.onResponse(
+          {
+            status: 200,
+            headers: scriptedAgent.invokeOnResponseHeaders,
+            // biome-ignore lint/suspicious/noExplicitAny: ProviderResponse shape not re-exported.
+          } as any,
+          // biome-ignore lint/suspicious/noExplicitAny: Model shape not needed by our handler.
+          this.call.options.initialState?.model as any,
+        );
       }
 
       this.emit({ type: 'agent_start' });
@@ -610,6 +630,78 @@ describe('generateViaAgent() — Phase 1 pass-through', () => {
         apiKey: 'sk-test',
       }),
     ).rejects.toMatchObject({ message: expect.stringContaining('upstream blew up') });
+  });
+
+  it('rewrites the opaque Azure failure into an actionable throttle message (with captured headers)', async () => {
+    scriptedAgent = {
+      assistantText: '',
+      stopReason: 'error',
+      errorMessage: 'Unknown error (no error details in response)',
+      invokeOnResponseHeaders: { 'x-ms-fe-error': 'true', 'retry-after': '30' },
+    };
+    await expect(
+      generateViaAgent({
+        prompt: 'design a dashboard',
+        history: [],
+        model: { provider: 'azure', modelId: 'gpt-5.4' },
+        apiKey: 'sk-test',
+        baseUrl: 'https://my-resource.openai.azure.com',
+        wire: 'azure-openai-responses',
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/capacity|tpm|tokens-per-minute|rate/i),
+    });
+    // The opaque sentinel must be gone, and the retry-after surfaced.
+    await expect(
+      generateViaAgent({
+        prompt: 'design a dashboard',
+        history: [],
+        model: { provider: 'azure', modelId: 'gpt-5.4' },
+        apiKey: 'sk-test',
+        baseUrl: 'https://my-resource.openai.azure.com',
+        wire: 'azure-openai-responses',
+      }),
+    ).rejects.toMatchObject({ message: expect.stringContaining('30') });
+  });
+
+  it('enriches the opaque Azure failure even when no throttle headers were captured', async () => {
+    scriptedAgent = {
+      assistantText: '',
+      stopReason: 'error',
+      errorMessage: 'Unknown error (no error details in response)',
+      // No invokeOnResponseHeaders → azureSignal stays undefined.
+    };
+    await expect(
+      generateViaAgent({
+        prompt: 'design a dashboard',
+        history: [],
+        model: { provider: 'azure', modelId: 'gpt-5.4' },
+        apiKey: 'sk-test',
+        baseUrl: 'https://my-resource.openai.azure.com',
+        wire: 'azure-openai-responses',
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringMatching(/capacity|tpm|quota|rate|throttl/i),
+    });
+  });
+
+  it('does NOT enrich the same opaque message on a non-Azure wire', async () => {
+    scriptedAgent = {
+      assistantText: '',
+      stopReason: 'error',
+      errorMessage: 'Unknown error (no error details in response)',
+    };
+    await expect(
+      generateViaAgent({
+        prompt: 'design a dashboard',
+        history: [],
+        model: MODEL,
+        apiKey: 'sk-test',
+        wire: 'openai-chat',
+      }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('Unknown error (no error details in response)'),
+    });
   });
 
   it('abort signal cascades into agent.abort()', async () => {

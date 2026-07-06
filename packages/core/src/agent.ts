@@ -23,12 +23,19 @@
  */
 
 import { type ArtifactEvent, createArtifactParser } from '@atv-design/artifacts';
-import type { ReasoningLevel, RetryDecision, RetryReason } from '@atv-design/providers';
+import type {
+  AzureResponseSignal,
+  ReasoningLevel,
+  RetryDecision,
+  RetryReason,
+} from '@atv-design/providers';
 import {
   classifyError,
   claudeCodeIdentityHeaders,
+  enrichAzureThrottleError,
   inferReasoning,
   looksLikeClaudeOAuthToken,
+  normalizeResponseHeaders,
   shouldForceClaudeCodeIdentity,
   withBackoff,
 } from '@atv-design/providers';
@@ -927,6 +934,13 @@ export async function generateViaAgent(
   let capturedGetApiKeyError: unknown = null;
   let latestTodos: CompletionTodoItem[] | null = null;
   let doneStatus: CompletionState['doneStatus'] = 'not_called';
+  // Azure / Foundry throttle capture. pi-agent-core forwards onResponse from
+  // pi-ai, firing with the HTTP status + headers before the SSE body is read.
+  // Azure throttles by returning 200 then a detail-less `response.failed`,
+  // which pi-agent-core flattens to an opaque errorMessage. Capturing the
+  // header signal here lets the post-agent error branches rewrite that into an
+  // actionable capacity/TPM message. See providers/src/azure/throttle.ts.
+  let azureSignal: AzureResponseSignal | undefined;
   const agent = new Agent({
     initialState: {
       systemPrompt: augmentedSystemPrompt,
@@ -965,6 +979,18 @@ export async function generateViaAgent(
           }
         }
       : () => input.apiKey || 'atv-design-keyless',
+    // Capture the Azure response signal (status + headers) for throttle
+    // enrichment. Only meaningful on the azure-openai-responses wire; harmless
+    // elsewhere (the header signal is just ignored downstream).
+    onResponse:
+      input.wire === 'azure-openai-responses'
+        ? (response) => {
+            azureSignal = {
+              status: response.status,
+              headers: normalizeResponseHeaders(response.headers),
+            };
+          }
+        : undefined,
   });
 
   agent.subscribe((event) => {
@@ -1070,7 +1096,11 @@ export async function generateViaAgent(
       });
       throw capturedGetApiKeyError;
     }
-    const message = finalAssistant.errorMessage ?? 'Provider returned an error';
+    const rawMessage = finalAssistant.errorMessage ?? 'Provider returned an error';
+    const message =
+      input.wire === 'azure-openai-responses'
+        ? enrichAzureThrottleError(rawMessage, azureSignal)
+        : rawMessage;
     log.error('[generate] step=send_request.fail', {
       ...ctx,
       ms: Date.now() - sendStart,
@@ -1235,7 +1265,11 @@ export async function generateViaAgent(
         });
         throw capturedGetApiKeyError;
       }
-      const message = finalAssistant.errorMessage ?? 'Provider returned an error';
+      const rawMessage = finalAssistant.errorMessage ?? 'Provider returned an error';
+      const message =
+        input.wire === 'azure-openai-responses'
+          ? enrichAzureThrottleError(rawMessage, azureSignal)
+          : rawMessage;
       log.error('[generate] step=parse_response.fail', {
         ...ctx,
         missingIndexRecoveryAttempts,

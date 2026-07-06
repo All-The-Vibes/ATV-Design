@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+import { isRawSpecifier, rawModuleSource, stripRawQuery } from './raw-loader.mjs';
+
+describe('isRawSpecifier', () => {
+  it('matches the Vite ?raw suffix', () => {
+    expect(isRawSpecifier('./android.jsx?raw')).toBe(true);
+    expect(isRawSpecifier('../vendor/babel.standalone.js?raw')).toBe(true);
+    expect(isRawSpecifier('file:///x/y.md?raw')).toBe(true);
+  });
+
+  it('does not match bare specifiers or other queries', () => {
+    expect(isRawSpecifier('./android.jsx')).toBe(false);
+    expect(isRawSpecifier('@atv-design/core')).toBe(false);
+    expect(isRawSpecifier('./x.jsx?raw=1')).toBe(false);
+    expect(isRawSpecifier('./x.jsx?foo')).toBe(false);
+  });
+});
+
+describe('stripRawQuery', () => {
+  it('removes exactly the trailing ?raw', () => {
+    expect(stripRawQuery('./android.jsx?raw')).toBe('./android.jsx');
+    expect(stripRawQuery('file:///x/y.md?raw')).toBe('file:///x/y.md');
+  });
+});
+
+describe('rawModuleSource', () => {
+  it('emits a default export of the file contents as a JS string literal', () => {
+    const src = rawModuleSource('const TWEAK_DEFAULTS = {"a":1};\n');
+    expect(src).toBe('export default "const TWEAK_DEFAULTS = {\\"a\\":1};\\n";');
+  });
+
+  it('escapes content that contains quotes, newlines, and </script>', () => {
+    const tricky = 'a"b\n</script> x';
+    const src = rawModuleSource(tricky);
+    // Must be valid JS that round-trips back to the original string.
+    // biome-ignore lint/security/noGlobalEval: test-only round-trip of our own generated module source.
+    const roundTripped = eval(src.replace(/^export default /, '').replace(/;$/, ''));
+    expect(roundTripped).toBe(tricky);
+  });
+
+  it('produces a parseable module for arbitrary binary-ish content', () => {
+    // Include real control bytes (NUL, SOH) plus backslash, tab, backtick, and a
+    // template-literal sequence that must NOT interpolate — constructed via
+    // fromCharCode so this test file stays pure ASCII text. A committed NUL byte
+    // makes git treat the file as binary and hides it from diff review.
+    const weird = `${String.fromCharCode(0, 1)} \\\t\`\${notInterpolated}\``;
+    const src = rawModuleSource(weird);
+    // biome-ignore lint/security/noGlobalEval: test-only round-trip of our own generated module source.
+    const roundTripped = eval(src.replace(/^export default /, '').replace(/;$/, ''));
+    expect(roundTripped).toBe(weird);
+  });
+});
