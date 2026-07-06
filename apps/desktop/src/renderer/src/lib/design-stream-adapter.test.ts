@@ -144,6 +144,62 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     expect(h.dones).toHaveLength(1);
     expect(h.dones[0]?.exitCode).not.toBe(0);
   });
+
+  it('emits onDone only once when a run ends with both turn_end and agent_end', () => {
+    // pi emits `turn_end` after every turn AND a single `agent_end` at the end
+    // of the run; ATV's main process forwards both for the same designId. The
+    // adapter must collapse them into exactly one terminal onDone — the T42
+    // DesignCanvas treats onDone as a one-shot "generation finished" signal.
+    const h = makeCallbacks();
+    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 'turn done' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+
+    expect(h.dones).toEqual([{ designId: DESIGN, exitCode: 0 }]);
+  });
+
+  it('emits onDone only once across a multi-turn run (turn_end per turn + agent_end)', () => {
+    const h = makeCallbacks();
+    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 't1' }));
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 't2' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+
+    expect(h.dones).toHaveLength(1);
+  });
+
+  it('does not emit a second onDone when error follows a terminal turn_end', () => {
+    // Once a generation has reported done, a trailing error for the same run
+    // must not double-fire the terminal callback.
+    const h = makeCallbacks();
+    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 'ok' }));
+    adapter.handleEvent(ev({ type: 'error', message: 'late boom' }));
+
+    expect(h.dones).toEqual([{ designId: DESIGN, exitCode: 0 }]);
+  });
+
+  it('re-arms onDone for a fresh generation after reset', () => {
+    // reset() starts a new generation; the one-shot done guard must re-arm so
+    // the next run's terminal event is delivered.
+    const h = makeCallbacks();
+    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+    adapter.reset(DESIGN);
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+
+    expect(h.dones).toHaveLength(2);
+  });
 });
 
 describe('createDesignStreamAdapter — onVersion accumulation (plan finding A-F2)', () => {
@@ -212,7 +268,7 @@ describe('createDesignStreamAdapter — onVersion accumulation (plan finding A-F
     expect(h.versions.at(-1)?.latest?.fileName).toBe('about.html');
   });
 
-  it('handles out-of-order arrival by ordering versions on modifiedAt, not arrival', () => {
+  it('orders versions by the injected modifiedAt clock, not by arrival, when the clock is non-monotonic', () => {
     const h = makeCallbacks();
     let clock = 1000;
     const adapter = createDesignStreamAdapter({
@@ -221,22 +277,25 @@ describe('createDesignStreamAdapter — onVersion accumulation (plan finding A-F
     });
 
     adapter.handleEvent(ev({ type: 'turn_start' }));
-    // Two files written at distinct logical times, but the adapter is told the
-    // timestamps explicitly so a late-delivered earlier-write cannot jump ahead.
+    // Two distinct files stamped with an explicit, non-monotonic clock. The
+    // monotonic guard means the later-stamped write stays `latest` even if a
+    // lower-stamped write for a different path is processed afterwards.
     clock = 2000;
     adapter.handleEvent(ev({ type: 'fs_updated', path: 'a.html', content: 'a' }));
-    clock = 1500; // simulated out-of-order (older write delivered after newer)
+    clock = 1500; // lower stamp processed after the higher one
     adapter.handleEvent(ev({ type: 'fs_updated', path: 'b.html', content: 'b' }));
 
     const last = h.versions.at(-1);
-    // latest must remain a.html (modifiedAt 2000) despite b arriving later.
+    // latest must remain a.html (modifiedAt 2000) despite b being processed later.
     expect(last?.latest?.fileName).toBe('a.html');
   });
 
-  it('does not regress a file’s size when a stale older write for the same path arrives late', () => {
-    // Regression guard (review H1): newest-wins must protect content/size, not
-    // just modifiedAt. A late-delivered OLDER write to a path must not clobber
-    // the newer content already recorded for it.
+  it('does not regress a file’s size when a lower-stamped write for the same path is processed late', () => {
+    // Regression guard (review H1): the monotonic modifiedAt guard must protect
+    // content/size, not just modifiedAt. A lower-stamped write to a path must not
+    // clobber the higher-stamped content already recorded for it. (In production
+    // `now` is Date.now() and IPC delivery is ordered, so this guard's job is
+    // resilience to a non-monotonic clock rather than reordered transport.)
     const h = makeCallbacks();
     let clock = 1000;
     const adapter = createDesignStreamAdapter({ callbacks: h.callbacks, now: () => clock });

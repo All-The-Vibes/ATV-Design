@@ -529,6 +529,45 @@ describe('generateViaAgent() — Phase 1 pass-through', () => {
     expect(initialState?.thinkingLevel).toBe('high');
   });
 
+  it('pins GitHub Copilot reasoning models to low (Copilot buffers extended reasoning → terminated)', async () => {
+    scriptedAgent = { assistantText: RESPONSE_WITH_ARTIFACT };
+    await generateViaAgent({
+      prompt: 'design a landing page',
+      history: [],
+      model: { provider: 'github-copilot', modelId: 'claude-sonnet-4-6' },
+      apiKey: 'sk-test',
+      wire: 'openai-chat',
+      baseUrl: 'https://api.githubcopilot.com',
+    });
+
+    const initialState = agentCalls[0]?.options.initialState as
+      | {
+          thinkingLevel?: string;
+        }
+      | undefined;
+    expect(initialState?.thinkingLevel).toBe('low');
+  });
+
+  it('clamps an explicit high reasoning level down to low for GitHub Copilot', async () => {
+    scriptedAgent = { assistantText: RESPONSE_WITH_ARTIFACT };
+    await generateViaAgent({
+      prompt: 'design a landing page',
+      history: [],
+      model: { provider: 'github-copilot', modelId: 'claude-sonnet-4-6' },
+      apiKey: 'sk-test',
+      wire: 'openai-chat',
+      baseUrl: 'https://api.githubcopilot.com',
+      reasoningLevel: 'high',
+    });
+
+    const initialState = agentCalls[0]?.options.initialState as
+      | {
+          thinkingLevel?: string;
+        }
+      | undefined;
+    expect(initialState?.thinkingLevel).toBe('low');
+  });
+
   it('extracts artifact and returns usage mapped from pi-ai assistant usage', async () => {
     scriptedAgent = {
       assistantText: RESPONSE_WITH_ARTIFACT,

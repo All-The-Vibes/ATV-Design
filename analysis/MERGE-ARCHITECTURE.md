@@ -2,7 +2,7 @@
 
 > Contributor-facing guide to how Terminal 42's frontend is grafted onto ATV
 > Design's backend. Read this before touching the canvas, the generation stream,
-> or the design-token plumbing. Companion to `analysis/04-merge-implementation-plan.md`.
+> or the design-token plumbing. Companion to `analysis/T42-ON-ATV-ASSESSMENT.md`.
 
 ## The one thing to understand first
 
@@ -65,7 +65,7 @@ and rebuilds the list as events arrive. It must:
   back to a single `fetchVersions()` poll at `turn_end`, so the live preview
   still updates. The path is **degraded, not dropped**.
 
-All of the above is locked by `design-stream-adapter.test.ts` (19 tests), which
+All of the above is locked by `design-stream-adapter.test.ts` (26 tests), which
 double as the plan's mandatory regression guards.
 
 ## The DesignCanvas split (finding CQ-F4)
@@ -108,4 +108,4 @@ theme so a drift back to warm editorial fails loudly.
 The 37-channel `window.terminal42` shim (a faithful replica of a backend being
 deleted), the Copilot-CLI backend, `~/.copilot/session-state` coupling,
 Brain-via-PTY, the raw xterm terminal, and T42 dead code. See
-`analysis/04-merge-implementation-plan.md` → "Drop" and "NOT in scope".
+`ATTRIBUTION.md` → "What atv-design did NOT take".

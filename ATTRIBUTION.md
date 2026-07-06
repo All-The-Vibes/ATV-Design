@@ -53,11 +53,10 @@ This project, **atv-design**, is a hard fork of [OpenCoworkAI/open-codesign](htt
     `packages/ui/src/tokens.css` (`.dark`), converted from T42 `globals.css`
     sRGB rgb-channel vars to atv-design's OKLCH token plumbing.
 - **License note (merge decision Q5):** at the time of the merge the upstream
-  repository shipped **no LICENSE file**, though its README states MIT. The
-  owner's direction (recorded in `analysis/03-comparison-and-merge-strategy.md`
-  §6, Q5) is that the author intended MIT and simply omitted the file, so the
-  source is used under MIT with attribution here and in per-module headers. If
-  upstream later clarifies the license, this entry will be updated to match.
+  repository shipped **no LICENSE file**, though its README states MIT. Per the
+  project owner's direction, the author intended MIT and simply omitted the file,
+  so the source is used under MIT with attribution here and in per-module headers.
+  If upstream later clarifies the license, this entry will be updated to match.
 - **What atv-design did NOT take:** T42's Copilot-CLI backend, the
   `~/.copilot/session-state` coupling, the Brain-via-PTY mechanism, the raw
   xterm terminal, and dead/incomplete code (`looms*`, unmounted

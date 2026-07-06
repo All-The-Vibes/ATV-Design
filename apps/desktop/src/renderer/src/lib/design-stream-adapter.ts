@@ -2,7 +2,7 @@ import type { AgentStreamEvent } from '../../../preload/index';
 
 /**
  * T1 — Data-model + event translation layer (Phase 2 of the ATV × Terminal 42
- * merge plan). See `analysis/04-merge-implementation-plan.md`.
+ * merge plan). See `analysis/MERGE-ARCHITECTURE.md`.
  *
  * Terminal 42's ported UI (DesignCanvas, DesignChatRail) is written against a
  * file-versions data model and a callback contract:
@@ -20,7 +20,8 @@ import type { AgentStreamEvent } from '../../../preload/index';
  * Responsibilities (each maps to an eng-review finding folded into the plan):
  *   - A-F2  Reconstruct T42's `{ latest, versions[] }` by accumulating per-path
  *           file state across many fs_updated events: dedupe repeated writes to
- *           a path, order by modifiedAt (tolerating out-of-order delivery).
+ *           a path, order by modifiedAt (arrival order under the ordered IPC
+ *           transport; a monotonic guard keeps modifiedAt stable).
  *   - P-F5  Throttle the authoritative DB re-query so a flurry of fs_updated
  *           events (10+/turn is normal) doesn't issue N synchronous SQLite
  *           reads mid-generation. Optimistic in-memory projection lands
@@ -89,6 +90,14 @@ interface PerPathState {
 interface DesignState {
   designId: string;
   started: boolean;
+  /**
+   * Fired the one-shot terminal onDone for this generation. pi emits `turn_end`
+   * after every turn AND a single `agent_end` at run end, and ATV's main process
+   * forwards both — plus a possible trailing `error` — for the same designId.
+   * onDone must be delivered exactly once per generation; reset() clears state
+   * so the flag re-arms for the next run.
+   */
+  done: boolean;
   /** Saw at least one fs_updated this run — decides whether degrade-poll runs. */
   sawFsEvent: boolean;
   /** path → latest known state for that path (dedupe + newest-wins). */
@@ -132,6 +141,7 @@ export function createDesignStreamAdapter(
       s = {
         designId,
         started: false,
+        done: false,
         sawFsEvent: false,
         files: new Map(),
         epoch: 0,
@@ -207,10 +217,13 @@ export function createDesignStreamAdapter(
     const content = typeof event.content === 'string' ? event.content : '';
     const prev = s.files.get(event.path);
     const ts = now();
-    // Newest-wins for BOTH timestamp and content: a late-delivered OLDER write
-    // to a path must not regress the size/content already recorded for a newer
-    // one. Only (re)write the path's state when this event is at least as new as
-    // what we have. modifiedAt is still advanced so ordering stays correct.
+    // Last-write-wins by arrival order: `ts` is the arrival timestamp (AgentStreamEvent
+    // carries no source mtime), and IPC delivery for a single design is ordered,
+    // so the newest event for a path is the one that arrives last. The
+    // `ts >= prev.modifiedAt` guard keeps the recorded modifiedAt monotonic and
+    // makes the accumulator resilient to a non-monotonic `now` (e.g. an injected
+    // clock in tests); it is not a guarantee against genuinely reordered delivery,
+    // which the ordered transport does not produce.
     if (!prev || ts >= prev.modifiedAt) {
       s.files.set(event.path, {
         fileName: fileNameOf(event.path),
@@ -254,14 +267,25 @@ export function createDesignStreamAdapter(
         const s = getState(event.designId);
         // Degrade path (A-F1): no fs_updated seen this run → poll the DB once so
         // the live preview still receives a version under USE_AGENT_RUNTIME=0.
-        if (!s.sawFsEvent && fetchVersions) {
+        // Guard on !s.done so a per-turn turn_end followed by the run's agent_end
+        // does not double-poll.
+        if (!s.done && !s.sawFsEvent && fetchVersions) {
           void reconcileFromDb(s);
         }
-        callbacks.onDone?.({ designId: event.designId, exitCode: 0 });
+        // pi emits turn_end per-turn AND agent_end once; deliver the terminal
+        // onDone exactly once per generation (mirrors the `started` one-shot).
+        if (!s.done) {
+          s.done = true;
+          callbacks.onDone?.({ designId: event.designId, exitCode: 0 });
+        }
         break;
       }
       case 'error': {
-        callbacks.onDone?.({ designId: event.designId, exitCode: 1 });
+        const s = getState(event.designId);
+        if (!s.done) {
+          s.done = true;
+          callbacks.onDone?.({ designId: event.designId, exitCode: 1 });
+        }
         break;
       }
       default:

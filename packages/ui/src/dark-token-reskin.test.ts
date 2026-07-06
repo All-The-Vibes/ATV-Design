@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 /**
  * T5 / Phase 1 — Dark-token reskin contract (ATV × Terminal 42 merge).
  *
- * Product decision Q1 (analysis/04-merge-implementation-plan.md): adopt Terminal
+ * Product decision Q1 (analysis/MERGE-ARCHITECTURE.md): adopt Terminal
  * 42's dark pro-tool system as the SINGLE identity and drop ATV's warm editorial
  * theme. The reskin keeps ATV's token plumbing (the --color-* names its 9
  * consumers already reference) and swaps the VALUES to T42's ladder.

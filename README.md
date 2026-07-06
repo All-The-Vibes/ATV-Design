@@ -236,7 +236,7 @@ swap**.
 **The seam** is `apps/desktop/src/renderer/src/lib/design-stream-adapter.ts` — a
 stateful adapter that projects ATV's one-file-at-a-time `AgentStreamEvent`s into
 the whole-`versions[]` callback contract T42's canvas expects (dedupe +
-newest-wins ordering, 19 tests). Terminal 42's Copilot-CLI backend, PTY Brain,
+modified-time ordering, 26 tests). Terminal 42's Copilot-CLI backend, PTY Brain,
 and raw terminal were **not** taken.
 
 See [`analysis/MERGE-ARCHITECTURE.md`](./analysis/MERGE-ARCHITECTURE.md) for the
