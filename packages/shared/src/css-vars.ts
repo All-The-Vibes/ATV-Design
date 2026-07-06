@@ -25,6 +25,17 @@
 export type RootCssVars = Record<string, string>;
 
 /**
+ * Defense-in-depth cap on the input the extractor will scan. The scan is O(n),
+ * but this runs synchronously in the Electron main process on untrusted,
+ * model-generated artifact HTML, so bound the work regardless. A design's token
+ * `:root` declarations live near the top of the document, so an artifact larger
+ * than this almost certainly carries its design tokens within the first slice;
+ * scanning beyond it yields diminishing returns for real inputs while removing
+ * any pathological-size freeze. ~1 MB of leading source.
+ */
+const MAX_SCAN_LENGTH = 1_000_000;
+
+/**
  * Find the index just past the matching `}` for the block opened at `openIdx`
  * (which must point at `{`). Brace-depth aware, and skips braces that sit
  * inside string values (`"…}…"`, `'…}…'`) or CSS comments (`/* … }* /`) so a
@@ -124,31 +135,41 @@ function parseRootBody(body: string, into: RootCssVars): void {
  * matching the CSS cascade for same-specificity `:root` rules. Returns an empty
  * object when no tweakable vars are present.
  *
- * Single forward pass: string/comment state is carried across the whole scan, so
- * a `:root` that lives inside a string/comment is skipped without rescanning
- * from the start. This keeps the extractor linear in `source.length` regardless
- * of how many `:root` blocks it contains (a per-match rescan would be O(n²), and
- * this runs synchronously in the Electron main process on model-generated HTML).
+ * ONE forward pass, O(n) in `source.length` and independent of the number of
+ * `:root` occurrences. String/comment state is carried across the whole scan,
+ * and the `:root`→`{` selector gap is consumed IN the same pass (no per-match
+ * `indexOf`/`slice` rescan — that would be O(n²) on pathological input like
+ * `:root :root :root …` with a distant/absent brace). Each character is visited
+ * a bounded number of times. This runs synchronously in the Electron main
+ * process on model-generated artifact HTML, so it must not be super-linear.
+ *
+ * Model: track whether the selector currently being scanned (the text since the
+ * last top-level `{`/`}`) contains a `:root` token at the top level. When a
+ * top-level `{` opens a block, parse it as a :root block iff that flag is set.
  */
 export function extractRootCssVars(source: string): RootCssVars {
   const out: RootCssVars = {};
   if (!source) return out;
 
-  const n = source.length;
+  // Bound the scan (defense-in-depth on the untrusted main-process path).
+  const scan = source.length > MAX_SCAN_LENGTH ? source.slice(0, MAX_SCAN_LENGTH) : source;
+  const n = scan.length;
   let i = 0;
   let inStr: '"' | "'" | null = null;
   let inComment = false;
+  // Does the selector we are currently accumulating contain a `:root` token?
+  let selectorHasRoot = false;
 
   while (i < n) {
-    const ch = source[i];
+    const ch = scan[i];
 
     if (inComment) {
-      if (ch === '*' && source[i + 1] === '/') {
+      if (ch === '*' && scan[i + 1] === '/') {
         inComment = false;
         i += 2;
-        continue;
+      } else {
+        i += 1;
       }
-      i += 1;
       continue;
     }
     if (inStr) {
@@ -159,7 +180,7 @@ export function extractRootCssVars(source: string): RootCssVars {
       } else i += 1;
       continue;
     }
-    if (ch === '/' && source[i + 1] === '*') {
+    if (ch === '/' && scan[i + 1] === '*') {
       inComment = true;
       i += 2;
       continue;
@@ -170,24 +191,37 @@ export function extractRootCssVars(source: string): RootCssVars {
       continue;
     }
 
-    // Real (non-string, non-comment) `:root` selector? Match `:root\b[^{]*\{`
-    // starting here without a global regex rescan.
-    if (ch === ':' && source.startsWith(':root', i) && !isWordChar(source[i + 5])) {
-      const braceIdx = source.indexOf('{', i + 5);
-      // Guard: the gap between `:root` and `{` must not contain another `{` or a
-      // `}` (that would mean this `:root` had no block of its own).
-      if (braceIdx !== -1 && source.slice(i + 5, braceIdx).indexOf('}') === -1) {
-        const endIdx = findBlockEnd(source, braceIdx);
-        if (endIdx > braceIdx) {
-          parseRootBody(source.slice(braceIdx + 1, endIdx), out);
-          i = endIdx + 1;
-          continue;
+    if (ch === '{') {
+      const endIdx = findBlockEnd(scan, i);
+      if (selectorHasRoot) {
+        if (endIdx > i) {
+          parseRootBody(scan.slice(i + 1, endIdx), out);
+        } else {
+          // Unbalanced/truncated — parse what we can to the end, then stop.
+          parseRootBody(scan.slice(i + 1), out);
+          break;
         }
-        // Unbalanced/truncated — parse what we can to the end, then stop.
-        parseRootBody(source.slice(braceIdx + 1), out);
-        break;
       }
+      // Advance past the whole block (endIdx points at its closing `}`); a new
+      // selector starts fresh after it.
+      i = endIdx > i ? endIdx + 1 : n;
+      selectorHasRoot = false;
+      continue;
     }
+    if (ch === '}') {
+      // A stray `}` (or the end of an at-rule body) resets the selector context.
+      selectorHasRoot = false;
+      i += 1;
+      continue;
+    }
+
+    // Top-level `:root` token (word-bounded so `:rootish` does not match).
+    if (ch === ':' && scan.startsWith(':root', i) && !isWordChar(scan[i + 5])) {
+      selectorHasRoot = true;
+      i += 5;
+      continue;
+    }
+
     i += 1;
   }
   return out;

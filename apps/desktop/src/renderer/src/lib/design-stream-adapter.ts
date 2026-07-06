@@ -256,21 +256,20 @@ export function createDesignStreamAdapter(
   }
 
   /**
-   * Fire the one-shot terminal onDone. Guarantees the consumer has received the
-   * final version list BEFORE done in the fs path (a synchronous memory
-   * projection), so onDone never precedes the latest onVersion. The throttled DB
-   * reconcile may still emit one authoritative onVersion shortly AFTER onDone —
-   * that is an intended late refinement (optimistic-UI pattern), not an early
-   * "done". In the degrade path the version arrives via degradePoll().
+   * Fire the one-shot terminal onDone (once per generation).
+   *
+   * Ordering contract: in the fs path every `fs_updated` synchronously emits an
+   * optimistic `onVersion`, so by the time a run reaches its terminal event the
+   * latest version has already been delivered — onDone never precedes it. The
+   * throttled DB reconcile may emit one more authoritative `onVersion` shortly
+   * AFTER onDone; that is an intended late refinement (optimistic-UI pattern),
+   * not an early "done". In the degrade path (legacy runtime, no `fs_updated`)
+   * the only version comes from the async `degradePoll`, which may resolve just
+   * after onDone — acceptable for that path.
    */
   function finalize(s: DesignState, exitCode: number): void {
     if (s.done) return;
     s.done = true;
-    if (exitCode === 0 && s.sawFsEvent) {
-      // Emit the freshest memory view so a version precedes onDone even if the
-      // throttled DB reconcile has not fired yet.
-      emitOptimistic(s);
-    }
     callbacks.onDone?.({ designId: s.designId, exitCode });
   }
 

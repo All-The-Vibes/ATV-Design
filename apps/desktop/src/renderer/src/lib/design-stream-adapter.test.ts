@@ -192,21 +192,20 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     adapter.handleEvent(ev({ type: 'turn_end', finalText: 't2' }));
     adapter.handleEvent(ev({ type: 'agent_end' }));
 
-    // Both files were projected as versions during the run, and agent_end emits
-    // a final memory projection carrying the turn-2 file — so the last onVersion
-    // reflects about.html and precedes the single done, which is strictly last.
+    // Each fs_updated emitted an optimistic version as it arrived, so the turn-2
+    // file was projected before the single terminal done.
+    expect(events).toEqual(['version:index.html', 'version:about.html', 'done']);
+    expect(events.indexOf('done')).toBe(events.length - 1);
     expect(events.filter((e) => e === 'done')).toHaveLength(1);
-    expect(events[events.length - 1]).toBe('done');
-    expect(events[events.indexOf('done') - 1]).toBe('version:about.html');
-    expect(events.filter((e) => e === 'version:about.html').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('emits a final onVersion before onDone even when fetchVersions is provided', async () => {
+  it('emits a version before onDone even when fetchVersions is provided', async () => {
     // In production the adapter is built WITH fetchVersions (the throttled DB
-    // reconcile). onDone must still be preceded by a version carrying the final
-    // state — the synchronous memory projection guarantees this without waiting
-    // for the async DB reconcile. (The DB reconcile may emit one more
-    // authoritative onVersion afterward; that late refinement is intended.)
+    // reconcile). onDone must still be preceded by a version carrying the state:
+    // each fs_updated emits an optimistic version synchronously as it arrives, so
+    // the version is delivered before the terminal onDone without waiting for the
+    // async DB reconcile. (The DB reconcile may emit one more authoritative
+    // onVersion afterward; that late refinement is intended.)
     const order: string[] = [];
     const fetchVersions = vi.fn(async () => [] as DesignVersion[]);
     const adapter = createDesignStreamAdapter({
@@ -249,6 +248,31 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     await vi.advanceTimersByTimeAsync(10);
 
     expect(fetchVersions).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-arms the degrade poll for a second generation on the same design (no reset)', async () => {
+    // The one-shot degrade guard must re-arm on the next turn_start so a second
+    // degraded generation polls the DB again (once), rather than being suppressed
+    // by the first generation's flag.
+    const h = makeCallbacks();
+    const fetchVersions = vi.fn(async () => [] as DesignVersion[]);
+    const adapter = createDesignStreamAdapter({
+      callbacks: h.callbacks,
+      fetchVersions,
+      throttleMs: 250,
+    });
+
+    // Generation 1 (degraded).
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchVersions).toHaveBeenCalledTimes(1);
+
+    // Generation 2 (degraded) — no reset() in between.
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+    await vi.advanceTimersByTimeAsync(10);
+    expect(fetchVersions).toHaveBeenCalledTimes(2);
   });
 
   it('does not emit a second onDone when error follows a terminal agent_end', () => {

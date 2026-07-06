@@ -101,13 +101,50 @@ describe('extractRootCssVars', () => {
   it('runs in well under a second on many :root blocks (no quadratic rescan)', () => {
     // Reachability: buildSrcdoc → extractRootCssVars runs synchronously in the
     // Electron main process (done-verify.ts) on model-generated artifact HTML,
-    // BEFORE the 3s verify timeout can fire. A rescan-from-0 per :root match is
-    // O(n²): ~0.5 MB of :root blocks froze the main process for ~33s. The scan
-    // must stay linear in the number of blocks.
+    // BEFORE the 3s verify timeout can fire. A rescan-per-:root-match is O(n²):
+    // ~0.5 MB of :root blocks froze the main process for ~33s. The scan must
+    // stay linear in the number of blocks.
     const manyBlocks = ':root{--a:1;}'.repeat(40_000); // ~0.5 MB
     const t0 = performance.now();
     const out = extractRootCssVars(manyBlocks);
     expect(performance.now() - t0).toBeLessThan(500);
     expect(out).toEqual({ '--a': '1' });
+  });
+
+  it('stays linear when :root tokens have a distant or absent following brace', () => {
+    // The dangerous vector: `:root :root :root …` (or a huge `:root,:root,…`
+    // selector list) forces a forward scan for `{` on every match if the gap is
+    // rescanned per-match. A genuine single pass consumes the gap once.
+    const distantBrace = ':root '.repeat(150_000); // ~0.9 MB, no brace at all
+    const t0 = performance.now();
+    expect(extractRootCssVars(distantBrace)).toEqual({});
+    expect(performance.now() - t0).toBeLessThan(500);
+
+    const selectorList = `${':root,'.repeat(100_000)}.x { --a: 1; }`; // ~0.6 MB
+    const t1 = performance.now();
+    expect(extractRootCssVars(selectorList)).toEqual({ '--a': '1' });
+    expect(performance.now() - t1).toBeLessThan(500);
+  });
+
+  it('caps the scan on pathological megabyte-scale input (defense-in-depth)', () => {
+    // Beyond the scan cap the extractor stops early rather than risk any
+    // large-input freeze in the main process. Real design tokens live near the
+    // top of a document, so tokens within the first ~1 MB are still found.
+    const leadingRoot = ':root { --a: 1; }';
+    const huge = leadingRoot + ' '.repeat(3_000_000); // tokens up front, then bulk
+    const t0 = performance.now();
+    expect(extractRootCssVars(huge)).toEqual({ '--a': '1' });
+    expect(performance.now() - t0).toBeLessThan(500);
+
+    // A block that begins only AFTER the cap is intentionally not scanned.
+    const past = `${' '.repeat(1_500_000)}:root { --late: 9; }`;
+    expect(extractRootCssVars(past)).toEqual({});
+  });
+
+  it('finds the :root block when a } sits inside a comment or string in the selector gap', () => {
+    // The :root→{ gap must be parsed with comment/string awareness, not a raw
+    // indexOf('}') that would falsely reject these valid rules.
+    expect(extractRootCssVars(':root /* } */ { --a: 1; }')).toEqual({ '--a': '1' });
+    expect(extractRootCssVars(':root[data-x="}"] { --a: 1; }')).toEqual({ '--a': '1' });
   });
 });

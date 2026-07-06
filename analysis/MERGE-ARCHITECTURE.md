@@ -71,7 +71,7 @@ and rebuilds the list as events arrive. It must:
   generation across `turn_end`/`agent_end`), so the live preview still updates.
   The path is **degraded, not dropped**.
 
-All of the above is locked by `design-stream-adapter.test.ts` (30 tests), which
+All of the above is locked by `design-stream-adapter.test.ts` (31 tests), which
 double as the plan's mandatory regression guards.
 
 ## The DesignCanvas split (finding CQ-F4)

@@ -236,7 +236,7 @@ swap**.
 **The seam** is `apps/desktop/src/renderer/src/lib/design-stream-adapter.ts` — a
 stateful adapter that projects ATV's one-file-at-a-time `AgentStreamEvent`s into
 the whole-`versions[]` callback contract T42's canvas expects (dedupe +
-modified-time ordering, 30 tests). It, the token inspector, and the viewport
+modified-time ordering, 31 tests). It, the token inspector, and the viewport
 profiles land as **tested-but-not-yet-wired donor units** — the live renderer
 still runs ATV's existing stream hook; wiring the ported canvas onto this seam is
 a follow-up slice (see the assessment doc for the honest gap list). Terminal 42's
