@@ -101,6 +101,12 @@ interface DesignState {
   done: boolean;
   /** Saw at least one fs_updated this run — decides whether degrade-poll runs. */
   sawFsEvent: boolean;
+  /**
+   * A degrade DB poll already ran this generation. The legacy runtime emits both
+   * a per-turn `turn_end` and a final `agent_end`; without this flag a multi-turn
+   * degraded run would poll the DB on every one. Re-armed with the generation.
+   */
+  degradePolled: boolean;
   /** path → latest known state for that path (dedupe + newest-wins). */
   files: Map<string, PerPathState>;
   /**
@@ -144,6 +150,7 @@ export function createDesignStreamAdapter(
         started: false,
         done: false,
         sawFsEvent: false,
+        degradePolled: false,
         files: new Map(),
         epoch: 0,
         throttle: { timer: null, lastFlushAt: 0, dirty: false },
@@ -236,6 +243,37 @@ export function createDesignStreamAdapter(
     scheduleReconcile(s);
   }
 
+  /**
+   * Degrade path (A-F1): under USE_AGENT_RUNTIME=0 the legacy runtime emits
+   * lifecycle events but never fs_updated, so poll the DB so the live preview
+   * still receives a version. Guarded to run at most once per generation (both a
+   * per-turn turn_end and the run's agent_end reach here).
+   */
+  function degradePoll(s: DesignState): void {
+    if (s.degradePolled || s.sawFsEvent || !fetchVersions) return;
+    s.degradePolled = true;
+    void reconcileFromDb(s);
+  }
+
+  /**
+   * Fire the one-shot terminal onDone. Guarantees the consumer has received the
+   * final version list BEFORE done in the fs path (a synchronous memory
+   * projection), so onDone never precedes the latest onVersion. The throttled DB
+   * reconcile may still emit one authoritative onVersion shortly AFTER onDone —
+   * that is an intended late refinement (optimistic-UI pattern), not an early
+   * "done". In the degrade path the version arrives via degradePoll().
+   */
+  function finalize(s: DesignState, exitCode: number): void {
+    if (s.done) return;
+    s.done = true;
+    if (exitCode === 0 && s.sawFsEvent) {
+      // Emit the freshest memory view so a version precedes onDone even if the
+      // throttled DB reconcile has not fired yet.
+      emitOptimistic(s);
+    }
+    callbacks.onDone?.({ designId: s.designId, exitCode });
+  }
+
   function handleEvent(event: AgentStreamEvent): void {
     switch (event.type) {
       case 'turn_start': {
@@ -247,6 +285,7 @@ export function createDesignStreamAdapter(
           s.started = false;
           s.done = false;
           s.sawFsEvent = false;
+          s.degradePolled = false;
         }
         if (!s.started) {
           s.started = true;
@@ -276,34 +315,20 @@ export function createDesignStreamAdapter(
         // NOT the run boundary — so it must not fire onDone (doing so would
         // signal "finished" after turn 1 of a multi-turn run). This mirrors the
         // canonical useAgentStream, where handleTurnEnd does not clear
-        // isGenerating. It only drives the degrade poll: under USE_AGENT_RUNTIME=0
-        // the legacy runtime emits lifecycle events but no fs_updated, so poll
-        // the DB once per turn so the live preview still receives a version.
-        const s = getState(event.designId);
-        if (!s.sawFsEvent && fetchVersions) {
-          void reconcileFromDb(s);
-        }
+        // isGenerating. It only drives the (one-shot) degrade poll.
+        degradePoll(getState(event.designId));
         break;
       }
       case 'agent_end': {
-        // `agent_end` is the run-terminal boundary. Fire the degrade poll (final
-        // safety for a run that emitted no fs_updated) and the one-shot onDone.
+        // `agent_end` is the run-terminal boundary: final-safety degrade poll,
+        // then the one-shot terminal onDone (with a version guaranteed first).
         const s = getState(event.designId);
-        if (!s.done && !s.sawFsEvent && fetchVersions) {
-          void reconcileFromDb(s);
-        }
-        if (!s.done) {
-          s.done = true;
-          callbacks.onDone?.({ designId: event.designId, exitCode: 0 });
-        }
+        degradePoll(s);
+        finalize(s, 0);
         break;
       }
       case 'error': {
-        const s = getState(event.designId);
-        if (!s.done) {
-          s.done = true;
-          callbacks.onDone?.({ designId: event.designId, exitCode: 1 });
-        }
+        finalize(getState(event.designId), 1);
         break;
       }
       default:

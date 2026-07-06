@@ -97,4 +97,17 @@ describe('extractRootCssVars', () => {
     extractRootCssVars(evil);
     expect(performance.now() - t0).toBeLessThan(500);
   });
+
+  it('runs in well under a second on many :root blocks (no quadratic rescan)', () => {
+    // Reachability: buildSrcdoc → extractRootCssVars runs synchronously in the
+    // Electron main process (done-verify.ts) on model-generated artifact HTML,
+    // BEFORE the 3s verify timeout can fire. A rescan-from-0 per :root match is
+    // O(n²): ~0.5 MB of :root blocks froze the main process for ~33s. The scan
+    // must stay linear in the number of blocks.
+    const manyBlocks = ':root{--a:1;}'.repeat(40_000); // ~0.5 MB
+    const t0 = performance.now();
+    const out = extractRootCssVars(manyBlocks);
+    expect(performance.now() - t0).toBeLessThan(500);
+    expect(out).toEqual({ '--a': '1' });
+  });
 });

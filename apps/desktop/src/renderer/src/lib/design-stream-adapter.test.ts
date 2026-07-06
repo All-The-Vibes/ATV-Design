@@ -192,10 +192,63 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     adapter.handleEvent(ev({ type: 'turn_end', finalText: 't2' }));
     adapter.handleEvent(ev({ type: 'agent_end' }));
 
-    expect(events).toEqual(['version:index.html', 'version:about.html', 'done']);
-    // done must be the last event, strictly after the turn-2 onVersion.
-    expect(events.indexOf('done')).toBe(events.length - 1);
+    // Both files were projected as versions during the run, and agent_end emits
+    // a final memory projection carrying the turn-2 file — so the last onVersion
+    // reflects about.html and precedes the single done, which is strictly last.
     expect(events.filter((e) => e === 'done')).toHaveLength(1);
+    expect(events[events.length - 1]).toBe('done');
+    expect(events[events.indexOf('done') - 1]).toBe('version:about.html');
+    expect(events.filter((e) => e === 'version:about.html').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('emits a final onVersion before onDone even when fetchVersions is provided', async () => {
+    // In production the adapter is built WITH fetchVersions (the throttled DB
+    // reconcile). onDone must still be preceded by a version carrying the final
+    // state — the synchronous memory projection guarantees this without waiting
+    // for the async DB reconcile. (The DB reconcile may emit one more
+    // authoritative onVersion afterward; that late refinement is intended.)
+    const order: string[] = [];
+    const fetchVersions = vi.fn(async () => [] as DesignVersion[]);
+    const adapter = createDesignStreamAdapter({
+      callbacks: {
+        onVersion: () => order.push('version'),
+        onDone: () => order.push('done'),
+      },
+      fetchVersions,
+      throttleMs: 250,
+    });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'fs_updated', path: 'index.html', content: '<h1>hi</h1>' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+
+    // Synchronously (before any throttle timer resolves) a version has already
+    // been delivered and done is last.
+    expect(order.filter((e) => e === 'done')).toHaveLength(1);
+    expect(order.indexOf('version')).toBeLessThan(order.indexOf('done'));
+    expect(order[order.length - 1]).toBe('done');
+  });
+
+  it('degrade path polls the DB at most once across turn_end + agent_end', async () => {
+    // Legacy runtime (no fs_updated): both a per-turn turn_end and the run's
+    // agent_end reach the degrade poll. It must fire at most once per generation,
+    // not N+1 times.
+    const h = makeCallbacks();
+    const fetchVersions = vi.fn(async () => [] as DesignVersion[]);
+    const adapter = createDesignStreamAdapter({
+      callbacks: h.callbacks,
+      fetchVersions,
+      throttleMs: 250,
+    });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 't1' }));
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 't2' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+    await vi.advanceTimersByTimeAsync(10);
+
+    expect(fetchVersions).toHaveBeenCalledTimes(1);
   });
 
   it('does not emit a second onDone when error follows a terminal agent_end', () => {

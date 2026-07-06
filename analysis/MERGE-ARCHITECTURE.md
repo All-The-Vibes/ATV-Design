@@ -36,9 +36,14 @@ turn_start              ──▶                            ──▶     onSta
 text_delta              ──▶                            ──▶     onDelta { designId, delta }
 tool_call_start         ──▶     (verbGroup → phase)    ──▶     onPhase { designId, phase }
 fs_updated {path,content}──▶    ★ STATEFUL ACCUMULATION ──▶    onVersion { latest, versions[] }
-turn_end / agent_end    ──▶                            ──▶     onDone { designId, exitCode }
+turn_end                ──▶     (per-turn: degrade poll only, NOT terminal)
+agent_end               ──▶                            ──▶     onDone { designId, exitCode: 0 }
 error                   ──▶                            ──▶     onDone { exitCode: 1 }
 ```
+
+> `turn_end` is a per-turn checkpoint (pi emits one after every turn), so it must
+> **not** fire `onDone` — that is `agent_end`/`error` only, exactly as ATV's own
+> `useAgentStream` treats them. `turn_end` only drives the degrade poll.
 
 ### Why `onVersion` is the hard part (finding A-F2)
 
@@ -62,10 +67,11 @@ and rebuilds the list as events arrive. It must:
 - **A-F1 (dual-runtime degrade):** ATV has two generation runtimes behind
   `USE_AGENT_RUNTIME`. Only the agent branch emits `fs_updated`. When the legacy
   branch (`=0`) runs — lifecycle events but no `fs_updated` — the adapter falls
-  back to a single `fetchVersions()` poll at `turn_end`, so the live preview
-  still updates. The path is **degraded, not dropped**.
+  back to a single `fetchVersions()` poll (guarded to fire at most once per
+  generation across `turn_end`/`agent_end`), so the live preview still updates.
+  The path is **degraded, not dropped**.
 
-All of the above is locked by `design-stream-adapter.test.ts` (28 tests), which
+All of the above is locked by `design-stream-adapter.test.ts` (30 tests), which
 double as the plan's mandatory regression guards.
 
 ## The DesignCanvas split (finding CQ-F4)
