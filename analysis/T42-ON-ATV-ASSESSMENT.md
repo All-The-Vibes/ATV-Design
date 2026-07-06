@@ -49,7 +49,7 @@ Carried over (the genuine T42 assets):
    `apps/desktop/src/renderer/src/lib/design-stream-adapter.ts`. Consumes ATV's
    `AgentStreamEvent`s and emits T42's `onStart/onDelta/onPhase/onVersion/onDone`
    callback contract. Stateful `fs_updated` → `versions[]` accumulation with
-   dedupe + modified-time ordering. Locked by 26 tests.
+   dedupe + modified-time ordering. Locked by 28 tests.
 2. **DesignCanvas split units** — `token-inspector.ts` (live CSS-var inspection)
    and `viewport-profiles.ts` (responsive viewport registry). These are the two
    most valuable pieces of T42's canvas, extracted as testable units.
@@ -86,7 +86,7 @@ Where "T42 UX made functional on ATV" is **not yet** fully realized:
   **not** all wired into the live renderer yet. Those remain donor parts for
   follow-up slices.
 - **End-to-end generation was not exercised with a live provider key in this
-  pass.** The translation layer is unit-proven (26 tests) and the UI renders, but
+  pass.** The translation layer is unit-proven (28 tests) and the UI renders, but
   a full prompt→artifact round trip through a real Copilot/Azure key is a
   separate verification.
 - **The reskin is a token-value remap, not a component-level redesign.** It

@@ -27,8 +27,9 @@ import type { AgentStreamEvent } from '../../../preload/index';
  *           reads mid-generation. Optimistic in-memory projection lands
  *           immediately; DB truth reconciles on the trailing edge.
  *   - A-F1  Degrade to polling: when the legacy runtime (USE_AGENT_RUNTIME=0)
- *           emits lifecycle events but never fs_updated, fall back to a single
- *           fetchVersions() poll at turn_end so the live preview still updates.
+ *           emits lifecycle events but never fs_updated, fall back to a
+ *           fetchVersions() poll at turn_end/agent_end so the live preview still
+ *           updates.
  *
  * The module is intentionally framework-free (no React, no Electron) so it is
  * unit-testable in isolation and reusable from useAgentStream or a future hook.
@@ -91,11 +92,11 @@ interface DesignState {
   designId: string;
   started: boolean;
   /**
-   * Fired the one-shot terminal onDone for this generation. pi emits `turn_end`
-   * after every turn AND a single `agent_end` at run end, and ATV's main process
-   * forwards both — plus a possible trailing `error` — for the same designId.
-   * onDone must be delivered exactly once per generation; reset() clears state
-   * so the flag re-arms for the next run.
+   * Fired the one-shot terminal onDone for this generation. The run-terminal
+   * events are `agent_end` (success) and `error`; `turn_end` is a per-turn
+   * checkpoint and does NOT set this. Re-armed on the next `turn_start` (a new
+   * generation for the same design) and by reset(), so onDone is delivered
+   * exactly once per generation.
    */
   done: boolean;
   /** Saw at least one fs_updated this run — decides whether degrade-poll runs. */
@@ -239,6 +240,14 @@ export function createDesignStreamAdapter(
     switch (event.type) {
       case 'turn_start': {
         const s = getState(event.designId);
+        // A `turn_start` after a terminal event begins a NEW generation for the
+        // same design (e.g. a follow-up prompt with no intervening reset()).
+        // Re-arm the per-run one-shots so onStart/onDone fire again for it.
+        if (s.done) {
+          s.started = false;
+          s.done = false;
+          s.sawFsEvent = false;
+        }
         if (!s.started) {
           s.started = true;
           callbacks.onStart?.({ designId: event.designId });
@@ -262,18 +271,27 @@ export function createDesignStreamAdapter(
         handleFsUpdated(event);
         break;
       }
-      case 'turn_end':
-      case 'agent_end': {
+      case 'turn_end': {
+        // `turn_end` is a PER-TURN checkpoint (pi emits one after every turn),
+        // NOT the run boundary — so it must not fire onDone (doing so would
+        // signal "finished" after turn 1 of a multi-turn run). This mirrors the
+        // canonical useAgentStream, where handleTurnEnd does not clear
+        // isGenerating. It only drives the degrade poll: under USE_AGENT_RUNTIME=0
+        // the legacy runtime emits lifecycle events but no fs_updated, so poll
+        // the DB once per turn so the live preview still receives a version.
         const s = getState(event.designId);
-        // Degrade path (A-F1): no fs_updated seen this run → poll the DB once so
-        // the live preview still receives a version under USE_AGENT_RUNTIME=0.
-        // Guard on !s.done so a per-turn turn_end followed by the run's agent_end
-        // does not double-poll.
+        if (!s.sawFsEvent && fetchVersions) {
+          void reconcileFromDb(s);
+        }
+        break;
+      }
+      case 'agent_end': {
+        // `agent_end` is the run-terminal boundary. Fire the degrade poll (final
+        // safety for a run that emitted no fs_updated) and the one-shot onDone.
+        const s = getState(event.designId);
         if (!s.done && !s.sawFsEvent && fetchVersions) {
           void reconcileFromDb(s);
         }
-        // pi emits turn_end per-turn AND agent_end once; deliver the terminal
-        // onDone exactly once per generation (mirrors the `started` one-shot).
         if (!s.done) {
           s.done = true;
           callbacks.onDone?.({ designId: event.designId, exitCode: 0 });

@@ -236,8 +236,11 @@ swap**.
 **The seam** is `apps/desktop/src/renderer/src/lib/design-stream-adapter.ts` — a
 stateful adapter that projects ATV's one-file-at-a-time `AgentStreamEvent`s into
 the whole-`versions[]` callback contract T42's canvas expects (dedupe +
-modified-time ordering, 26 tests). Terminal 42's Copilot-CLI backend, PTY Brain,
-and raw terminal were **not** taken.
+modified-time ordering, 28 tests). It, the token inspector, and the viewport
+profiles land as **tested-but-not-yet-wired donor units** — the live renderer
+still runs ATV's existing stream hook; wiring the ported canvas onto this seam is
+a follow-up slice (see the assessment doc for the honest gap list). Terminal 42's
+Copilot-CLI backend, PTY Brain, and raw terminal were **not** taken.
 
 See [`analysis/MERGE-ARCHITECTURE.md`](./analysis/MERGE-ARCHITECTURE.md) for the
 contributor-facing walkthrough, [`analysis/T42-ON-ATV-ASSESSMENT.md`](./analysis/T42-ON-ATV-ASSESSMENT.md)

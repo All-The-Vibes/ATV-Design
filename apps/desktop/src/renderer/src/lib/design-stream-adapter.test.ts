@@ -124,12 +124,12 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     expect(h.phases).toEqual([{ designId: DESIGN, phase: 'Editing' }]);
   });
 
-  it('translates turn_end into onDone with exitCode 0', () => {
+  it('translates agent_end into onDone with exitCode 0', () => {
     const h = makeCallbacks();
     const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
 
     adapter.handleEvent(ev({ type: 'turn_start' }));
-    adapter.handleEvent(ev({ type: 'turn_end', finalText: 'done' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
 
     expect(h.dones).toEqual([{ designId: DESIGN, exitCode: 0 }]);
   });
@@ -145,11 +145,22 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     expect(h.dones[0]?.exitCode).not.toBe(0);
   });
 
-  it('emits onDone only once when a run ends with both turn_end and agent_end', () => {
-    // pi emits `turn_end` after every turn AND a single `agent_end` at the end
-    // of the run; ATV's main process forwards both for the same designId. The
-    // adapter must collapse them into exactly one terminal onDone — the T42
-    // DesignCanvas treats onDone as a one-shot "generation finished" signal.
+  it('does not fire onDone on turn_end — only agent_end/error are terminal', () => {
+    // `turn_end` is a per-turn checkpoint (pi emits one after EVERY turn); the
+    // run-terminal event is `agent_end`. Firing onDone on turn_end would signal
+    // "generation finished" after turn 1 of a multi-turn run. This mirrors the
+    // canonical useAgentStream, where handleTurnEnd does NOT clear isGenerating
+    // but handleAgentEnd does.
+    const h = makeCallbacks();
+    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'turn_end', finalText: 'turn 1 done' }));
+
+    expect(h.dones).toEqual([]);
+  });
+
+  it('fires a single onDone on agent_end after any number of turns', () => {
     const h = makeCallbacks();
     const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
 
@@ -160,27 +171,41 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     expect(h.dones).toEqual([{ designId: DESIGN, exitCode: 0 }]);
   });
 
-  it('emits onDone only once across a multi-turn run (turn_end per turn + agent_end)', () => {
+  it('delivers onDone only after the final turn — not mid-run in a multi-turn run', () => {
+    // Regression guard for the premature-terminal bug: in a 2-turn run the agent
+    // is still writing files during turn 2, so onDone must come AFTER the last
+    // turn's onVersion, not after turn 1.
     const h = makeCallbacks();
-    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+    const events: string[] = [];
+    const adapter = createDesignStreamAdapter({
+      callbacks: {
+        onVersion: (d) => events.push(`version:${d.latest?.fileName ?? 'none'}`),
+        onDone: () => events.push('done'),
+      },
+    });
 
     adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'fs_updated', path: 'index.html', content: '<h1>t1</h1>' }));
     adapter.handleEvent(ev({ type: 'turn_end', finalText: 't1' }));
     adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'fs_updated', path: 'about.html', content: '<h1>t2</h1>' }));
     adapter.handleEvent(ev({ type: 'turn_end', finalText: 't2' }));
     adapter.handleEvent(ev({ type: 'agent_end' }));
 
-    expect(h.dones).toHaveLength(1);
+    expect(events).toEqual(['version:index.html', 'version:about.html', 'done']);
+    // done must be the last event, strictly after the turn-2 onVersion.
+    expect(events.indexOf('done')).toBe(events.length - 1);
+    expect(events.filter((e) => e === 'done')).toHaveLength(1);
   });
 
-  it('does not emit a second onDone when error follows a terminal turn_end', () => {
+  it('does not emit a second onDone when error follows a terminal agent_end', () => {
     // Once a generation has reported done, a trailing error for the same run
     // must not double-fire the terminal callback.
     const h = makeCallbacks();
     const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
 
     adapter.handleEvent(ev({ type: 'turn_start' }));
-    adapter.handleEvent(ev({ type: 'turn_end', finalText: 'ok' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
     adapter.handleEvent(ev({ type: 'error', message: 'late boom' }));
 
     expect(h.dones).toEqual([{ designId: DESIGN, exitCode: 0 }]);
@@ -198,6 +223,24 @@ describe('createDesignStreamAdapter — lifecycle normalization', () => {
     adapter.handleEvent(ev({ type: 'turn_start' }));
     adapter.handleEvent(ev({ type: 'agent_end' }));
 
+    expect(h.dones).toHaveLength(2);
+  });
+
+  it('re-arms onStart and onDone for a second generation on the same designId without reset', () => {
+    // The agent can start a new run for the same design (e.g. a follow-up
+    // prompt) without the renderer calling reset(). A `turn_start` after a
+    // terminal agent_end must begin a fresh generation: onStart fires again and
+    // the next agent_end delivers a second onDone.
+    const h = makeCallbacks();
+    const adapter = createDesignStreamAdapter({ callbacks: h.callbacks });
+
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+    // Second run — no reset() in between.
+    adapter.handleEvent(ev({ type: 'turn_start' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
+
+    expect(h.starts).toHaveLength(2);
     expect(h.dones).toHaveLength(2);
   });
 });
@@ -517,6 +560,7 @@ describe('createDesignStreamAdapter — dual-runtime degrade (plan finding A-F1)
     adapter.handleEvent(ev({ type: 'turn_start' }));
     adapter.handleEvent(ev({ type: 'fs_updated', path: 'index.html', content: 'x' }));
     adapter.handleEvent(ev({ type: 'turn_end' }));
+    adapter.handleEvent(ev({ type: 'agent_end' }));
 
     // No throw, and the version list is still projected from memory.
     expect(h.versions.at(-1)?.versions.map((v) => v.fileName)).toEqual(['index.html']);
