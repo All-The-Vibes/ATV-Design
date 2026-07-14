@@ -227,7 +227,7 @@ function compactUser(
   }
   if (!Array.isArray(original.content)) return m;
   let changed = false;
-  const nextContent = original.content.map((block) => {
+  const perBlock = original.content.map((block) => {
     const b = block as { type?: string; text?: string };
     if (b?.type !== 'text') return block;
     const text = typeof b.text === 'string' ? b.text : '';
@@ -235,8 +235,55 @@ function compactUser(
     changed = true;
     return { ...b, text: shrink(text) };
   });
+
+  // Whole-message budget for the latest brief: per-block caps alone can't bound
+  // a message split across MANY sub-limit text blocks, so their aggregate could
+  // still blow past the byte budget. Keep head text blocks until the cumulative
+  // text length reaches `limit`, replace the first overflowing text block with a
+  // truncation notice, and drop later text blocks. Non-text blocks (images) are
+  // preserved in place — they are handled by the tail-prune/emergency tiers, not
+  // shrinkable here without breaking their semantics.
+  if (mode === 'truncate') {
+    let budget = limit;
+    let noticeAdded = false;
+    let trimmed = false;
+    const bounded: unknown[] = [];
+    for (const block of perBlock) {
+      const b = block as { type?: string; text?: string };
+      if (b?.type !== 'text') {
+        bounded.push(block);
+        continue;
+      }
+      const text = typeof b.text === 'string' ? b.text : '';
+      if (budget <= 0) {
+        trimmed = true;
+        continue; // drop further text once the budget is exhausted
+      }
+      if (text.length <= budget) {
+        bounded.push(block);
+        budget -= text.length;
+        continue;
+      }
+      // This block overflows the remaining budget — keep its head, note the trim.
+      bounded.push({ ...b, text: truncateHead(text, budget) });
+      budget = 0;
+      trimmed = true;
+      noticeAdded = true;
+    }
+    if (trimmed) {
+      changed = true;
+      if (!noticeAdded) {
+        bounded.push({
+          type: 'text',
+          text: '\n[… earlier brief content trimmed to fit context …]',
+        });
+      }
+      return { ...(original as object), content: bounded } as unknown as AgentMessage;
+    }
+  }
+
   if (!changed) return m;
-  return { ...(original as object), content: nextContent } as unknown as AgentMessage;
+  return { ...(original as object), content: perBlock } as unknown as AgentMessage;
 }
 
 /**

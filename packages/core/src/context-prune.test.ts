@@ -285,6 +285,28 @@ describe('buildTransformContext — size-based block compaction with recent-turn
     expect(last).toBe(latestUser);
   });
 
+  it('caps a latest user brief split across many sub-limit text blocks (whole-message budget)', async () => {
+    // Adversarial regression (cross-model, Codex round 5): compactUser caps each
+    // text block independently, so a latest user message made of MANY blocks each
+    // under the per-block limit could still blow past HARD_CAP_BYTES in aggregate
+    // and ship over budget. The latest brief must be bounded as a whole.
+    const HARD_CAP_BYTES = 200_000;
+    const transform = buildTransformContext();
+    const manyBlocks = Array.from({ length: 400 }, () => ({
+      type: 'text' as const,
+      text: 'a'.repeat(900), // each block < the 1024 per-block floor
+    }));
+    const latest = { role: 'user', content: manyBlocks } as unknown as AgentMessage;
+    // Precede with enough history that the transcript is already over the cap.
+    const messages: AgentMessage[] = [userMsg('start'), latest];
+    expect(estimateJsonBytes(messages)).toBeGreaterThan(HARD_CAP_BYTES);
+    const out = await transform(messages);
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(HARD_CAP_BYTES);
+    // The latest user turn survives (non-empty), just bounded.
+    const last = out[out.length - 1] as { role: string };
+    expect(last.role).toBe('user');
+  });
+
   it('does not end in a bare assistant when the tail is toolResult(oversized) then assistant(final)', async () => {
     // Adversarial regression (cross-model, Codex round 4): a realistic tail is
     // user -> assistant(toolCall) -> toolResult(oversized image) -> assistant(final text).
