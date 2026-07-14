@@ -16,7 +16,7 @@ const THUMBNAIL_STYLE = `<style>
 html, body { overflow: hidden !important; }
 </style>`;
 
-function injectThumbnailStyle(srcDoc: string): string {
+export function injectThumbnailStyle(srcDoc: string): string {
   if (/<\/head>/i.test(srcDoc)) {
     return srcDoc.replace(/<\/head>/i, `${THUMBNAIL_STYLE}</head>`);
   }
@@ -106,6 +106,7 @@ export function ExampleCardPreview({ exampleId, title, thumbnail }: ExampleCardP
   return (
     <div
       ref={rootRef}
+      aria-hidden
       className="absolute inset-0 overflow-hidden bg-white transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)] group-hover:scale-[1.03]"
     >
       {visible ? (
@@ -122,6 +123,7 @@ export function ExampleCardPreview({ exampleId, title, thumbnail }: ExampleCardP
             srcDoc={srcDoc}
             sandbox=""
             loading="lazy"
+            tabIndex={-1}
             className="pointer-events-none border-0"
             style={{ width: `${CANVAS_W}px`, height: `${CANVAS_H}px` }}
           />

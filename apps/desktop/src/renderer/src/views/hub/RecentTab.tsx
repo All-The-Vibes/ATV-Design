@@ -1,11 +1,46 @@
 import { useT } from '@atv-design/i18n';
+import type { Design } from '@atv-design/shared';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useCodesignStore } from '../../store';
 import { DesignGrid } from './DesignGrid';
 
 const RECENT_LIMIT = 6;
-const HIDE_EMPTY_KEY = 'hub:recent:hideEmpty';
+export const HIDE_EMPTY_KEY = 'hub:recent:hideEmpty';
+
+/** A design counts as "empty" when it has no snapshots yet (shells, aborted
+ * generations, repro entries). `snapshotCount` is optional for back-compat, so
+ * a missing value is treated as empty. */
+function isEmptyDesign(d: Design): boolean {
+  return (d.snapshotCount ?? 0) === 0;
+}
+
+function liveDesigns(designs: Design[]): Design[] {
+  return designs.filter((d) => d.deletedAt === null);
+}
+
+/** Live designs, optionally hiding empties, newest-first, capped at `limit`. */
+export function selectRecent(designs: Design[], hideEmpty: boolean, limit: number): Design[] {
+  return liveDesigns(designs)
+    .filter((d) => (hideEmpty ? !isEmptyDesign(d) : true))
+    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+    .slice(0, limit);
+}
+
+/** Number of live designs that have no snapshots. */
+export function countEmpty(designs: Design[]): number {
+  return liveDesigns(designs).filter(isEmptyDesign).length;
+}
+
+/** True when the hide-empty filter is on AND it collapses the entire live list
+ * (there are live designs, but all of them are empty). This is the case the
+ * grid's own empty-state cannot surface, because the "+ New design" prefix tile
+ * keeps the grid non-empty. */
+export function shouldShowAllHiddenHint(designs: Design[], hideEmpty: boolean): boolean {
+  if (!hideEmpty) return false;
+  const live = liveDesigns(designs);
+  return live.length > 0 && live.every(isEmptyDesign);
+}
 
 function readHideEmpty(): boolean {
   if (typeof localStorage === 'undefined') return false;
@@ -34,13 +69,9 @@ export function RecentTab() {
   );
   const [hideEmpty, setHideEmpty] = useState<boolean>(readHideEmpty);
 
-  const live = designs.filter((d) => d.deletedAt === null);
-  // "Empty" = no snapshots yet: shells, aborted generations, repro entries.
-  const emptyCount = live.filter((d) => (d.snapshotCount ?? 0) === 0).length;
-  const recent = [...live]
-    .filter((d) => (hideEmpty ? (d.snapshotCount ?? 0) > 0 : true))
-    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
-    .slice(0, RECENT_LIMIT);
+  const emptyCount = countEmpty(designs);
+  const recent = selectRecent(designs, hideEmpty, RECENT_LIMIT);
+  const allHidden = shouldShowAllHiddenHint(designs, hideEmpty);
 
   function toggleHideEmpty(): void {
     setHideEmpty((prev) => {
@@ -114,11 +145,15 @@ export function RecentTab() {
           </button>
         </div>
       ) : null}
-      <DesignGrid
-        designs={recent}
-        emptyLabel={hideEmpty ? t('hub.recent.allEmpty') : t('hub.recent.empty')}
-        prefixTile={newDesignTile}
-      />
+      <DesignGrid designs={recent} emptyLabel={t('hub.recent.empty')} prefixTile={newDesignTile} />
+      {allHidden ? (
+        <p
+          data-testid="recent-all-empty-hint"
+          className="text-center text-[var(--font-size-body-sm)] text-[var(--color-text-muted)]"
+        >
+          {t('hub.recent.allEmpty')}
+        </p>
+      ) : null}
     </div>
   );
 }

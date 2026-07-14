@@ -22,6 +22,13 @@ const noDragStyle = { WebkitAppRegion: 'no-drag' } as CSSProperties;
 
 const HUB_TABS: HubTab[] = ['recent', 'your', 'examples', 'designSystems'];
 
+/** The canonical "home" destination reached by clicking the wordmark: the hub's
+ * Recent tab. Returned as a plain descriptor so the navigation intent can be
+ * unit-tested without mounting the component. */
+export function hubHomeNavigation(): { hubTab: HubTab; view: 'hub' } {
+  return { hubTab: 'recent', view: 'hub' };
+}
+
 export function TopBar() {
   const t = useT();
   const setView = useCodesignStore((s) => s.setView);
@@ -39,8 +46,9 @@ export function TopBar() {
   // Clicking the wordmark returns to the hub home (Recent tab) — the app's
   // canonical "home". No-op-safe when already there.
   function goHome(): void {
-    setHubTab('recent');
-    setView('hub');
+    const target = hubHomeNavigation();
+    setHubTab(target.hubTab);
+    setView(target.view);
   }
 
   // Pull-based: refresh the diagnostic counter on mount so a page reload
