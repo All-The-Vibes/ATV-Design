@@ -1,9 +1,89 @@
 import { useT } from '@atv-design/i18n';
+import type { Design } from '@atv-design/shared';
 import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import { useCodesignStore } from '../../store';
 import { DesignGrid } from './DesignGrid';
 
 const RECENT_LIMIT = 6;
+export const HIDE_EMPTY_KEY = 'hub:recent:hideEmpty';
+
+/** A design counts as "empty" when it has no snapshots yet (shells, aborted
+ * generations, repro entries). `snapshotCount` is optional for back-compat, so
+ * a missing value is treated as empty. */
+function isEmptyDesign(d: Design): boolean {
+  return (d.snapshotCount ?? 0) === 0;
+}
+
+function liveDesigns(designs: Design[]): Design[] {
+  return designs.filter((d) => d.deletedAt === null);
+}
+
+/** Live designs, optionally hiding empties, newest-first, capped at `limit`.
+ * Ordering mirrors the DB contract in snapshots-db.listDesigns:
+ * updatedAt DESC, then createdAt DESC as the tiebreaker, returning 0 for a true
+ * tie so the sort stays stable and never diverges from the main-process order. */
+export function selectRecent(designs: Design[], hideEmpty: boolean, limit: number): Design[] {
+  return liveDesigns(designs)
+    .filter((d) => (hideEmpty ? !isEmptyDesign(d) : true))
+    .sort((a, b) => {
+      if (a.updatedAt !== b.updatedAt) return a.updatedAt < b.updatedAt ? 1 : -1;
+      if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+      return 0;
+    })
+    .slice(0, limit);
+}
+
+/** Number of live designs that have no snapshots. */
+export function countEmpty(designs: Design[]): number {
+  return liveDesigns(designs).filter(isEmptyDesign).length;
+}
+
+/** True when the hide-empty switch would actually change the visible Recent
+ * grid — i.e. hiding empties drops at least one design from the first `limit`
+ * cards. Gating on this (rather than "any empty design exists anywhere") avoids
+ * showing a no-op control when the only empty designs sit outside the visible
+ * window. */
+export function shouldOfferHideEmpty(designs: Design[], limit: number): boolean {
+  const shown = selectRecent(designs, false, limit);
+  const hidden = selectRecent(designs, true, limit);
+  return shown.length !== hidden.length || shown.some((d, i) => d.id !== hidden[i]?.id);
+}
+
+/** True when the hide-empty filter is on AND the FILTERED Recent grid is empty
+ * while live designs still exist — i.e. everything the user could see got hidden.
+ * Keyed off the actually-rendered filtered set (not the unfiltered window) so the
+ * hint never shows alongside a real design that surfaced from outside the top
+ * `limit` once empties were filtered. The grid's own empty-state can't surface
+ * this because the "+ New design" prefix tile keeps the grid non-empty. */
+export function shouldShowAllHiddenHint(
+  designs: Design[],
+  hideEmpty: boolean,
+  limit: number,
+): boolean {
+  if (!hideEmpty) return false;
+  const live = liveDesigns(designs);
+  const visible = selectRecent(designs, true, limit);
+  return live.length > 0 && visible.length === 0;
+}
+
+function readHideEmpty(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    return localStorage.getItem(HIDE_EMPTY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeHideEmpty(value: boolean): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(HIDE_EMPTY_KEY, value ? '1' : '0');
+  } catch {
+    /* storage unavailable — in-memory state still applies for this session */
+  }
+}
 
 export function RecentTab() {
   const t = useT();
@@ -12,10 +92,19 @@ export function RecentTab() {
   const isGenerating = useCodesignStore(
     (s) => s.isGenerating && s.generatingDesignId === s.currentDesignId,
   );
-  const recent = [...designs]
-    .filter((d) => d.deletedAt === null)
-    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
-    .slice(0, RECENT_LIMIT);
+  const [hideEmpty, setHideEmpty] = useState<boolean>(readHideEmpty);
+
+  const offerHideEmpty = shouldOfferHideEmpty(designs, RECENT_LIMIT);
+  const recent = selectRecent(designs, hideEmpty, RECENT_LIMIT);
+  const allHidden = shouldShowAllHiddenHint(designs, hideEmpty, RECENT_LIMIT);
+
+  function toggleHideEmpty(): void {
+    setHideEmpty((prev) => {
+      const next = !prev;
+      writeHideEmpty(next);
+      return next;
+    });
+  }
 
   function handleNewDesign(): void {
     openNewDesignDialog();
@@ -54,6 +143,42 @@ export function RecentTab() {
   );
 
   return (
-    <DesignGrid designs={recent} emptyLabel={t('hub.recent.empty')} prefixTile={newDesignTile} />
+    <div className="flex flex-col gap-[var(--space-4)]">
+      {offerHideEmpty ? (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideEmpty}
+            onClick={toggleHideEmpty}
+            data-testid="recent-toggle-hide-empty"
+            className="inline-flex items-center gap-[var(--space-2)] rounded-full border border-[var(--color-border)] bg-[var(--color-background-secondary)] px-[var(--space-3)] py-[var(--space-1)] text-[var(--font-size-body-sm)] text-[var(--color-text-secondary)] transition-colors duration-[var(--duration-faster)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+          >
+            <span
+              aria-hidden
+              className={`inline-flex h-[16px] w-[28px] items-center rounded-full p-[2px] transition-colors duration-[var(--duration-faster)] ${
+                hideEmpty ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border-strong)]'
+              }`}
+            >
+              <span
+                className={`h-[12px] w-[12px] rounded-full bg-white transition-transform duration-[var(--duration-faster)] ${
+                  hideEmpty ? 'translate-x-[12px]' : 'translate-x-0'
+                }`}
+              />
+            </span>
+            {t('hub.recent.hideEmpty')}
+          </button>
+        </div>
+      ) : null}
+      <DesignGrid designs={recent} emptyLabel={t('hub.recent.empty')} prefixTile={newDesignTile} />
+      {allHidden ? (
+        <p
+          data-testid="recent-all-empty-hint"
+          className="text-center text-[var(--font-size-body-sm)] text-[var(--color-text-muted)]"
+        >
+          {t('hub.recent.allEmpty')}
+        </p>
+      ) : null}
+    </div>
   );
 }

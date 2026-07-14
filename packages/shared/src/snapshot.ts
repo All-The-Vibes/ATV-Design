@@ -23,6 +23,11 @@ export const DesignV1 = z.object({
   thumbnailText: z.string().nullable().default(null),
   deletedAt: z.string().nullable().default(null),
   workspacePath: z.string().nullable().default(null),
+  // Number of snapshots this design has. Designs with 0 have no rendered
+  // canvas yet (shells, aborted generations); the hub uses this to optionally
+  // hide "empty" designs. Optional so callers/tests that build a Design without
+  // it (and older persisted payloads) remain valid; listDesigns always sets it.
+  snapshotCount: z.number().int().nonnegative().optional(),
 });
 export type Design = z.infer<typeof DesignV1>;
 

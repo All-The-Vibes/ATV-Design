@@ -72,6 +72,60 @@ describe('createDesign + listDesigns', () => {
     // B was created on day 2, A on day 1 — B should come first (DESC).
     expect(ids.indexOf(idB)).toBeLessThan(ids.indexOf(idA));
   });
+
+  it('reports snapshotCount per design (0 for empty shells)', () => {
+    const db = makeDb();
+    const withCanvas = createDesign(db, 'Has canvas');
+    const empty = createDesign(db, 'Empty shell');
+    createSnapshot(db, {
+      designId: withCanvas.id,
+      parentId: null,
+      type: 'initial',
+      prompt: 'Create a hero',
+      artifactType: 'html',
+      artifactSource: '<html>hero</html>',
+    });
+
+    const list = listDesigns(db);
+    const byId = new Map(list.map((d) => [d.id, d]));
+    expect(byId.get(withCanvas.id)?.snapshotCount).toBe(1);
+    expect(byId.get(empty.id)?.snapshotCount).toBe(0);
+  });
+
+  it('reports the real snapshotCount from getDesign (not a fabricated 0)', () => {
+    const db = makeDb();
+    const design = createDesign(db, 'Has canvas');
+    createSnapshot(db, {
+      designId: design.id,
+      parentId: null,
+      type: 'initial',
+      prompt: 'Create a hero',
+      artifactType: 'html',
+      artifactSource: '<html>hero</html>',
+    });
+    // Single-design return path must agree with listDesigns, not coerce to 0.
+    expect(getDesign(db, design.id)?.snapshotCount).toBe(1);
+  });
+
+  it('duplicateDesign returns the clone with its real snapshotCount', () => {
+    const db = makeDb();
+    const source = createDesign(db, 'Original');
+    createSnapshot(db, {
+      designId: source.id,
+      parentId: null,
+      type: 'initial',
+      prompt: 'Create a hero',
+      artifactType: 'html',
+      artifactSource: '<html>hero</html>',
+    });
+    const clone = duplicateDesign(db, source.id, 'Copy');
+    expect(clone).not.toBeNull();
+    // The clone copies snapshots, so it must not be misreported as an empty shell.
+    expect(clone?.snapshotCount).toBe(1);
+    // And the list agrees.
+    const listed = listDesigns(db).find((d) => d.id === clone?.id);
+    expect(listed?.snapshotCount).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

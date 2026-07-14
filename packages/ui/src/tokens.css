@@ -56,9 +56,9 @@
   --shadow-elevated: 0 2px 4px oklch(0.3 0.02 45 / 0.05), 0 12px 32px oklch(0.3 0.02 45 / 0.1);
   --shadow-inset-soft: inset 0 0 0 1px var(--color-border-subtle);
 
-  /* Typography — editorial stack */
-  --font-display: "Fraunces Variable", "Times New Roman", serif;
-  --font-sans: "Geist Variable", system-ui, -apple-system, sans-serif;
+  /* Typography — Terminal 42 stack (DM Sans primary, matching T42's look & feel) */
+  --font-display: "DM Sans Variable", "Fraunces Variable", system-ui, sans-serif;
+  --font-sans: "DM Sans Variable", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
   /* Extended type scale */

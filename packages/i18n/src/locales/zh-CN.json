@@ -606,6 +606,7 @@
       }
     },
     "openMyDesigns": "查看全部设计",
+    "home": "返回主页",
     "hubLabel": "我的设计",
     "settingsLabel": "设置",
     "closeSettings": "关闭设置",
@@ -1041,7 +1042,9 @@
     },
     "recent": {
       "title": "最近",
-      "empty": "还没有最近项目——新建一个设计后会出现在这里。"
+      "empty": "还没有最近项目——新建一个设计后会出现在这里。",
+      "hideEmpty": "隐藏空白设计",
+      "allEmpty": "还没有包含画布的设计——新建一个，或关闭“隐藏空白设计”。"
     },
     "your": {
       "title": "我的设计",

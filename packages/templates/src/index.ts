@@ -22,6 +22,7 @@ export {
   type ExampleContent,
   type LocalizedExample,
 } from './examples/index';
+export { EXAMPLE_PREVIEWS, getExamplePreview } from './examples/previews';
 
 export interface DemoTemplate {
   id: string;

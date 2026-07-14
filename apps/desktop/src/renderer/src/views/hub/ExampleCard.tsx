@@ -12,6 +12,7 @@ import {
   Smartphone,
   Sparkles,
 } from 'lucide-react';
+import { ExampleCardPreview } from './ExampleCardPreview';
 
 export interface ExampleCardProps {
   example: LocalizedExample;
@@ -105,12 +106,11 @@ export function ExampleCard({ example, onUsePrompt }: ExampleCardProps) {
           color: skin.ink,
         }}
       >
-        {/* SVG thumbnail — always visible; subtle scale-in on hover for life. */}
-        <div
-          aria-hidden
-          className="absolute inset-0 transition-transform duration-[var(--duration-base)] ease-[var(--ease-out)] group-hover:scale-[1.03]"
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: thumbnails are static bundled strings authored in-repo, not user content
-          dangerouslySetInnerHTML={{ __html: example.thumbnail }}
+        {/* Real canvas preview when available; falls back to the SVG thumbnail. */}
+        <ExampleCardPreview
+          exampleId={example.id}
+          title={example.title}
+          thumbnail={example.thumbnail}
         />
         {/* Gradient scrim under the title so text stays legible over busy thumbs */}
         <div
