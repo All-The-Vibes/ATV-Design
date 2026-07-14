@@ -332,20 +332,32 @@ function tailPruneToHardCap(messages: AgentMessage[], maxBytes: number): AgentMe
 
   // Everything that "fit" was leading toolResult(s) with no owning assistant
   // tool_call — shipping them alone is the malformed continuation shape a
-  // provider rejects with a bare 400. Returning [] would be the empty variant
-  // of the same failure. Prefer the last valid assistant+toolResult PAIR so the
-  // toolResult keeps its owning tool_call; else fall back to the last real
-  // (non-toolResult) message; else, in the degenerate all-toolResult case, the
-  // last message. An over-budget-but-well-formed request is the lesser evil.
+  // provider rejects with a bare 400, and returning [] is the empty variant of
+  // the same failure. A well-formed continuation must END in `user` or
+  // `toolResult` (never a bare `assistant`, which still expects its results) and
+  // every `toolResult` must be preceded by its owning `assistant` tool_call.
+  //
+  // The trailing turn is an assistant that emitted 1..N tool calls followed by
+  // its N contiguous toolResults. Recover that whole batch (assistant + all its
+  // toolResults) so the pairing is intact regardless of how many tools it used.
   const lastToolResultIdx = findLastIndex(messages, (m) => m?.role === 'toolResult');
-  if (lastToolResultIdx > 0 && messages[lastToolResultIdx - 1]?.role === 'assistant') {
-    return [
-      messages[lastToolResultIdx - 1] as AgentMessage,
-      messages[lastToolResultIdx] as AgentMessage,
-    ];
+  if (lastToolResultIdx > 0) {
+    let assistantIdx = lastToolResultIdx;
+    while (assistantIdx > 0 && messages[assistantIdx - 1]?.role === 'toolResult') {
+      assistantIdx -= 1;
+    }
+    assistantIdx -= 1; // step onto the assistant that owns the batch
+    if (assistantIdx >= 0 && messages[assistantIdx]?.role === 'assistant') {
+      return messages.slice(assistantIdx, lastToolResultIdx + 1);
+    }
   }
-  const lastNonToolResult = [...messages].reverse().find((m) => m?.role !== 'toolResult');
-  const fallback = lastNonToolResult ?? messages[messages.length - 1];
+  // No recoverable assistant+toolResult batch — drop to the last real
+  // (non-toolResult, non-assistant) message so the transcript ends validly;
+  // else the very last message, guaranteeing non-empty.
+  const lastValidTail = [...messages]
+    .reverse()
+    .find((m) => m?.role !== 'toolResult' && m?.role !== 'assistant');
+  const fallback = lastValidTail ?? messages[messages.length - 1];
   return fallback ? [fallback] : messages;
 }
 

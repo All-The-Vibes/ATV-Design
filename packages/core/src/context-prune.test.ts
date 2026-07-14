@@ -260,6 +260,52 @@ describe('buildTransformContext — size-based block compaction with recent-turn
     expect(out[0]).toBe(hugeImage);
   });
 
+  it('preserves the whole assistant+toolResults batch for a multi-tool turn (never a lone assistant)', async () => {
+    // Adversarial regression (cross-model, Codex round 2): an assistant turn may
+    // emit 2+ tool calls, so its trailing toolResults are ADJACENT. If tail-prune
+    // only rescues a single preceding-assistant pair, it falls through to a lone
+    // [assistant] — which is ALSO malformed: a continuation must end in `user` or
+    // `toolResult`, never `assistant` (which still expects its results). The
+    // fallback must keep the assistant together with its contiguous toolResults.
+    const transform = buildTransformContext();
+    const bigImg = () =>
+      ({
+        role: 'toolResult',
+        toolCallId: 'x',
+        content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(200_000) }],
+      }) as unknown as AgentMessage;
+    const multiToolAssistant = {
+      role: 'assistant',
+      content: [
+        { type: 'toolCall', id: 'c1', name: 'do', input: { a: 1 } },
+        { type: 'toolCall', id: 'c2', name: 'do', input: { b: 2 } },
+      ],
+    } as unknown as AgentMessage;
+    const tr1 = { ...bigImg(), toolCallId: 'c1' } as AgentMessage;
+    const tr2 = { ...bigImg(), toolCallId: 'c2' } as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('build me a landing page'),
+      multiToolAssistant,
+      tr1,
+      tr2, // two oversized, non-shrinkable trailing toolResults
+    ];
+    const out = await transform(messages);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    const roles = out.map((m) => (m as { role: string }).role);
+    // Must not begin with a bare toolResult and must not END with a bare assistant.
+    expect(roles[0]).not.toBe('toolResult');
+    expect(roles[roles.length - 1]).not.toBe('assistant');
+    // Each CONTIGUOUS run of toolResults must be preceded by an assistant (its
+    // owning tool_call). In a multi-tool turn the results are adjacent, so only
+    // the FIRST toolResult of a run needs an assistant immediately before it.
+    for (let i = 0; i < roles.length; i += 1) {
+      if (roles[i] === 'toolResult' && roles[i - 1] !== 'toolResult') {
+        expect(i).toBeGreaterThan(0);
+        expect(roles[i - 1]).toBe('assistant');
+      }
+    }
+  });
+
   it('never returns a lone orphan toolResult when the latest turn is an oversized toolResult', async () => {
     // Adversarial regression (cross-model, Codex): a provider rejects a
     // continuation whose FIRST message is a toolResult with no preceding
