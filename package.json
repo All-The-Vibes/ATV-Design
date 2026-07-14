@@ -52,7 +52,7 @@
     "@atv-design/core": "workspace:*",
     "@atv-design/shared": "workspace:*",
     "@types/node": "^22.20.1",
-    "acorn": "^8.14.0",
+    "acorn": "^8.17.0",
     "husky": "^9.1.7",
     "tsx": "^4.19.2",
     "turbo": "^2.10.3",
