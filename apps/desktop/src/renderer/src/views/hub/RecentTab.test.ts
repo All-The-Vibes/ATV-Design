@@ -24,7 +24,38 @@ function design(id: string, snapshotCount: number, updatedAt: string): Design {
   } as unknown as Design;
 }
 
+function designWithCreatedAt(id: string, updatedAt: string, createdAt: string): Design {
+  return {
+    id,
+    name: id,
+    updatedAt,
+    createdAt,
+    deletedAt: null,
+    snapshotCount: 1,
+  } as unknown as Design;
+}
+
 describe('RecentTab — selectRecent', () => {
+  it('breaks updatedAt ties by createdAt DESC, matching the DB ordering contract', () => {
+    // Codex round-5: listDesigns() orders by updated_at DESC, created_at DESC.
+    // The renderer re-sort must apply the same tiebreaker so Recent never
+    // disagrees with the main-process order for designs sharing updatedAt.
+    const designs = [
+      designWithCreatedAt('older', '2026-07-05T00:00:00Z', '2026-07-01T00:00:00Z'),
+      designWithCreatedAt('newer', '2026-07-05T00:00:00Z', '2026-07-03T00:00:00Z'),
+    ];
+    const out = selectRecent(designs, false, 6);
+    expect(out.map((d) => d.id)).toEqual(['newer', 'older']);
+  });
+
+  it('returns 0 for a genuine tie so ordering stays stable', () => {
+    const a = designWithCreatedAt('a', '2026-07-05T00:00:00Z', '2026-07-05T00:00:00Z');
+    const b = designWithCreatedAt('b', '2026-07-05T00:00:00Z', '2026-07-05T00:00:00Z');
+    // Both fields equal → stable order preserved from input.
+    expect(selectRecent([a, b], false, 6).map((d) => d.id)).toEqual(['a', 'b']);
+    expect(selectRecent([b, a], false, 6).map((d) => d.id)).toEqual(['b', 'a']);
+  });
+
   it('keeps only designs with snapshots when hideEmpty is on', () => {
     const designs = [
       design('a', 2, '2026-07-01T00:00:00Z'),

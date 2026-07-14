@@ -19,11 +19,18 @@ function liveDesigns(designs: Design[]): Design[] {
   return designs.filter((d) => d.deletedAt === null);
 }
 
-/** Live designs, optionally hiding empties, newest-first, capped at `limit`. */
+/** Live designs, optionally hiding empties, newest-first, capped at `limit`.
+ * Ordering mirrors the DB contract in snapshots-db.listDesigns:
+ * updatedAt DESC, then createdAt DESC as the tiebreaker, returning 0 for a true
+ * tie so the sort stays stable and never diverges from the main-process order. */
 export function selectRecent(designs: Design[], hideEmpty: boolean, limit: number): Design[] {
   return liveDesigns(designs)
     .filter((d) => (hideEmpty ? !isEmptyDesign(d) : true))
-    .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+    .sort((a, b) => {
+      if (a.updatedAt !== b.updatedAt) return a.updatedAt < b.updatedAt ? 1 : -1;
+      if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+      return 0;
+    })
     .slice(0, limit);
 }
 
