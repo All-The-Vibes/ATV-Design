@@ -329,18 +329,31 @@ function tailPruneToHardCap(messages: AgentMessage[], maxBytes: number): AgentMe
 
   const safeKept = dropLeadingToolResults(kept);
   if (safeKept.length > 0) return safeKept;
-  if (kept.length > 0) return kept;
 
-  // Nothing fit under the cap — the single newest message is itself oversized
-  // (e.g. a lone latest user turn carrying an image whose base64 exceeds the
-  // cap). Returning [] here would ship an EMPTY message list — the exact
-  // malformed/empty-continuation request that draws a bare 400. An over-budget
-  // request is the lesser evil, so always keep the last real (non-toolResult)
-  // message. Falling further back to the very last message guarantees non-empty
-  // even in the degenerate all-toolResult case.
+  // Everything that "fit" was leading toolResult(s) with no owning assistant
+  // tool_call — shipping them alone is the malformed continuation shape a
+  // provider rejects with a bare 400. Returning [] would be the empty variant
+  // of the same failure. Prefer the last valid assistant+toolResult PAIR so the
+  // toolResult keeps its owning tool_call; else fall back to the last real
+  // (non-toolResult) message; else, in the degenerate all-toolResult case, the
+  // last message. An over-budget-but-well-formed request is the lesser evil.
+  const lastToolResultIdx = findLastIndex(messages, (m) => m?.role === 'toolResult');
+  if (lastToolResultIdx > 0 && messages[lastToolResultIdx - 1]?.role === 'assistant') {
+    return [
+      messages[lastToolResultIdx - 1] as AgentMessage,
+      messages[lastToolResultIdx] as AgentMessage,
+    ];
+  }
   const lastNonToolResult = [...messages].reverse().find((m) => m?.role !== 'toolResult');
   const fallback = lastNonToolResult ?? messages[messages.length - 1];
   return fallback ? [fallback] : messages;
+}
+
+function findLastIndex<T>(arr: T[], pred: (v: T) => boolean): number {
+  for (let i = arr.length - 1; i >= 0; i -= 1) {
+    if (pred(arr[i] as T)) return i;
+  }
+  return -1;
 }
 
 export function buildTransformContext(

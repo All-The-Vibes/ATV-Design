@@ -260,6 +260,37 @@ describe('buildTransformContext — size-based block compaction with recent-turn
     expect(out[0]).toBe(hugeImage);
   });
 
+  it('never returns a lone orphan toolResult when the latest turn is an oversized toolResult', async () => {
+    // Adversarial regression (cross-model, Codex): a provider rejects a
+    // continuation whose FIRST message is a toolResult with no preceding
+    // assistant tool_call. tailPrune drops leading toolResults, but when the
+    // ONLY message that "fit" is itself a trailing oversized toolResult, the
+    // fallback must not ship that orphan alone — it must keep the assistant
+    // tool_call that owns it (a valid pair) or drop to a non-toolResult tail.
+    const transform = buildTransformContext();
+    const hugeToolResult = {
+      role: 'toolResult',
+      toolCallId: 'call-huge',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('build me a landing page'),
+      assistantWithToolCall('call-huge', 'small'),
+      hugeToolResult, // oversized latest toolResult (non-shrinkable image block)
+    ];
+    const out = await transform(messages);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    // The transcript must NOT begin with a bare toolResult (malformed shape).
+    expect((out[0] as { role: string }).role).not.toBe('toolResult');
+    // Every toolResult present must be preceded by its assistant tool_call.
+    for (let i = 0; i < out.length; i += 1) {
+      if ((out[i] as { role: string }).role === 'toolResult') {
+        expect(i).toBeGreaterThan(0);
+        expect((out[i - 1] as { role: string }).role).toBe('assistant');
+      }
+    }
+  });
+
   it('keeps small user messages untouched regardless of position', async () => {
     const transform = buildTransformContext();
     const opening = userMsg('build me a landing page');
