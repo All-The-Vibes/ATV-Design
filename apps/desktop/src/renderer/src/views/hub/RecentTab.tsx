@@ -32,14 +32,29 @@ export function countEmpty(designs: Design[]): number {
   return liveDesigns(designs).filter(isEmptyDesign).length;
 }
 
-/** True when the hide-empty filter is on AND it collapses the entire live list
- * (there are live designs, but all of them are empty). This is the case the
+/** True when the hide-empty switch would actually change the visible Recent
+ * grid — i.e. hiding empties drops at least one design from the first `limit`
+ * cards. Gating on this (rather than "any empty design exists anywhere") avoids
+ * showing a no-op control when the only empty designs sit outside the visible
+ * window. */
+export function shouldOfferHideEmpty(designs: Design[], limit: number): boolean {
+  const shown = selectRecent(designs, false, limit);
+  const hidden = selectRecent(designs, true, limit);
+  return shown.length !== hidden.length || shown.some((d, i) => d.id !== hidden[i]?.id);
+}
+
+/** True when the hide-empty filter is on AND it collapses the entire visible
+ * Recent list (every design that would show is empty). This is the case the
  * grid's own empty-state cannot surface, because the "+ New design" prefix tile
  * keeps the grid non-empty. */
-export function shouldShowAllHiddenHint(designs: Design[], hideEmpty: boolean): boolean {
+export function shouldShowAllHiddenHint(
+  designs: Design[],
+  hideEmpty: boolean,
+  limit: number,
+): boolean {
   if (!hideEmpty) return false;
-  const live = liveDesigns(designs);
-  return live.length > 0 && live.every(isEmptyDesign);
+  const shown = selectRecent(designs, false, limit);
+  return shown.length > 0 && shown.every(isEmptyDesign);
 }
 
 function readHideEmpty(): boolean {
@@ -69,9 +84,9 @@ export function RecentTab() {
   );
   const [hideEmpty, setHideEmpty] = useState<boolean>(readHideEmpty);
 
-  const emptyCount = countEmpty(designs);
+  const offerHideEmpty = shouldOfferHideEmpty(designs, RECENT_LIMIT);
   const recent = selectRecent(designs, hideEmpty, RECENT_LIMIT);
-  const allHidden = shouldShowAllHiddenHint(designs, hideEmpty);
+  const allHidden = shouldShowAllHiddenHint(designs, hideEmpty, RECENT_LIMIT);
 
   function toggleHideEmpty(): void {
     setHideEmpty((prev) => {
@@ -119,7 +134,7 @@ export function RecentTab() {
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
-      {emptyCount > 0 ? (
+      {offerHideEmpty ? (
         <div className="flex items-center justify-end">
           <button
             type="button"
