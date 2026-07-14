@@ -9,6 +9,17 @@ function userMsg(text: string): AgentMessage {
   } as unknown as AgentMessage;
 }
 
+// Production user-message shape: `ChatMessage.content` is a bare string
+// (see packages/shared ChatMessage schema + chatMessageToAgentMessage), passed
+// verbatim into transformContext. The block-array `userMsg` above is the other
+// valid shape. Both must be capped; this helper exercises the string branch.
+function userStr(text: string): AgentMessage {
+  return {
+    role: 'user',
+    content: text,
+  } as unknown as AgentMessage;
+}
+
 function assistantWithToolCall(toolCallId: string, inputArg: string): AgentMessage {
   return {
     role: 'assistant',
@@ -154,12 +165,519 @@ describe('buildTransformContext — size-based block compaction with recent-turn
     expect(out).toEqual(messages);
   });
 
-  it('never modifies user messages', async () => {
+  it('keeps a large user message verbatim inside the recent window', async () => {
+    // The user's latest brief is their intent — it must never be stubbed while
+    // it is still the current turn's driving instruction.
     const transform = buildTransformContext();
     const opening = userMsg('x'.repeat(50_000));
     const messages: AgentMessage[] = [opening, assistantText('ok')];
     const out = await transform(messages);
     expect(out[0]).toBe(opening);
+  });
+
+  it('stubs an EARLIER user message once a newer user turn exists and size forces caps', async () => {
+    // A big pasted brief / attached-file dump in an EARLIER user turn is the one
+    // class of block the old code never capped, so a single multi-MB user turn
+    // survived emergency caps and forced tailPrune to nuke the whole history to
+    // one message — the malformed continuation request behind the Portkey 400.
+    // Only NON-latest user turns stub; the latest brief is preserved separately.
+    const transform = buildTransformContext();
+    const earlyBrief = 'u'.repeat(400_000); // early turn, pushes over HARD_CAP
+    const messages: AgentMessage[] = [userMsg(earlyBrief)];
+    for (let i = 0; i < 3; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'small'));
+      messages.push(toolResult(`t${i}`, 'ok'));
+    }
+    // A newer user turn makes the 400 KB one "earlier history", not the brief.
+    messages.push(userMsg('now tweak the header'));
+    const out = await transform(messages);
+    const early = out[0] as { role: string; content: Array<{ type?: string; text?: string }> };
+    expect(early.role).toBe('user');
+    expect(early.content[0]?.text?.startsWith('[earlier message dropped')).toBe(true);
+    expect(early.content[0]?.text).toContain('400000B');
+    // The latest brief is retained verbatim (small, under every cap).
+    const latest = out[out.length - 1] as { content: Array<{ text?: string }> };
+    expect(latest.content[0]?.text).toBe('now tweak the header');
+  });
+
+  it('keeps an earlier LARGE user spec verbatim while the transcript is under budget', async () => {
+    // Adversarial regression (cross-model): a normal multi-turn flow — user
+    // pastes a 9 KB spec, assistant asks a question, user says "yes" — must NOT
+    // stub the 9 KB spec. It is only compacted when the whole transcript
+    // exceeds HARD_CAP_BYTES, not on every turn. Capping it in the first pass
+    // was silent intent corruption.
+    const transform = buildTransformContext();
+    const spec = `SPEC: ${'requirement '.repeat(800)}`; // ~9.6 KB, > 8 KB old-cap
+    const messages: AgentMessage[] = [
+      userMsg(spec),
+      assistantText('One question: what color?'),
+      userMsg('yes, blue'),
+    ];
+    const out = await transform(messages);
+    // Total transcript is well under HARD_CAP, so nothing is touched.
+    const early = out[0] as { content: Array<{ text?: string }> };
+    expect(early.content[0]?.text).toBe(spec);
+    expect(early.content[0]?.text).not.toContain('earlier message dropped');
+  });
+
+  it('counts UTF-8 bytes, so a multibyte brief cannot slip under the hard cap', async () => {
+    // Adversarial regression (cross-model): estimateBytes must measure real
+    // UTF-8 bytes, not UTF-16 code units. A CJK brief of ~120k code units is
+    // ~360 KB on the wire — it must trip the cap and be compacted, not sail
+    // through because `.length` undercounts it as ~120k "bytes".
+    const transform = buildTransformContext();
+    // Non-latest CJK spec (a newer brief follows) so it is eligible to stub.
+    const cjk = '设计'.repeat(60_000); // 120k code units, ~360 KB UTF-8
+    const messages: AgentMessage[] = [
+      userMsg(cjk),
+      assistantWithToolCall('t0', 'small'),
+      toolResult('t0', 'ok'),
+      userMsg('tweak it'),
+    ];
+    const out = await transform(messages);
+    // The oversized CJK turn was compacted (stubbed), proving the cap fired.
+    const early = out[0] as { content: Array<{ text?: string }> };
+    expect(early.content[0]?.text?.startsWith('[earlier message dropped')).toBe(true);
+    // And the real UTF-8 size of the output is under the hard cap.
+    const utf8Bytes = out.reduce((n, m) => n + Buffer.byteLength(JSON.stringify(m), 'utf8'), 0);
+    expect(utf8Bytes).toBeLessThanOrEqual(200_000);
+  });
+
+  it('never returns an empty list even when the lone latest message exceeds the cap', async () => {
+    // Adversarial regression (cross-model): the fix exists to STOP the prune
+    // from collapsing history to a malformed/empty request. A lone latest user
+    // message carrying a non-text (image) block whose base64 alone exceeds the
+    // cap cannot be shrunk — tailPrune must still return that message, never [].
+    const transform = buildTransformContext();
+    const hugeImage = {
+      role: 'user',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [hugeImage];
+    const out = await transform(messages);
+    // Non-empty: the model gets the (over-budget) message, not a malformed [].
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    expect(out[0]).toBe(hugeImage);
+  });
+
+  it('keeps an oversized latest user turn rather than an older tool batch', async () => {
+    // Adversarial regression (cross-model, Codex round 4): when the latest turn
+    // is an oversized non-text user message and an EARLIER toolResult exists, the
+    // fallback must preserve the latest live instruction, not silently swap it
+    // for an older assistant+toolResult batch.
+    const transform = buildTransformContext();
+    const latestUser = {
+      role: 'user',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('start'),
+      assistantWithToolCall('c1', 'small'),
+      toolResult('c1', 'ok'),
+      latestUser,
+    ];
+    const out = await transform(messages);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    // The kept tail must be the latest user turn (its live instruction), and must
+    // not end in assistant/toolResult from the older batch.
+    const last = out[out.length - 1] as { role: string };
+    expect(last.role).toBe('user');
+    expect(last).toBe(latestUser);
+  });
+
+  it('caps a latest user brief split across many sub-limit text blocks (whole-message budget)', async () => {
+    // Adversarial regression (cross-model, Codex round 5): compactUser caps each
+    // text block independently, so a latest user message made of MANY blocks each
+    // under the per-block limit could still blow past HARD_CAP_BYTES in aggregate
+    // and ship over budget. The latest brief must be bounded as a whole.
+    const HARD_CAP_BYTES = 200_000;
+    const transform = buildTransformContext();
+    const manyBlocks = Array.from({ length: 400 }, () => ({
+      type: 'text' as const,
+      text: 'a'.repeat(900), // each block < the 1024 per-block floor
+    }));
+    const latest = { role: 'user', content: manyBlocks } as unknown as AgentMessage;
+    // Precede with enough history that the transcript is already over the cap.
+    const messages: AgentMessage[] = [userMsg('start'), latest];
+    expect(estimateJsonBytes(messages)).toBeGreaterThan(HARD_CAP_BYTES);
+    const out = await transform(messages);
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(HARD_CAP_BYTES);
+    // The latest user turn survives (non-empty), just bounded.
+    const last = out[out.length - 1] as { role: string };
+    expect(last.role).toBe('user');
+  });
+
+  it('does not end in a bare assistant when the tail is toolResult(oversized) then assistant(final)', async () => {
+    // Adversarial regression (cross-model, Codex round 4): a realistic tail is
+    // user -> assistant(toolCall) -> toolResult(oversized image) -> assistant(final text).
+    // The reverse-accumulation keeps [toolResult, assistant]; dropLeadingToolResults
+    // strips the leading toolResult and would return a LONE trailing assistant —
+    // itself malformed (a continuation must end in user/toolResult). The pruned
+    // result must NOT end in a bare assistant.
+    const transform = buildTransformContext();
+    const hugeToolResult = {
+      role: 'toolResult',
+      toolCallId: 'c1',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('build me a landing page'),
+      assistantWithToolCall('c1', 'small'),
+      hugeToolResult,
+      assistantText('Here is your landing page. Anything else?'),
+    ];
+    const out = await transform(messages);
+    const roles = out.map((m) => (m as { role: string }).role);
+    expect(roles.length).toBeGreaterThan(0);
+    expect(roles[roles.length - 1]).not.toBe('assistant');
+    expect(roles[0]).not.toBe('toolResult');
+    // Any toolResult kept must open a contiguous run preceded by an assistant.
+    for (let i = 0; i < roles.length; i += 1) {
+      if (roles[i] === 'toolResult' && roles[i - 1] !== 'toolResult') {
+        expect(i).toBeGreaterThan(0);
+        expect(roles[i - 1]).toBe('assistant');
+      }
+    }
+  });
+
+  it('preserves the whole assistant+toolResults batch for a multi-tool turn (never a lone assistant)', async () => {
+    // Adversarial regression (cross-model, Codex round 2): an assistant turn may
+    // emit 2+ tool calls, so its trailing toolResults are ADJACENT. If tail-prune
+    // only rescues a single preceding-assistant pair, it falls through to a lone
+    // [assistant] — which is ALSO malformed: a continuation must end in `user` or
+    // `toolResult`, never `assistant` (which still expects its results). The
+    // fallback must keep the assistant together with its contiguous toolResults.
+    const transform = buildTransformContext();
+    const bigImg = () =>
+      ({
+        role: 'toolResult',
+        toolCallId: 'x',
+        content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(200_000) }],
+      }) as unknown as AgentMessage;
+    const multiToolAssistant = {
+      role: 'assistant',
+      content: [
+        { type: 'toolCall', id: 'c1', name: 'do', input: { a: 1 } },
+        { type: 'toolCall', id: 'c2', name: 'do', input: { b: 2 } },
+      ],
+    } as unknown as AgentMessage;
+    const tr1 = { ...bigImg(), toolCallId: 'c1' } as AgentMessage;
+    const tr2 = { ...bigImg(), toolCallId: 'c2' } as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('build me a landing page'),
+      multiToolAssistant,
+      tr1,
+      tr2, // two oversized, non-shrinkable trailing toolResults
+    ];
+    const out = await transform(messages);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    const roles = out.map((m) => (m as { role: string }).role);
+    // Must not begin with a bare toolResult and must not END with a bare assistant.
+    expect(roles[0]).not.toBe('toolResult');
+    expect(roles[roles.length - 1]).not.toBe('assistant');
+    // Each CONTIGUOUS run of toolResults must be preceded by an assistant (its
+    // owning tool_call). In a multi-tool turn the results are adjacent, so only
+    // the FIRST toolResult of a run needs an assistant immediately before it.
+    for (let i = 0; i < roles.length; i += 1) {
+      if (roles[i] === 'toolResult' && roles[i - 1] !== 'toolResult') {
+        expect(i).toBeGreaterThan(0);
+        expect(roles[i - 1]).toBe('assistant');
+      }
+    }
+  });
+
+  it('keeps a recovered multi-tool batch well-formed even when it stays over the byte cap', async () => {
+    // Adversarial regression (cross-model, Codex round 3): when the trailing
+    // tool turn carries non-shrinkable payloads (large images) that together
+    // exceed the hard cap, tail-prune deliberately ships the whole assistant+
+    // toolResults batch OVER budget rather than dropping a result to fit — a
+    // well-formed-but-large request beats a malformed one. Assert the shape is
+    // valid (no orphan toolResult / no lone assistant), not that it's under cap.
+    const transform = buildTransformContext();
+    const img = (id: string) =>
+      ({
+        role: 'toolResult',
+        toolCallId: id,
+        content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(200_000) }],
+      }) as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('go'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'toolCall', id: 'c1', name: 'shot', input: {} },
+          { type: 'toolCall', id: 'c2', name: 'shot', input: {} },
+        ],
+      } as unknown as AgentMessage,
+      img('c1'),
+      img('c2'),
+    ];
+    const out = await transform(messages);
+    const roles = out.map((m) => (m as { role: string }).role);
+    expect(roles.length).toBeGreaterThan(0);
+    expect(roles[0]).not.toBe('toolResult');
+    expect(roles[roles.length - 1]).not.toBe('assistant');
+  });
+
+  it('returns a non-empty result for a degenerate all-toolResult history', async () => {
+    // Defensive: a history of only toolResults cannot occur from a real session
+    // (transcripts open with a user turn), but the safety net must still never
+    // return [] or throw. Non-empty is the invariant here.
+    const transform = buildTransformContext();
+    const only = {
+      role: 'toolResult',
+      toolCallId: 't',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const out = await transform([only]);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('never returns a lone orphan toolResult when the latest turn is an oversized toolResult', async () => {
+    // Adversarial regression (cross-model, Codex): a provider rejects a
+    // continuation whose FIRST message is a toolResult with no preceding
+    // assistant tool_call. tailPrune drops leading toolResults, but when the
+    // ONLY message that "fit" is itself a trailing oversized toolResult, the
+    // fallback must not ship that orphan alone — it must keep the assistant
+    // tool_call that owns it (a valid pair) or drop to a non-toolResult tail.
+    const transform = buildTransformContext();
+    const hugeToolResult = {
+      role: 'toolResult',
+      toolCallId: 'call-huge',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('build me a landing page'),
+      assistantWithToolCall('call-huge', 'small'),
+      hugeToolResult, // oversized latest toolResult (non-shrinkable image block)
+    ];
+    const out = await transform(messages);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    // The transcript must NOT begin with a bare toolResult (malformed shape).
+    expect((out[0] as { role: string }).role).not.toBe('toolResult');
+    // Every toolResult present must be preceded by its assistant tool_call.
+    for (let i = 0; i < out.length; i += 1) {
+      if ((out[i] as { role: string }).role === 'toolResult') {
+        expect(i).toBeGreaterThan(0);
+        expect((out[i - 1] as { role: string }).role).toBe('assistant');
+      }
+    }
+  });
+
+  it('keeps small user messages untouched regardless of position', async () => {
+    const transform = buildTransformContext();
+    const opening = userMsg('build me a landing page');
+    const messages: AgentMessage[] = [opening];
+    for (let i = 0; i < 6; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'small'));
+      messages.push(toolResult(`t${i}`, 'ok'));
+    }
+    const out = await transform(messages);
+    expect(out[0]).toBe(opening);
+  });
+
+  it('stubs an EARLIER string-content user brief (production message shape)', async () => {
+    // `chatMessageToAgentMessage` seeds history with BARE STRING content, not a
+    // block array — that is the shape a chat-resumed session actually feeds
+    // transformContext on turn one. The string branch of compactUser must stub
+    // an early giant brief exactly like the block-array path, and must return
+    // string content (not silently wrap it in an array the LLM shape rejects).
+    const transform = buildTransformContext();
+    const messages: AgentMessage[] = [userStr('u'.repeat(400_000))];
+    for (let i = 0; i < 3; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'small'));
+      messages.push(toolResult(`t${i}`, 'ok'));
+    }
+    messages.push(userStr('now tweak the header'));
+    const out = await transform(messages);
+    const early = out[0] as { role: string; content: unknown };
+    expect(early.role).toBe('user');
+    expect(typeof early.content).toBe('string');
+    expect((early.content as string).startsWith('[earlier message dropped')).toBe(true);
+    expect(early.content as string).toContain('400000B');
+    // Latest string brief stays verbatim (small, under every cap).
+    const latest = out[out.length - 1] as { content: unknown };
+    expect(latest.content).toBe('now tweak the header');
+  });
+
+  it('truncate-heads a lone giant string-content brief instead of tail-pruning', async () => {
+    // Same Portkey-400 regression guard as the block-array case, but for the
+    // production string shape: a lone multi-MB string brief must truncate to its
+    // head (keeping the run's full message count), not collapse to a lone tail.
+    const HARD_CAP_BYTES = 200_000;
+    const transform = buildTransformContext();
+    const messages: AgentMessage[] = [userStr(`BUILD: ${'z'.repeat(4_000_000)}`)];
+    for (let i = 0; i < 6; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'small'));
+      messages.push(toolResult(`t${i}`, `ok ${i}`));
+    }
+    const out = await transform(messages);
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(HARD_CAP_BYTES);
+    expect(out.length).toBe(messages.length);
+    const brief = out[0] as { content: unknown };
+    expect(typeof brief.content).toBe('string');
+    expect((brief.content as string).startsWith('BUILD: ')).toBe(true);
+    expect(brief.content as string).toContain('trimmed to fit context');
+  });
+
+  it('holds the USER_RECENT_FLOOR for the latest brief at the EMERGENCY tier', async () => {
+    // The floor test above only tightens as far as the aggressive tier. This one
+    // drives all three tiers (caps → aggressive → emergency) with many
+    // just-under-2KB blocks so the emergency cap (160 B for everything else)
+    // actually fires, then asserts the latest brief still keeps its ~1 KB floor
+    // rather than shrinking to a 160 B stub. Guards USER_RECENT_FLOOR at
+    // emergency specifically: dropping it to EMERGENCY_BLOCK_LIMIT would pass
+    // every other test.
+    const transform = buildTransformContext();
+    const messages: AgentMessage[] = [];
+    for (let i = 0; i < 180; i += 1) {
+      messages.push(assistantText('p'.repeat(1_900)));
+    }
+    const brief = `PLEASE BUILD: ${'spec '.repeat(400)}`; // ~2 KB latest instruction
+    messages.push(userMsg(brief));
+    const out = await transform(messages);
+    const last = out[out.length - 1] as { role: string; content: Array<{ text?: string }> };
+    expect(last.role).toBe('user');
+    const text = last.content[0]?.text ?? '';
+    // Emergency floor (~1 KB), not a 160 B one-liner and not the full 2 KB.
+    expect(text.length).toBeGreaterThan(500);
+    expect(text.length).toBeLessThan(brief.length);
+    expect(text.startsWith('PLEASE BUILD:')).toBe(true);
+    expect(text).toContain('trimmed to fit context');
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(200_000);
+  });
+
+  it('keeps history intact when a lone giant user brief would otherwise force a tail-prune', async () => {
+    // Regression guard for the Portkey 400: one giant user message (here it is
+    // also the latest brief) must not push the aggregate over HARD_CAP_BYTES
+    // and trigger a tail-prune down to a single message. After the fix the brief
+    // truncates to its head and the run keeps its full message count.
+    const HARD_CAP_BYTES = 200_000;
+    const transform = buildTransformContext();
+    const messages: AgentMessage[] = [userMsg(`BUILD: ${'z'.repeat(4_000_000)}`)];
+    for (let i = 0; i < 6; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'small'));
+      messages.push(toolResult(`t${i}`, `ok ${i}`));
+    }
+    const out = await transform(messages);
+    expect(estimateJsonBytes(messages)).toBeGreaterThan(HARD_CAP_BYTES);
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(HARD_CAP_BYTES);
+    // The whole decision trail survives — no collapse to a lone tail message.
+    expect(out.length).toBe(messages.length);
+    // The brief kept its head (truncate-with-notice), not an opaque stub.
+    const brief = out[0] as { content: Array<{ text?: string }> };
+    expect(brief.content[0]?.text?.startsWith('BUILD: ')).toBe(true);
+    expect(brief.content[0]?.text).toContain('trimmed to fit context');
+  });
+
+  it('caps text but passes image blocks through untouched in an older user turn', async () => {
+    // User messages can mix an image block with a text block. Only the text is
+    // a prune target; the image must survive so the model still sees it. Uses an
+    // EARLIER user turn (a newer brief follows) large enough to force caps.
+    const transform = buildTransformContext();
+    const image = { type: 'image', mimeType: 'image/png', data: 'AAAA' };
+    const userWithImage: AgentMessage = {
+      role: 'user',
+      content: [{ ...image }, { type: 'text', text: 'w'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [userWithImage];
+    for (let i = 0; i < 3; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'small'));
+      messages.push(toolResult(`t${i}`, 'ok'));
+    }
+    messages.push(userMsg('and now the footer')); // newer brief → image turn is history
+    const out = await transform(messages);
+    const first = out[0] as { content: Array<{ type?: string; text?: string }> };
+    const img = first.content.find((c) => c.type === 'image');
+    const txt = first.content.find((c) => c.type === 'text');
+    expect(img).toEqual(image);
+    expect(txt?.text?.startsWith('[earlier message dropped')).toBe(true);
+  });
+
+  it('preserves a floor of the LATEST user brief even at the emergency tier', async () => {
+    // The most recent user message is the live instruction. Even when the run
+    // is so large that emergency caps fire (160 B for everything else), the
+    // current brief keeps at least the USER_RECENT_FLOOR (~1 KB) of text so the
+    // model still knows what it was asked to do.
+    const transform = buildTransformContext();
+    const brief = `PLEASE BUILD: ${'spec detail '.repeat(200)}`; // ~2.6 KB, > floor
+    const messages: AgentMessage[] = [];
+    // Bulk history from tool payloads forces the emergency tier.
+    for (let i = 0; i < 60; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'p'.repeat(12_000)));
+      messages.push(toolResult(`t${i}`, 'p'.repeat(12_000)));
+    }
+    // Latest turn is the user's brief.
+    messages.push(userMsg(brief));
+    const out = await transform(messages);
+    const last = out[out.length - 1] as { role: string; content: Array<{ text?: string }> };
+    expect(last.role).toBe('user');
+    const text = last.content[0]?.text ?? '';
+    // Kept a meaningful slice (floor), not stubbed to a 160 B one-liner.
+    expect(text.length).toBeGreaterThan(500);
+    expect(text.startsWith('PLEASE BUILD:')).toBe(true);
+    // And the aggregate is still under the hard cap.
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(200_000);
+  });
+
+  it('truncates the latest brief on a code-point boundary (no split surrogate pair)', async () => {
+    // truncateHead slices the head of an oversized latest brief. A naive
+    // string.slice can cut a multi-byte emoji/CJK char mid-surrogate, leaving a
+    // lone UTF-16 half that serializes to an invalid character. Force the
+    // emergency tier with an emoji-heavy brief and assert no lone surrogate.
+    const transform = buildTransformContext();
+    // '🚀' is a surrogate pair (2 UTF-16 code units). A long run guarantees the
+    // ~1 KB head boundary lands in the middle of a pair with a naive slice.
+    const brief = `SHIP: ${'🚀'.repeat(4000)}`;
+    const messages: AgentMessage[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'p'.repeat(12_000)));
+      messages.push(toolResult(`t${i}`, 'p'.repeat(12_000)));
+    }
+    messages.push(userMsg(brief));
+    const out = await transform(messages);
+    const last = out[out.length - 1] as { content: Array<{ text?: string }> };
+    const text = last.content[0]?.text ?? '';
+    expect(text.startsWith('SHIP: ')).toBe(true);
+    // No unpaired surrogate anywhere in the kept head.
+    expect(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(text),
+    ).toBe(false);
+    // Round-trips through UTF-8 without replacement chars (would appear if a
+    // lone surrogate had been emitted).
+    expect(Buffer.from(text, 'utf8').toString('utf8')).toBe(text);
+  });
+
+  it('returns a user message with non-string, non-array content unchanged', async () => {
+    // Defensive guard: malformed user content (null / undefined / bare object)
+    // must pass through untouched rather than throw or be mangled, even when
+    // caps are forced.
+    const transform = buildTransformContext();
+    const weird = { role: 'user', content: null } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [weird];
+    for (let i = 0; i < 6; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'p'.repeat(40_000)));
+      messages.push(toolResult(`t${i}`, 'p'.repeat(40_000)));
+    }
+    const out = await transform(messages);
+    // The malformed user message is untouched (identity), never throws.
+    expect(out[0]).toBe(weird);
+  });
+
+  it('handles a history with no user message (lastUserIndex returns -1)', async () => {
+    // A synthetic continuation may open with assistant/toolResult only. With no
+    // user turn, nothing is selected as the "latest brief" and transform still
+    // completes and caps normally.
+    const transform = buildTransformContext();
+    const messages: AgentMessage[] = [];
+    for (let i = 0; i < 60; i += 1) {
+      messages.push(assistantWithToolCall(`t${i}`, 'p'.repeat(12_000)));
+      messages.push(toolResult(`t${i}`, 'p'.repeat(12_000)));
+    }
+    const out = await transform(messages);
+    // No user role present in or out; aggregate under the hard cap.
+    expect(out.every((m) => m.role !== 'user')).toBe(true);
+    expect(estimateJsonBytes(out)).toBeLessThanOrEqual(200_000);
   });
 
   it('tightens to aggressive caps (ignoring window) when HARD_CAP_BYTES is exceeded', async () => {
