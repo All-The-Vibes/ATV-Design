@@ -429,7 +429,19 @@ export function createDesign(db: Database, name = 'Untitled design'): Design {
 }
 
 export function getDesign(db: Database, id: string): Design | null {
-  const row = db.prepare('SELECT * FROM designs WHERE id = ?').get(id) as DesignRow | undefined;
+  // Attach snapshot_count via the same correlated subquery listDesigns uses, so
+  // every single-design return path (rename, updateWorkspace, duplicateDesign,
+  // …) reports the real count instead of a fabricated 0. rowToDesign defaults a
+  // missing column to 0, which would misreport a design that actually has
+  // snapshots (e.g. a freshly duplicated design) as an empty shell.
+  const row = db
+    .prepare(
+      `SELECT d.*,
+              (SELECT COUNT(*) FROM design_snapshots s WHERE s.design_id = d.id) AS snapshot_count
+       FROM designs d
+       WHERE d.id = ?`,
+    )
+    .get(id) as DesignRow | undefined;
   return row ? rowToDesign(row) : null;
 }
 
