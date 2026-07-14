@@ -101,6 +101,20 @@ describe('RecentTab — shouldShowAllHiddenHint', () => {
   it('is false when there are no live designs at all', () => {
     expect(shouldShowAllHiddenHint([], true, 6)).toBe(false);
   });
+
+  it('is false when the hint would wrongly show alongside a real design outside the window', () => {
+    // Codex/Opus round-4 bug: the newest `limit` designs are all empty, but a
+    // real (non-empty) design sits just outside the window. With hideEmpty on,
+    // selectRecent surfaces the real design into the grid, so the "all empty"
+    // hint must NOT fire — otherwise the grid shows a canvas AND the hint at once.
+    const designs = [
+      design('e1', 0, '2026-07-10T00:00:00Z'),
+      design('e2', 0, '2026-07-09T00:00:00Z'),
+      design('e3', 0, '2026-07-08T00:00:00Z'),
+      design('real', 5, '2026-07-01T00:00:00Z'),
+    ];
+    expect(shouldShowAllHiddenHint(designs, true, 3)).toBe(false);
+  });
 });
 
 describe('RecentTab — shouldOfferHideEmpty', () => {

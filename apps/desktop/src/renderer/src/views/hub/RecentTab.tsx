@@ -43,18 +43,21 @@ export function shouldOfferHideEmpty(designs: Design[], limit: number): boolean 
   return shown.length !== hidden.length || shown.some((d, i) => d.id !== hidden[i]?.id);
 }
 
-/** True when the hide-empty filter is on AND it collapses the entire visible
- * Recent list (every design that would show is empty). This is the case the
- * grid's own empty-state cannot surface, because the "+ New design" prefix tile
- * keeps the grid non-empty. */
+/** True when the hide-empty filter is on AND the FILTERED Recent grid is empty
+ * while live designs still exist — i.e. everything the user could see got hidden.
+ * Keyed off the actually-rendered filtered set (not the unfiltered window) so the
+ * hint never shows alongside a real design that surfaced from outside the top
+ * `limit` once empties were filtered. The grid's own empty-state can't surface
+ * this because the "+ New design" prefix tile keeps the grid non-empty. */
 export function shouldShowAllHiddenHint(
   designs: Design[],
   hideEmpty: boolean,
   limit: number,
 ): boolean {
   if (!hideEmpty) return false;
-  const shown = selectRecent(designs, false, limit);
-  return shown.length > 0 && shown.every(isEmptyDesign);
+  const live = liveDesigns(designs);
+  const visible = selectRecent(designs, true, limit);
+  return live.length > 0 && visible.length === 0;
 }
 
 function readHideEmpty(): boolean {
