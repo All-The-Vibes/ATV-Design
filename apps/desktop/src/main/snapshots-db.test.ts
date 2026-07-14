@@ -72,6 +72,25 @@ describe('createDesign + listDesigns', () => {
     // B was created on day 2, A on day 1 — B should come first (DESC).
     expect(ids.indexOf(idB)).toBeLessThan(ids.indexOf(idA));
   });
+
+  it('reports snapshotCount per design (0 for empty shells)', () => {
+    const db = makeDb();
+    const withCanvas = createDesign(db, 'Has canvas');
+    const empty = createDesign(db, 'Empty shell');
+    createSnapshot(db, {
+      designId: withCanvas.id,
+      parentId: null,
+      type: 'initial',
+      prompt: 'Create a hero',
+      artifactType: 'html',
+      artifactSource: '<html>hero</html>',
+    });
+
+    const list = listDesigns(db);
+    const byId = new Map(list.map((d) => [d.id, d]));
+    expect(byId.get(withCanvas.id)?.snapshotCount).toBe(1);
+    expect(byId.get(empty.id)?.snapshotCount).toBe(0);
+  });
 });
 
 // ---------------------------------------------------------------------------

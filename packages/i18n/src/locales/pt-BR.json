@@ -558,6 +558,7 @@
       }
     },
     "openMyDesigns": "Todos os designs",
+    "home": "Ir para o início",
     "hubLabel": "Meus designs",
     "settingsLabel": "Configurações",
     "closeSettings": "Fechar configurações",
@@ -986,7 +987,9 @@
     },
     "recent": {
       "title": "Recentes",
-      "empty": "Nada por aqui ainda — comece um novo design para vê-lo fixado no topo."
+      "empty": "Nada por aqui ainda — comece um novo design para vê-lo fixado no topo.",
+      "hideEmpty": "Ocultar designs vazios",
+      "allEmpty": "Nenhum design com tela ainda — crie um ou desative “Ocultar designs vazios”."
     },
     "your": {
       "title": "Seus designs",

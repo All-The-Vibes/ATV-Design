@@ -610,6 +610,7 @@
       }
     },
     "openMyDesigns": "All designs",
+    "home": "Go to home",
     "hubLabel": "My designs",
     "settingsLabel": "Settings",
     "closeSettings": "Close settings",
@@ -1049,7 +1050,9 @@
     },
     "recent": {
       "title": "Recent",
-      "empty": "Nothing here yet — start a new design to see it pinned at the top."
+      "empty": "Nothing here yet — start a new design to see it pinned at the top.",
+      "hideEmpty": "Hide empty designs",
+      "allEmpty": "No designs with a canvas yet — create one or turn off “Hide empty designs”."
     },
     "your": {
       "title": "Your designs",

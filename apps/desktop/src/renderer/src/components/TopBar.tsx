@@ -9,6 +9,7 @@ import { ThemeToggle } from './ThemeToggle';
 
 export const TOPBAR_TEST_IDS = {
   root: 'topbar',
+  buttonHome: 'topbar-button-home',
   buttonSettings: 'topbar-button-settings',
   buttonErrorBadge: 'topbar-button-error-badge',
   buttonBackToHub: 'topbar-button-back-hub',
@@ -35,6 +36,13 @@ export function TopBar() {
   const refreshDiagnosticEvents = useCodesignStore((s) => s.refreshDiagnosticEvents);
   const openSettingsTab = useCodesignStore((s) => s.openSettingsTab);
 
+  // Clicking the wordmark returns to the hub home (Recent tab) — the app's
+  // canonical "home". No-op-safe when already there.
+  function goHome(): void {
+    setHubTab('recent');
+    setView('hub');
+  }
+
   // Pull-based: refresh the diagnostic counter on mount so a page reload
   // surfaces errors recorded while the window was closed. No polling.
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only effect
@@ -54,7 +62,16 @@ export function TopBar() {
       }}
     >
       <div className="flex items-center gap-[var(--space-8)] min-w-0 h-full" style={noDragStyle}>
-        <Wordmark badge={`v${__APP_VERSION__}`} size="md" />
+        <button
+          type="button"
+          onClick={goHome}
+          aria-label={t('topbar.home')}
+          data-testid={TOPBAR_TEST_IDS.buttonHome}
+          className="inline-flex items-center rounded-[var(--radius-sm)] transition-opacity duration-[var(--duration-faster)] hover:opacity-80 focus-visible:outline-2 focus-visible:outline-[var(--color-focus-ring)]"
+          style={noDragStyle}
+        >
+          <Wordmark badge={`v${__APP_VERSION__}`} size="md" />
+        </button>
 
         {view === 'settings' ? (
           <div className="flex items-center gap-[var(--space-2)]">

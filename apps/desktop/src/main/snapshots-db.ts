@@ -358,6 +358,7 @@ interface DesignRow {
   thumbnail_text: string | null;
   deleted_at: string | null;
   workspace_path: string | null;
+  snapshot_count?: number;
 }
 
 interface SnapshotRow {
@@ -395,6 +396,7 @@ function rowToDesign(row: DesignRow): Design {
     thumbnailText: row.thumbnail_text ?? null,
     deletedAt: row.deleted_at ?? null,
     workspacePath: row.workspace_path ?? null,
+    snapshotCount: row.snapshot_count ?? 0,
   };
 }
 
@@ -434,11 +436,17 @@ export function getDesign(db: Database, id: string): Design | null {
 export function listDesigns(db: Database): Design[] {
   // Soft-deleted designs are hidden from the default list. updated_at bumps on
   // each new snapshot so recently-edited designs surface first; created_at is
-  // the tiebreaker for designs that have never been edited.
+  // the tiebreaker for designs that have never been edited. The correlated
+  // subquery attaches a snapshot_count so the hub can distinguish designs that
+  // have a rendered canvas from empty shells without a second round-trip.
   return (
     db
       .prepare(
-        'SELECT * FROM designs WHERE deleted_at IS NULL ORDER BY updated_at DESC, created_at DESC',
+        `SELECT d.*,
+                (SELECT COUNT(*) FROM design_snapshots s WHERE s.design_id = d.id) AS snapshot_count
+         FROM designs d
+         WHERE d.deleted_at IS NULL
+         ORDER BY d.updated_at DESC, d.created_at DESC`,
       )
       .all() as DesignRow[]
   ).map(rowToDesign);

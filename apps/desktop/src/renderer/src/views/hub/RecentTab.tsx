@@ -1,9 +1,29 @@
 import { useT } from '@atv-design/i18n';
 import { Plus } from 'lucide-react';
+import { useState } from 'react';
 import { useCodesignStore } from '../../store';
 import { DesignGrid } from './DesignGrid';
 
 const RECENT_LIMIT = 6;
+const HIDE_EMPTY_KEY = 'hub:recent:hideEmpty';
+
+function readHideEmpty(): boolean {
+  if (typeof localStorage === 'undefined') return false;
+  try {
+    return localStorage.getItem(HIDE_EMPTY_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeHideEmpty(value: boolean): void {
+  if (typeof localStorage === 'undefined') return;
+  try {
+    localStorage.setItem(HIDE_EMPTY_KEY, value ? '1' : '0');
+  } catch {
+    /* storage unavailable — in-memory state still applies for this session */
+  }
+}
 
 export function RecentTab() {
   const t = useT();
@@ -12,10 +32,23 @@ export function RecentTab() {
   const isGenerating = useCodesignStore(
     (s) => s.isGenerating && s.generatingDesignId === s.currentDesignId,
   );
-  const recent = [...designs]
-    .filter((d) => d.deletedAt === null)
+  const [hideEmpty, setHideEmpty] = useState<boolean>(readHideEmpty);
+
+  const live = designs.filter((d) => d.deletedAt === null);
+  // "Empty" = no snapshots yet: shells, aborted generations, repro entries.
+  const emptyCount = live.filter((d) => (d.snapshotCount ?? 0) === 0).length;
+  const recent = [...live]
+    .filter((d) => (hideEmpty ? (d.snapshotCount ?? 0) > 0 : true))
     .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
     .slice(0, RECENT_LIMIT);
+
+  function toggleHideEmpty(): void {
+    setHideEmpty((prev) => {
+      const next = !prev;
+      writeHideEmpty(next);
+      return next;
+    });
+  }
 
   function handleNewDesign(): void {
     openNewDesignDialog();
@@ -54,6 +87,38 @@ export function RecentTab() {
   );
 
   return (
-    <DesignGrid designs={recent} emptyLabel={t('hub.recent.empty')} prefixTile={newDesignTile} />
+    <div className="flex flex-col gap-[var(--space-4)]">
+      {emptyCount > 0 ? (
+        <div className="flex items-center justify-end">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={hideEmpty}
+            onClick={toggleHideEmpty}
+            data-testid="recent-toggle-hide-empty"
+            className="inline-flex items-center gap-[var(--space-2)] rounded-full border border-[var(--color-border)] bg-[var(--color-background-secondary)] px-[var(--space-3)] py-[var(--space-1)] text-[var(--font-size-body-sm)] text-[var(--color-text-secondary)] transition-colors duration-[var(--duration-faster)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+          >
+            <span
+              aria-hidden
+              className={`inline-flex h-[16px] w-[28px] items-center rounded-full p-[2px] transition-colors duration-[var(--duration-faster)] ${
+                hideEmpty ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-border-strong)]'
+              }`}
+            >
+              <span
+                className={`h-[12px] w-[12px] rounded-full bg-white transition-transform duration-[var(--duration-faster)] ${
+                  hideEmpty ? 'translate-x-[12px]' : 'translate-x-0'
+                }`}
+              />
+            </span>
+            {t('hub.recent.hideEmpty')}
+          </button>
+        </div>
+      ) : null}
+      <DesignGrid
+        designs={recent}
+        emptyLabel={hideEmpty ? t('hub.recent.allEmpty') : t('hub.recent.empty')}
+        prefixTile={newDesignTile}
+      />
+    </div>
   );
 }
