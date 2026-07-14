@@ -315,6 +315,21 @@ function dropLeadingToolResults(messages: AgentMessage[]): AgentMessage[] {
   return messages.slice(start);
 }
 
+/**
+ * Trim an accumulated tail into a protocol-valid continuation:
+ *  - drop LEADING toolResults (no owning assistant tool_call ahead of them), and
+ *  - drop a TRAILING bare assistant (a continuation must end in user/toolResult;
+ *    a trailing assistant still expects its results, so it is malformed/stale).
+ * Applied until stable, then returns [] if nothing valid remains.
+ */
+function sanitizeContinuationTail(messages: AgentMessage[]): AgentMessage[] {
+  let out = dropLeadingToolResults(messages);
+  while (out.length > 0 && out[out.length - 1]?.role === 'assistant') {
+    out = dropLeadingToolResults(out.slice(0, -1));
+  }
+  return out;
+}
+
 function tailPruneToHardCap(messages: AgentMessage[], maxBytes: number): AgentMessage[] {
   if (estimateBytes(messages) <= maxBytes) return messages;
 
@@ -327,30 +342,32 @@ function tailPruneToHardCap(messages: AgentMessage[], maxBytes: number): AgentMe
     kept.unshift(message);
   }
 
-  const safeKept = dropLeadingToolResults(kept);
+  const safeKept = sanitizeContinuationTail(kept);
   if (safeKept.length > 0) return safeKept;
 
-  // Everything that "fit" was leading toolResult(s) with no owning assistant
-  // tool_call — shipping them alone is the malformed continuation shape a
-  // provider rejects with a bare 400, and returning [] is the empty variant of
-  // the same failure. A well-formed continuation must END in `user` or
-  // `toolResult` (never a bare `assistant`, which still expects its results) and
-  // every `toolResult` must be preceded by its owning `assistant` tool_call.
+  // Nothing accumulated into a valid tail (the newest message alone is already
+  // over budget). Reconstruct a protocol-valid, non-empty continuation from the
+  // full history. A well-formed continuation must END in `user` or `toolResult`
+  // (never a bare `assistant`, which still expects its results) and every
+  // `toolResult` must be preceded by its owning `assistant` tool_call.
   //
-  // The trailing turn is an assistant that emitted 1..N tool calls followed by
-  // its N contiguous toolResults. Recover that whole batch (assistant + all its
-  // toolResults) so the pairing is intact regardless of how many tools it used.
+  // If the history's own tail is a tool turn (assistant + its 1..N contiguous
+  // toolResults), recover that whole batch so the pairing is intact regardless
+  // of tool arity. Guarded on the LAST message being a toolResult so we never
+  // discard a newer oversized user turn in favour of an older tool batch — an
+  // oversized latest user message is handled by the final fallback below, which
+  // keeps that latest live instruction.
   //
   // NOTE: this recovered batch may itself exceed maxBytes (e.g. two large image
   // toolResults that cannot be shrunk without breaking tool_call/result
   // pairing). That is deliberate: a well-formed-but-over-budget request is the
-  // lesser evil versus a malformed one. The provider may still reject on size,
-  // but it will not draw the bare `400 (no body)` this fix targets, which is
-  // caused by a MALFORMED (empty / orphan-toolResult / lone-assistant) shape —
-  // not by size alone. We never silently drop a toolResult from the batch to fit
-  // the cap, because that would re-introduce an orphan/unpaired continuation.
+  // lesser evil versus a malformed one. The bare `400 (no body)` this fix
+  // targets is caused by a MALFORMED (empty / orphan-toolResult / lone-assistant)
+  // shape — not by size alone. We never silently drop a toolResult from the
+  // batch to fit the cap, because that would re-introduce an orphan continuation.
+  const endsInToolResult = messages[messages.length - 1]?.role === 'toolResult';
   const lastToolResultIdx = findLastIndex(messages, (m) => m?.role === 'toolResult');
-  if (lastToolResultIdx > 0) {
+  if (endsInToolResult && lastToolResultIdx > 0) {
     let assistantIdx = lastToolResultIdx;
     while (assistantIdx > 0 && messages[assistantIdx - 1]?.role === 'toolResult') {
       assistantIdx -= 1;

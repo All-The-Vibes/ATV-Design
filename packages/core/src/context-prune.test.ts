@@ -260,6 +260,64 @@ describe('buildTransformContext — size-based block compaction with recent-turn
     expect(out[0]).toBe(hugeImage);
   });
 
+  it('keeps an oversized latest user turn rather than an older tool batch', async () => {
+    // Adversarial regression (cross-model, Codex round 4): when the latest turn
+    // is an oversized non-text user message and an EARLIER toolResult exists, the
+    // fallback must preserve the latest live instruction, not silently swap it
+    // for an older assistant+toolResult batch.
+    const transform = buildTransformContext();
+    const latestUser = {
+      role: 'user',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('start'),
+      assistantWithToolCall('c1', 'small'),
+      toolResult('c1', 'ok'),
+      latestUser,
+    ];
+    const out = await transform(messages);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+    // The kept tail must be the latest user turn (its live instruction), and must
+    // not end in assistant/toolResult from the older batch.
+    const last = out[out.length - 1] as { role: string };
+    expect(last.role).toBe('user');
+    expect(last).toBe(latestUser);
+  });
+
+  it('does not end in a bare assistant when the tail is toolResult(oversized) then assistant(final)', async () => {
+    // Adversarial regression (cross-model, Codex round 4): a realistic tail is
+    // user -> assistant(toolCall) -> toolResult(oversized image) -> assistant(final text).
+    // The reverse-accumulation keeps [toolResult, assistant]; dropLeadingToolResults
+    // strips the leading toolResult and would return a LONE trailing assistant —
+    // itself malformed (a continuation must end in user/toolResult). The pruned
+    // result must NOT end in a bare assistant.
+    const transform = buildTransformContext();
+    const hugeToolResult = {
+      role: 'toolResult',
+      toolCallId: 'c1',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('build me a landing page'),
+      assistantWithToolCall('c1', 'small'),
+      hugeToolResult,
+      assistantText('Here is your landing page. Anything else?'),
+    ];
+    const out = await transform(messages);
+    const roles = out.map((m) => (m as { role: string }).role);
+    expect(roles.length).toBeGreaterThan(0);
+    expect(roles[roles.length - 1]).not.toBe('assistant');
+    expect(roles[0]).not.toBe('toolResult');
+    // Any toolResult kept must open a contiguous run preceded by an assistant.
+    for (let i = 0; i < roles.length; i += 1) {
+      if (roles[i] === 'toolResult' && roles[i - 1] !== 'toolResult') {
+        expect(i).toBeGreaterThan(0);
+        expect(roles[i - 1]).toBe('assistant');
+      }
+    }
+  });
+
   it('preserves the whole assistant+toolResults batch for a multi-tool turn (never a lone assistant)', async () => {
     // Adversarial regression (cross-model, Codex round 2): an assistant turn may
     // emit 2+ tool calls, so its trailing toolResults are ADJACENT. If tail-prune
