@@ -340,6 +340,15 @@ function tailPruneToHardCap(messages: AgentMessage[], maxBytes: number): AgentMe
   // The trailing turn is an assistant that emitted 1..N tool calls followed by
   // its N contiguous toolResults. Recover that whole batch (assistant + all its
   // toolResults) so the pairing is intact regardless of how many tools it used.
+  //
+  // NOTE: this recovered batch may itself exceed maxBytes (e.g. two large image
+  // toolResults that cannot be shrunk without breaking tool_call/result
+  // pairing). That is deliberate: a well-formed-but-over-budget request is the
+  // lesser evil versus a malformed one. The provider may still reject on size,
+  // but it will not draw the bare `400 (no body)` this fix targets, which is
+  // caused by a MALFORMED (empty / orphan-toolResult / lone-assistant) shape —
+  // not by size alone. We never silently drop a toolResult from the batch to fit
+  // the cap, because that would re-introduce an orphan/unpaired continuation.
   const lastToolResultIdx = findLastIndex(messages, (m) => m?.role === 'toolResult');
   if (lastToolResultIdx > 0) {
     let assistantIdx = lastToolResultIdx;

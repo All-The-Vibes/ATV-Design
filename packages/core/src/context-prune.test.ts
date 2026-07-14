@@ -306,6 +306,53 @@ describe('buildTransformContext — size-based block compaction with recent-turn
     }
   });
 
+  it('keeps a recovered multi-tool batch well-formed even when it stays over the byte cap', async () => {
+    // Adversarial regression (cross-model, Codex round 3): when the trailing
+    // tool turn carries non-shrinkable payloads (large images) that together
+    // exceed the hard cap, tail-prune deliberately ships the whole assistant+
+    // toolResults batch OVER budget rather than dropping a result to fit — a
+    // well-formed-but-large request beats a malformed one. Assert the shape is
+    // valid (no orphan toolResult / no lone assistant), not that it's under cap.
+    const transform = buildTransformContext();
+    const img = (id: string) =>
+      ({
+        role: 'toolResult',
+        toolCallId: id,
+        content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(200_000) }],
+      }) as unknown as AgentMessage;
+    const messages: AgentMessage[] = [
+      userMsg('go'),
+      {
+        role: 'assistant',
+        content: [
+          { type: 'toolCall', id: 'c1', name: 'shot', input: {} },
+          { type: 'toolCall', id: 'c2', name: 'shot', input: {} },
+        ],
+      } as unknown as AgentMessage,
+      img('c1'),
+      img('c2'),
+    ];
+    const out = await transform(messages);
+    const roles = out.map((m) => (m as { role: string }).role);
+    expect(roles.length).toBeGreaterThan(0);
+    expect(roles[0]).not.toBe('toolResult');
+    expect(roles[roles.length - 1]).not.toBe('assistant');
+  });
+
+  it('returns a non-empty result for a degenerate all-toolResult history', async () => {
+    // Defensive: a history of only toolResults cannot occur from a real session
+    // (transcripts open with a user turn), but the safety net must still never
+    // return [] or throw. Non-empty is the invariant here.
+    const transform = buildTransformContext();
+    const only = {
+      role: 'toolResult',
+      toolCallId: 't',
+      content: [{ type: 'image', mimeType: 'image/png', data: 'A'.repeat(400_000) }],
+    } as unknown as AgentMessage;
+    const out = await transform([only]);
+    expect(out.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('never returns a lone orphan toolResult when the latest turn is an oversized toolResult', async () => {
     // Adversarial regression (cross-model, Codex): a provider rejects a
     // continuation whose FIRST message is a toolResult with no preceding
