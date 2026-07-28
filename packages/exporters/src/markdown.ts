@@ -1,3 +1,4 @@
+import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import type { ExportResult } from './index';
 
 export interface MarkdownMeta {
@@ -10,18 +11,40 @@ export interface ExportMarkdownOptions {
 }
 
 export async function exportMarkdown(
-  htmlContent: string,
+  renderedHtml: string,
   destinationPath: string,
   opts: ExportMarkdownOptions = {},
 ): Promise<ExportResult> {
   const fs = await import('node:fs/promises');
-  const md = htmlToMarkdown(htmlContent, {
-    title: opts.meta?.title ?? deriveTitle(htmlContent),
+  const md = htmlToMarkdown(renderedHtml, {
+    title: opts.meta?.title ?? deriveTitle(renderedHtml),
     schemaVersion: 1,
   });
+  // A client-rendered document (the compiled `buildSrcdoc` output: React +
+  // Babel inlined, content produced at runtime into `<div id="root">`) has no
+  // static body for the regex passes to convert. `convertBody` strips <head>
+  // and every <script>, leaving nothing — so we would write a file containing
+  // only YAML frontmatter and call it a success.
+  //
+  // Refuse instead. Static prerendering of the artifact is N6 (html.ts Tier
+  // 2); until that lands, markdown export of a JSX design fails loudly rather
+  // than handing the user a silently empty file.
+  if (!hasRenderedBody(md)) {
+    throw new CodesignError(
+      'Markdown export produced no content: this design renders on the client, so there is no static HTML to convert.',
+      ERROR_CODES.EXPORTER_COMPILE_FAILED,
+    );
+  }
   await fs.writeFile(destinationPath, md, 'utf8');
   const stat = await fs.stat(destinationPath);
   return { bytes: stat.size, path: destinationPath };
+}
+
+/** True when anything survived below the YAML frontmatter block. */
+function hasRenderedBody(markdown: string): boolean {
+  const end = markdown.indexOf('\n---\n', 4);
+  if (end === -1) return markdown.trim().length > 0;
+  return markdown.slice(end + 5).trim().length > 0;
 }
 
 /**

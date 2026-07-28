@@ -1,3 +1,4 @@
+import type { ArtifactSource } from '@atv-design/exporters';
 import type {
   CancelGenerationPayloadV1,
   ChatAppendInput,
@@ -230,8 +231,11 @@ const api = {
     ) as Promise<OnboardingState>,
   updateDesignSystemTokens: (patch: DesignSystemTokenPatch) =>
     ipcRenderer.invoke('codesign:update-design-system-tokens', patch) as Promise<OnboardingState>,
-  export: (payload: { format: ExportFormat; htmlContent: string; defaultFilename?: string }) =>
-    ipcRenderer.invoke('codesign:export', payload) as Promise<ExportInvokeResponse>,
+  export: (payload: {
+    format: ExportFormat;
+    artifactSource: ArtifactSource;
+    defaultFilename?: string;
+  }) => ipcRenderer.invoke('codesign:export', payload) as Promise<ExportInvokeResponse>,
   locale: {
     getSystem: () => ipcRenderer.invoke('locale:get-system') as Promise<string>,
     getCurrent: () => ipcRenderer.invoke('locale:get-current') as Promise<string>,

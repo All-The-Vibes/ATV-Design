@@ -1,4 +1,5 @@
 import { i18n } from '@atv-design/i18n';
+import { buildSrcdoc } from '@atv-design/runtime';
 import type {
   ChatAppendInput,
   ChatMessage,
@@ -1919,8 +1920,21 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
 
   async exportActive(format: ExportFormat) {
     recordAction({ type: 'design.export', data: { format } });
-    const html = get().previewHtml;
-    if (!html) {
+    // `previewHtml` is the agent's *artifact source* (a bare JSX module), not
+    // HTML — the name is historical. Every other consumer (PreviewPane,
+    // done-verify, DesignCardPreview) compiles it through `buildSrcdoc`
+    // first; export used to be the one path that did not, and shipped
+    // literal JSX text inside a doctype for all five formats.
+    //
+    // Compile once here, then dispatch as `kind: 'html'`. Legacy
+    // pre-JSX-switchover HTML snapshots are NOT passed through verbatim —
+    // `buildSrcdoc` still injects the preview overlay into them. Stripping
+    // the overlay/tweaks harness from exported files is N6 (html.ts Tier 2);
+    // until then an exported legacy artifact carries a dormant overlay
+    // script. That is a cosmetic payload, not a correctness regression: the
+    // pre-N0 behaviour for JSX artifacts was a blank page.
+    const artifactSource = get().previewHtml;
+    if (!artifactSource) {
       set({ toastMessage: tr('notifications.noDesignToExport') });
       return;
     }
@@ -1929,11 +1943,23 @@ export const useCodesignStore = create<CodesignState>((set, get) => ({
       return;
     }
     try {
+      let renderedHtml: string;
+      try {
+        renderedHtml = buildSrcdoc(artifactSource);
+      } catch (compileErr) {
+        // Babel/`buildSrcdoc` failed on malformed agent output. Surface the
+        // dedicated code rather than a generic "export failed" toast, so the
+        // user knows the design itself is the problem, not the file dialog.
+        const detail = compileErr instanceof Error ? compileErr.message : String(compileErr);
+        const msg = `${tr('err.EXPORTER_COMPILE_FAILED')} ${detail}`.trim();
+        set({ toastMessage: msg, errorMessage: msg, lastError: msg });
+        return;
+      }
       const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const ext = format === 'markdown' ? 'md' : format;
       const res = await window.codesign.export({
         format,
-        htmlContent: html,
+        artifactSource: { kind: 'html', source: renderedHtml },
         defaultFilename: `codesign-${stamp}.${ext}`,
       });
       if (res.status === 'saved' && res.path) {

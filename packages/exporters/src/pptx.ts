@@ -24,7 +24,7 @@ interface SlideContent {
  * `fit: 'shrink'` (emits `normAutofit`). Verified with PowerPoint Mac.
  */
 export async function exportPptx(
-  htmlContent: string,
+  renderedHtml: string,
   destinationPath: string,
   opts: ExportPptxOptions = {},
 ): Promise<ExportResult> {
@@ -32,7 +32,7 @@ export async function exportPptx(
   const PptxGenJS = (await import('pptxgenjs')).default;
 
   try {
-    const slides = extractSlides(htmlContent);
+    const slides = extractSlides(renderedHtml);
     const pres = new PptxGenJS();
     pres.layout = 'LAYOUT_WIDE';
     if (opts.deckTitle) pres.title = opts.deckTitle;

@@ -1,4 +1,4 @@
-import { type ExporterFormat, exportArtifact } from '@atv-design/exporters';
+import { type ArtifactSource, type ExporterFormat, exportArtifact } from '@atv-design/exporters';
 import { CodesignError, ERROR_CODES } from '@atv-design/shared';
 import type { BrowserWindow } from 'electron';
 import { dialog, ipcMain } from './electron-runtime';
@@ -13,7 +13,14 @@ const FORMAT_FILTERS: Record<ExporterFormat, Electron.FileFilter[]> = {
 
 export interface ExportRequest {
   format: ExporterFormat;
-  htmlContent: string;
+  /**
+   * The artifact to export. Narrowed to `kind: 'html'` deliberately: the
+   * renderer compiles JSX via `buildSrcdoc` before invoking, and
+   * `parseRequest` rejects anything still tagged `'jsx'`. Encoding that in
+   * the type means a compiled artifact is guaranteed by construction, not
+   * merely by convention.
+   */
+  artifactSource: Extract<ArtifactSource, { kind: 'html' }>;
   defaultFilename?: string;
 }
 
@@ -29,7 +36,7 @@ export function parseRequest(raw: unknown): ExportRequest {
   }
   const r = raw as Record<string, unknown>;
   const format = r['format'];
-  const html = r['htmlContent'];
+  const artifact = r['artifactSource'];
   const defaultFilename = r['defaultFilename'];
   if (
     format !== 'html' &&
@@ -43,10 +50,34 @@ export function parseRequest(raw: unknown): ExportRequest {
       ERROR_CODES.EXPORTER_UNKNOWN,
     );
   }
-  if (typeof html !== 'string' || html.length === 0) {
-    throw new CodesignError('export requires non-empty htmlContent', ERROR_CODES.IPC_BAD_INPUT);
+  if (artifact === null || typeof artifact !== 'object') {
+    throw new CodesignError('export requires an artifactSource object', ERROR_CODES.IPC_BAD_INPUT);
   }
-  const out: ExportRequest = { format, htmlContent: html };
+  const a = artifact as Record<string, unknown>;
+  const kind = a['kind'];
+  const source = a['source'];
+  if (typeof source !== 'string' || source.length === 0) {
+    throw new CodesignError(
+      'export requires a non-empty artifactSource.source',
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  if (kind !== 'html' && kind !== 'jsx') {
+    throw new CodesignError(
+      `Unknown artifactSource.kind: ${String(kind)}`,
+      ERROR_CODES.IPC_BAD_INPUT,
+    );
+  }
+  // Compilation is the renderer's job (it owns `buildSrcdoc` and the same
+  // path the preview uses). Reaching main still tagged as JSX means the
+  // caller skipped it — fail loudly instead of exporting unexecutable source.
+  if (kind === 'jsx') {
+    throw new CodesignError(
+      'export received uncompiled JSX; the renderer must compile before invoking',
+      ERROR_CODES.EXPORTER_COMPILE_FAILED,
+    );
+  }
+  const out: ExportRequest = { format, artifactSource: { kind, source } };
   if (typeof defaultFilename === 'string' && defaultFilename.length > 0) {
     out.defaultFilename = defaultFilename;
   }
@@ -70,7 +101,7 @@ export function registerExporterIpc(getWindow: () => BrowserWindow | null): void
 
     // All four formats ship in tier 1; the heavy deps load lazily inside
     // exportArtifact. Errors propagate to the renderer as toasts (PRINCIPLES §10).
-    const result = await exportArtifact(req.format, req.htmlContent, picked.filePath);
+    const result = await exportArtifact(req.format, req.artifactSource, picked.filePath);
     return { status: 'saved', path: result.path, bytes: result.bytes };
   });
 }

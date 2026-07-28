@@ -83,6 +83,7 @@ export const ERROR_CODES = {
   EXPORTER_PPTX_FAILED: 'EXPORTER_PPTX_FAILED',
   EXPORTER_ZIP_UNSAFE_PATH: 'EXPORTER_ZIP_UNSAFE_PATH',
   EXPORTER_ZIP_FAILED: 'EXPORTER_ZIP_FAILED',
+  EXPORTER_COMPILE_FAILED: 'EXPORTER_COMPILE_FAILED',
 
   // Misc / shell
   OPEN_PATH_FAILED: 'OPEN_PATH_FAILED',
@@ -380,6 +381,11 @@ export const ERROR_CODE_DESCRIPTIONS: Record<CodesignErrorCode, ErrorCodeDescrip
   EXPORTER_ZIP_FAILED: {
     userFacing: 'ZIP export failed.',
     userFacingKey: 'err.EXPORTER_ZIP_FAILED',
+    category: 'other',
+  },
+  EXPORTER_COMPILE_FAILED: {
+    userFacing: 'This design could not be compiled for export. It may contain a syntax error.',
+    userFacingKey: 'err.EXPORTER_COMPILE_FAILED',
     category: 'other',
   },
 

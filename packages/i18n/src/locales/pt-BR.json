@@ -1100,6 +1100,7 @@
     "EXPORTER_PPTX_FAILED": "A exportação em PowerPoint falhou.",
     "EXPORTER_ZIP_UNSAFE_PATH": "A exportação foi bloqueada: um caminho de asset escaparia dos limites do arquivo ZIP.",
     "EXPORTER_ZIP_FAILED": "A exportação em ZIP falhou.",
+    "EXPORTER_COMPILE_FAILED": "Não foi possível compilar este design para exportação. Ele pode conter um erro de sintaxe.",
     "OPEN_PATH_FAILED": "Não foi possível abrir a pasta ou arquivo solicitado.",
     "RENDERER_ERROR": "Ocorreu um erro no renderer. Detalhes estão no log.",
     "CODEX_TOKEN_NOT_LOGGED_IN": "Você não fez login na assinatura do ChatGPT. Faça login em Configurações.",
