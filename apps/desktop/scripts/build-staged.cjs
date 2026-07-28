@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -91,7 +91,46 @@ function resolveBuilderEnv(env = process.env, platform = process.platform) {
   return nextEnv;
 }
 
-function resolveBuilderArgs(builderArgs, env = process.env, platform = process.platform) {
+/**
+ * Linux installer formats each shell out to an external packaging tool that
+ * electron-builder does NOT bundle: `rpm` needs `rpmbuild`, `deb` needs
+ * `dpkg`. On a host without them the build dies partway through — after
+ * compiling, rebuilding native modules, and downloading Electron — with an
+ * fpm stack trace. That failure is environmental, not a defect in the app,
+ * but it takes the whole `pnpm build` down with it and blocks any local task
+ * that just needs a runnable binary.
+ *
+ * CI images have both tools, so release builds still produce every artifact.
+ * Locally we drop only the targets the host genuinely cannot build and say so
+ * loudly. AppImage is self-contained and always survives, so a bare machine
+ * still gets a working Linux binary.
+ */
+const LINUX_TARGET_TOOLS = { rpm: 'rpmbuild', deb: 'dpkg' };
+
+function hasExecutable(binary) {
+  const result = spawnSync(process.platform === 'win32' ? 'where' : 'which', [binary], {
+    stdio: 'ignore',
+  });
+  return result.status === 0;
+}
+
+function resolveLinuxTargets(targets, probe = hasExecutable) {
+  const dropped = [];
+  const kept = targets.filter((target) => {
+    const tool = LINUX_TARGET_TOOLS[target];
+    if (!tool || probe(tool)) return true;
+    dropped.push({ target, missing: tool });
+    return false;
+  });
+  return { targets: kept, dropped };
+}
+
+function resolveBuilderArgs(
+  builderArgs,
+  env = process.env,
+  platform = process.platform,
+  probe = hasExecutable,
+) {
   const nextArgs = [...builderArgs];
   if (
     env.ATV_REQUIRE_CODE_SIGNING === '1' &&
@@ -105,6 +144,30 @@ function resolveBuilderArgs(builderArgs, env = process.env, platform = process.p
     !nextArgs.some((arg) => arg.startsWith('--config.win.signAndEditExecutable='))
   ) {
     nextArgs.push('--config.win.signAndEditExecutable=false');
+  }
+  // Only degrade a default, full-platform build. If the caller named a
+  // platform/target explicitly (`--linux deb`, `--dir`), respect it and let
+  // electron-builder fail loudly — an explicit request for an unbuildable
+  // target should be an error, not a silent downgrade.
+  if (platform === 'linux' && !nextArgs.some((arg) => arg === '--linux' || arg === '--dir')) {
+    const requested = (env.ATV_LINUX_TARGETS ?? 'AppImage,deb,rpm')
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    const { targets, dropped } = resolveLinuxTargets(requested, probe);
+    if (dropped.length > 0) {
+      for (const { target, missing } of dropped) {
+        log(
+          `Skipping the ${target} target: '${missing}' is not installed. ` +
+            `Install it to build ${target} locally (CI builds it regardless).`,
+        );
+      }
+      // `--linux a b` (the documented CLI form), NOT repeated
+      // `--config.linux.target=` flags — the latter is a scalar assignment,
+      // so each occurrence overwrites the previous one and only the last
+      // target survives. That silently dropped the AppImage.
+      nextArgs.push('--linux', ...targets);
+    }
   }
   return nextArgs;
 }
@@ -206,8 +269,10 @@ module.exports = {
   APPLE_API_NOTARIZATION_ENV,
   APPLE_ID_NOTARIZATION_ENV,
   hasCodeSigningConfiguration,
+  hasExecutable,
   resolveBuilderArgs,
   resolveBuilderEnv,
+  resolveLinuxTargets,
   rewriteBuilderConfigText,
   validateSigningEnvironment,
 };

@@ -32,6 +32,8 @@
     "electron-updater": "^6.3.9",
     "ieee754": "^1.2.1",
     "lucide-react": "^1.24.0",
+    "pptxgenjs": "^4.0.1",
+    "puppeteer-core": "^24.42.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "smol-toml": "^1.6.1",
