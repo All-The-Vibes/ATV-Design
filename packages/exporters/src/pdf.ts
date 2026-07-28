@@ -22,7 +22,7 @@ const DEFAULT_VIEWPORT = { width: 1280, height: 800 } as const;
  * connects to the system Chrome we discover at runtime. PRINCIPLES §1 + §10.
  */
 export async function exportPdf(
-  htmlContent: string,
+  renderedHtml: string,
   destinationPath: string,
   opts: ExportPdfOptions = {},
 ): Promise<ExportResult> {
@@ -41,7 +41,7 @@ export async function exportPdf(
     });
     const page = await browser.newPage();
     await page.setViewport(DEFAULT_VIEWPORT);
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0', timeout: 30_000 });
+    await page.setContent(renderedHtml, { waitUntil: 'networkidle0', timeout: 30_000 });
 
     const format = opts.format ?? 'Letter';
     const pdfBuf =

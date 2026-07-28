@@ -1204,6 +1204,7 @@
     "EXPORTER_PPTX_FAILED": "PowerPoint export failed.",
     "EXPORTER_ZIP_UNSAFE_PATH": "Export was blocked: an asset path would escape the ZIP archive.",
     "EXPORTER_ZIP_FAILED": "ZIP export failed.",
+    "EXPORTER_COMPILE_FAILED": "This design could not be compiled for export. It may contain a syntax error.",
     "OPEN_PATH_FAILED": "Could not open the requested folder or file.",
     "RENDERER_ERROR": "An error occurred in the renderer. Details are in the log."
   }

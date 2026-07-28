@@ -44,7 +44,7 @@ This bundle was exported from [atv-design](https://github.com/All-The-Vibes/ATV-
  * archive in memory (PRINCIPLES §1).
  */
 export async function exportZip(
-  htmlContent: string,
+  renderedHtml: string,
   destinationPath: string,
   opts: ExportZipOptions = {},
 ): Promise<ExportResult> {
@@ -56,7 +56,7 @@ export async function exportZip(
   const stagingDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codesign-zip-'));
   try {
     const indexPath = path.join(stagingDir, 'index.html');
-    await fs.writeFile(indexPath, htmlContent, 'utf8');
+    await fs.writeFile(indexPath, renderedHtml, 'utf8');
 
     const readme = README_TEMPLATE(
       opts.readmeTitle ?? 'atv-design export',

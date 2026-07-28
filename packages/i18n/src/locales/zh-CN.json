@@ -1158,6 +1158,7 @@
     "EXPORTER_PPTX_FAILED": "PowerPoint 导出失败。",
     "EXPORTER_ZIP_UNSAFE_PATH": "导出被阻止：有资源路径会越出 ZIP 包边界。",
     "EXPORTER_ZIP_FAILED": "ZIP 导出失败。",
+    "EXPORTER_COMPILE_FAILED": "无法编译此设计以进行导出。它可能包含语法错误。",
     "OPEN_PATH_FAILED": "无法打开目标文件夹或文件。",
     "RENDERER_ERROR": "渲染进程出现错误，详情见日志。"
   }

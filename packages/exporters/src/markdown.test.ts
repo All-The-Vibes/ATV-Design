@@ -200,3 +200,44 @@ describe('sanitizeUrl encoded-scheme bypass guard', () => {
     expect(sanitizeUrl('https://x.test/?q=100%', 'link')).toBe('https://x.test/?q=100%');
   });
 });
+
+/**
+ * N0: guard against silently exporting an empty markdown file.
+ *
+ * The compiled artifact (`buildSrcdoc` output) is a client-rendered shell:
+ * React + Babel inlined, content produced at runtime into `<div id="root">`.
+ * `convertBody` strips <head> and all <script> tags, so nothing survives and
+ * the "successful" export is YAML frontmatter alone. Static prerendering is
+ * N6; until then this must fail loudly.
+ */
+describe('exportMarkdown — empty-body guard', () => {
+  const CLIENT_RENDERED =
+    '<!doctype html><html><head><script>var react = 1;</script></head>' +
+    '<body><div id="root"></div><script type="text/babel">function App(){}</script></body></html>';
+
+  it('produces frontmatter-only markdown for a client-rendered document', () => {
+    const md = htmlToMarkdown(CLIENT_RENDERED, { title: 'T', schemaVersion: 1 });
+    const body = md.slice(md.indexOf('\n---\n', 4) + 5);
+    expect(body.trim()).toBe('');
+  });
+
+  it('rejects that document rather than writing an empty file', async () => {
+    const { exportMarkdown } = await import('./markdown');
+    await expect(
+      exportMarkdown(CLIENT_RENDERED, '/tmp/n0-should-not-exist.md'),
+    ).rejects.toThrowError(expect.objectContaining({ code: 'EXPORTER_COMPILE_FAILED' }));
+  });
+
+  it('still exports a document that does have static content', async () => {
+    const { exportMarkdown } = await import('./markdown');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const fs = await import('node:fs/promises');
+    const dest = path.join(os.tmpdir(), `n0-md-${process.pid}.md`);
+    const res = await exportMarkdown('<h1>Real</h1><p>Body</p>', dest);
+    expect(res.bytes).toBeGreaterThan(0);
+    const written = await fs.readFile(dest, 'utf8');
+    expect(written).toContain('# Real');
+    await fs.rm(dest, { force: true });
+  });
+});
