@@ -20,7 +20,7 @@ Use our issue templates:
 1. **Open an issue or discussion first** for anything bigger than a typo. We may have already considered the change, or have a better path in mind.
 2. **Fork, branch, code.** Branch name: `<type>/<short-slug>` (e.g. `feat/url-style-steal`, `fix/cjk-pptx-wrap`).
 3. **Conventional Commits** subject required. Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `ci`, `build`.
-4. **Run locally**: `pnpm lint && pnpm typecheck && pnpm test`. If lint only reports Biome formatting or safe autofix issues, run `pnpm lint:fix`, commit the result, then rerun the checks.
+4. **Run locally**: `pnpm lint && pnpm typecheck && pnpm test`. If lint only reports Biome formatting or safe autofix issues, run `pnpm lint:fix`, commit the result, then rerun the checks. If you touched the desktop UI, main process, or IPC, also run `pnpm test:e2e` (Playwright; compiles the app, no installers).
 5. **Add a changeset** if your change is user-visible: `pnpm changeset`.
 6. **One concern per PR.** Refactors, fixes, and features in separate PRs.
 7. **Keep PRs small.** Anything over ~400 LOC of substantive change should be split or pre-discussed.

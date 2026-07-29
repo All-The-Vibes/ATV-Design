@@ -162,3 +162,8 @@ pnpm typecheck
 pnpm build
 pnpm changeset
 ```
+
+`pnpm test:e2e` compiles the app with `electron-vite` and runs the Playwright
+suite against `apps/desktop/out/`. It does **not** produce installers — use
+`pnpm build` for those. See [`apps/desktop/e2e/README.md`](./apps/desktop/e2e/README.md)
+for fixtures, snapshot baselines, and troubleshooting.

@@ -114,8 +114,8 @@ For OAuth providers (GitHub Copilot), see [`docs/oauth-setup.md`](./docs/oauth-s
 pnpm test              # Run unit tests (Vitest)
 pnpm typecheck         # TypeScript strict mode
 pnpm lint              # Biome format & lint
-pnpm build             # Build all packages
-pnpm test:e2e          # Playwright end-to-end tests
+pnpm build             # Build all packages + desktop installers
+pnpm test:e2e          # Playwright end-to-end tests (compile only, no installers)
 ```
 
 See [AGENTS.md](./AGENTS.md) for contributor setup and guidelines.

@@ -5,6 +5,13 @@
 - The default GitHub Copilot OAuth path depends on a maintainer-controlled public client ID. Use `ATV_DESIGN_GITHUB_CLIENT_ID` if you need ATV Design to authenticate with your own OAuth app instead.
 - Local packaging stays unsigned by default. Release CI now supports credential-gated code signing and macOS notarization, but wider installer polish is still M2 work.
 - The Copilot client-ID override is env-only today; there is no dedicated UI field in the app yet.
+- `pnpm build` on Linux fails at the rpm target unless `rpmbuild` is installed
+  (`Need executable 'rpmbuild' to convert dir to rpm`). AppImage and deb build
+  fine — only the rpm artifact is affected. Install it with
+  `sudo apt-get install rpm`, or skip the rpm target by passing an explicit
+  target list, which the staged build script forwards to electron-builder:
+  `pnpm --filter @atv-design/desktop build --linux AppImage deb`.
+  This does not affect `pnpm test:e2e`, which compiles without packaging.
 
 ## Comment Mode
 
