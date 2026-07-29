@@ -73,11 +73,17 @@ test('clicking Add in Components panel appends a new row', async ({ firstWindow 
   const rowsBefore = await firstWindow.getByText('Buttons').count();
   expect(rowsBefore).toBeGreaterThanOrEqual(1);
 
-  // Find the "+ Add" button inside the Components panel header
-  // It's the button adjacent to the "Components" heading
-  const componentsSection = firstWindow.locator('section').filter({
-    has: firstWindow.getByRole('heading', { name: /components/i, level: 3 }),
-  });
+  // Find the "+ Add" button inside the Components panel header.
+  // The tab wraps every TokenPanel in an outer <section>, which ALSO contains
+  // the Components heading — so the filter matches both the outer wrapper and
+  // the inner Components panel. `.last()` selects the innermost (Components)
+  // panel; `.first()` would grab the outer wrapper and click the Colors Add.
+  const componentsSection = firstWindow
+    .locator('section')
+    .filter({
+      has: firstWindow.getByRole('heading', { name: /components/i, level: 3 }),
+    })
+    .last();
   const addButton = componentsSection.getByRole('button', { name: /^\+\s*add/i }).first();
   await expect(addButton).toBeVisible({ timeout: 4_000 });
   await addButton.click();

@@ -53,6 +53,7 @@
     "newDesignDialog": {
       "title": "New design",
       "subtitle": "Optionally choose a local folder. Otherwise ATV Design will create a default workspace for you.",
+      "namePlaceholder": "Design name (optional)",
       "noWorkspace": "No folder selected — ATV Design will create a default workspace",
       "skip": "Use default workspace",
       "confirm": "Create"

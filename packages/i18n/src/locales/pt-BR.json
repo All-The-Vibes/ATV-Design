@@ -53,6 +53,7 @@
     "newDesignDialog": {
       "title": "Novo design",
       "subtitle": "Opcionalmente escolha uma pasta local. Caso contrário, o ATV Design criará um workspace padrão para você.",
+      "namePlaceholder": "Nome do design (opcional)",
       "noWorkspace": "Nenhuma pasta selecionada — o ATV Design criará um workspace padrão",
       "skip": "Usar workspace padrão",
       "confirm": "Criar"
