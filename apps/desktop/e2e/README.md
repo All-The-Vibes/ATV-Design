@@ -15,7 +15,18 @@ pnpm --filter @atv-design/desktop test:e2e
 pnpm --filter @atv-design/desktop test:e2e:norebuild
 ```
 
-The `test:e2e` script calls `pnpm build && node scripts/e2e-run.cjs`.
+The `test:e2e` script calls `pnpm build:e2e && node scripts/e2e-run.cjs`.
+
+> **Why `build:e2e` and not `build`?**
+> The E2E fixture launches `out/main/index.js` — the raw `electron-vite`
+> output — never a packaged artifact. The full `pnpm build` additionally
+> runs `electron-builder`, producing AppImage / deb / rpm installers that
+> no test consumes. That cost the suite several minutes per run and made
+> `test:e2e` fail outright on machines without `rpmbuild` installed
+> (`Need executable 'rpmbuild' to convert dir to rpm`) — a packaging
+> toolchain gap masquerading as a test failure. `build:e2e` runs only the
+> `electron-vite build` compile step, which is all the fixture needs.
+> Use `pnpm build` when you actually want distributables.
 
 `scripts/e2e-run.cjs` is a thin cross-platform wrapper that sets
 `PW_DISABLE_TS_ESM=1` **before** spawning the Playwright process via
